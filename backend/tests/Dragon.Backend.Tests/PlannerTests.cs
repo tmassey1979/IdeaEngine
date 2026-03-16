@@ -497,6 +497,60 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunUntilIdleFromGithub_CanSyncValidatedWorkflowAcrossMultipleCycles()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        Directory.CreateDirectory(Path.Combine(root, "planning"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        File.WriteAllText(Path.Combine(root, "planning", "backlog.json"), """
+        {
+          "stories": [
+            {
+              "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+              "heading": "Core System Principles",
+              "sourceFile": "codex/sections/01-dragon-idea-engine-master-codex.md"
+            }
+          ]
+        }
+        """);
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.StartsWith("issue list --repo", StringComparison.Ordinal))
+            {
+                return """
+                [
+                  {
+                    "number": 22,
+                    "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                    "body": "",
+                    "state": "OPEN",
+                    "labels": [
+                      { "name": "story" }
+                    ]
+                  }
+                ]
+                """;
+            }
+
+            return string.Empty;
+        });
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, githubIssueService: service, jobExecutor: executor);
+
+        var result = loop.RunUntilIdleFromGithub("tmassey1979", "IdeaEngine", syncValidatedWorkflows: true, maxCycles: 10);
+
+        Assert.True(result.ReachedIdle);
+        Assert.Contains(result.Cycles, cycle => cycle.GithubSync?.Updated == true);
+        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void GithubIssueService_MapsOpenStoryIssuesAndBacklogMetadata()
     {
         const string json = """
