@@ -133,6 +133,39 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_SkipsOpenValidatedStoriesAndChoosesRunnableStory()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story", "validated"]),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"])
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(23, job.Issue);
+    }
+
+    [Fact]
+    public void RunUntilIdle_TreatsValidatedOnlyStoryListAsIdle()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story", "validated"])
+        };
+
+        var result = loop.RunUntilIdle(issues, maxCycles: 5);
+
+        Assert.True(result.ReachedIdle);
+        Assert.False(result.ReachedMaxCycles);
+        Assert.Empty(result.Cycles);
+    }
+
+    [Fact]
     public void QueueStore_EnqueuesAndDequeuesJobsInOrder()
     {
         var root = CreateTempRoot();

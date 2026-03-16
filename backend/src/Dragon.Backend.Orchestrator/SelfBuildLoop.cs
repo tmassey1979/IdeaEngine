@@ -181,7 +181,7 @@ public sealed class SelfBuildLoop
             .ToDictionary(group => group.Key, group => group.MaxBy(issue => issue.Number)!.Number);
 
         return issues
-            .Where(issue => issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase))
+            .Where(IsSchedulableStoryIssue)
             .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) || (
                 !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase) &&
@@ -377,6 +377,11 @@ public sealed class SelfBuildLoop
     private static bool IsRecoveryIssue(GithubIssue issue) =>
         issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
         issue.Title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSchedulableStoryIssue(GithubIssue issue) =>
+        issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("validated", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("superseded", StringComparer.OrdinalIgnoreCase);
 
     private static bool IsImplementationAction(string action) =>
         string.Equals(action, "implement_issue", StringComparison.OrdinalIgnoreCase) ||
