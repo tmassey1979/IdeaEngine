@@ -60,6 +60,82 @@ test("runAgent executes a plugin", async () => {
   assert.equal(result.artifacts.target, "42");
 });
 
+test("developer agent can apply structured file operations", async () => {
+  const tempRoot = makeTempDir("tmp-developer-edit-");
+  fs.writeFileSync(path.join(tempRoot, "README.md"), "hello\n", "utf8");
+
+  const result = await runJob(
+    {
+      jobId: "job-dev-edit",
+      agent: "developer",
+      action: "implement_issue",
+      issue: 42,
+      createdAt: new Date().toISOString(),
+      payload: {
+        operations: [
+          {
+            type: "append_text",
+            path: "README.md",
+            content: "world\n"
+          },
+          {
+            type: "write_file",
+            path: "notes/summary.txt",
+            content: "done\n"
+          }
+        ]
+      },
+      metadata: {}
+    },
+    {
+      rootDir: tempRoot,
+      catalogRoot: workspaceRoot()
+    }
+  );
+
+  assert.equal(result.status, JOB_STATUS.SUCCESS);
+  assert.equal(result.result.artifacts.changedFiles.includes("README.md"), true);
+  assert.equal(fs.readFileSync(path.join(tempRoot, "README.md"), "utf8"), "hello\nworld\n");
+  assert.equal(fs.readFileSync(path.join(tempRoot, "notes", "summary.txt"), "utf8"), "done\n");
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("developer agent fails invalid replace operations", async () => {
+  const tempRoot = makeTempDir("tmp-developer-fail-");
+  fs.writeFileSync(path.join(tempRoot, "README.md"), "hello\n", "utf8");
+
+  const result = await runJob(
+    {
+      jobId: "job-dev-fail",
+      agent: "developer",
+      action: "implement_issue",
+      issue: 42,
+      createdAt: new Date().toISOString(),
+      payload: {
+        operations: [
+          {
+            type: "replace_text",
+            path: "README.md",
+            search: "missing",
+            replace: "found"
+          }
+        ]
+      },
+      metadata: {}
+    },
+    {
+      rootDir: tempRoot,
+      catalogRoot: workspaceRoot()
+    }
+  );
+
+  assert.equal(result.status, JOB_STATUS.RETRY);
+  assert.match(result.errors[0], /could not find the target text/);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
 test("createJob applies schema defaults", () => {
   const job = createJob({
     agent: "developer",

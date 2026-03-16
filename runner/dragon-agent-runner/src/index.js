@@ -66,7 +66,7 @@ async function runAgent(agentId, options = {}) {
     flags: options.flags || {},
     rootDir,
     config: {
-      sourceRoot: options.catalogRoot || options.rootDir || workspaceRoot(),
+      sourceRoot: options.sourceRoot || options.rootDir || workspaceRoot(),
       ...(options.config || {})
     },
     projectCredentials: options.projectCredentials || {},
