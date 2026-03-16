@@ -7,6 +7,8 @@ const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const BACKLOG_JSON = path.join(ROOT, 'planning', 'backlog.json');
 const API_ROOT = 'https://api.github.com';
+const WRITE_THROTTLE_MS = Number(process.env.GITHUB_WRITE_THROTTLE_MS || '1200');
+const MAX_RETRIES = Number(process.env.GITHUB_MAX_RETRIES || '10');
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -15,28 +17,74 @@ function requireEnv(name) {
 }
 
 async function githubRequest(token, method, apiPath, body) {
-  const response = await fetch(`${API_ROOT}${apiPath}`, {
-    method,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'User-Agent': 'idea-engine-publisher',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+    if (body && (method === 'POST' || method === 'PATCH') && WRITE_THROTTLE_MS > 0) {
+      await sleep(WRITE_THROTTLE_MS);
+    }
 
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!response.ok) {
+    const response = await fetch(`${API_ROOT}${apiPath}`, {
+      method,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'idea-engine-publisher',
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    if (response.ok) {
+      return data;
+    }
+
+    if (shouldRetry(response.status, data) && attempt < MAX_RETRIES) {
+      const delayMs = retryDelayMs(response, data, attempt);
+      console.warn(
+        `${method} ${apiPath} hit GitHub rate limiting (attempt ${attempt}/${MAX_RETRIES}); retrying in ${Math.ceil(delayMs / 1000)}s.`
+      );
+      await sleep(delayMs);
+      continue;
+    }
+
     const message = data?.message || text || `HTTP ${response.status}`;
     const error = new Error(`${method} ${apiPath} failed: ${message}`);
     error.status = response.status;
     error.data = data;
     throw error;
   }
-  return data;
+}
+
+function shouldRetry(status, data) {
+  if (![403, 429].includes(status)) return false;
+  const message = String(data?.message || '').toLowerCase();
+  return message.includes('secondary rate limit') || message.includes('rate limit');
+}
+
+function retryDelayMs(response, data, attempt) {
+  const retryAfterSeconds = Number(response.headers.get('retry-after'));
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+
+  const message = String(data?.message || '').toLowerCase();
+  if (message.includes('secondary rate limit') || message.includes('temporarily blocked from content creation')) {
+    return Math.min(300000, 60000 * attempt);
+  }
+
+  const resetEpochSeconds = Number(response.headers.get('x-ratelimit-reset'));
+  if (Number.isFinite(resetEpochSeconds) && resetEpochSeconds > 0) {
+    const untilResetMs = resetEpochSeconds * 1000 - Date.now();
+    if (untilResetMs > 0) return untilResetMs + 1000;
+  }
+
+  return Math.min(120000, 15000 * attempt);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function git(...args) {
