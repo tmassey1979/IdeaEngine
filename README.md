@@ -8,5 +8,6 @@ Current implementation focus:
 - plugin-based agent runtime
 - starter agent plugins
 - shared agent SDK
+- job lifecycle, retry, dead-letter, and SDK utility foundations
 
 See [docs/MASTER_CODEX.md](/mnt/c/code/Playground/IdeaEngine/docs/MASTER_CODEX.md) for the extracted product codex and [docs/ARCHITECTURE.md](/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md) for the current implementation shape.

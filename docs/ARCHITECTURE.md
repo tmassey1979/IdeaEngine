@@ -21,10 +21,11 @@ templates/
 ## Current Runtime
 
 - `dragon-agent-runner` loads agent plugins from the workspace.
-- agents expose a manifest and a `run(context)` handler.
+- agents expose `name`, `description`, `version`, and `execute(context)` through the shared SDK.
 - CLI mode runs one agent directly.
 - service mode reads newline-delimited JSON jobs, validates them against the shared schema, and emits structured job results.
 - failed jobs follow the codex retry schedule and spill into a local dead-letter queue file when retries are exhausted.
+- agents receive workspace, git, credentials, job publishing, and logging utilities through the SDK context.
 
 ## Next Expected Layers
 

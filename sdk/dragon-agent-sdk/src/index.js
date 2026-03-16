@@ -1,20 +1,7 @@
 const crypto = require("crypto");
-
-function createAgent({ id, description, run }) {
-  if (!id) {
-    throw new Error("Agent id is required.");
-  }
-
-  if (typeof run !== "function") {
-    throw new Error(`Agent "${id}" must provide a run function.`);
-  }
-
-  return {
-    id,
-    description: description || "",
-    run
-  };
-}
+const fs = require("fs");
+const path = require("path");
+const { execFileSync } = require("child_process");
 
 const JOB_STATUS = {
   QUEUED: "queued",
@@ -31,25 +18,56 @@ const DEFAULT_RETRY_POLICY = {
   scheduleSeconds: [10, 30, 90]
 };
 
-function createLogger(scope) {
+function createAgent(definition) {
+  const name = definition.name || definition.id;
+  const execute = definition.execute || definition.run;
+
+  requireNonEmptyString(name, "agent name");
+  requireNonEmptyString(definition.description || "", "description");
+  if (typeof execute !== "function") {
+    throw new Error(`Agent "${name}" must provide an execute or run function.`);
+  }
+
+  const agent = {
+    id: name,
+    name,
+    description: definition.description,
+    version: definition.version || "0.1.0",
+    registerArgs: definition.registerArgs || (() => {}),
+    async execute(context) {
+      return execute(context);
+    },
+    async run(context) {
+      return execute(context);
+    }
+  };
+
+  return agent;
+}
+
+function createLogger(scope, defaults = {}) {
   return {
+    child(childScope, childDefaults = {}) {
+      return createLogger(`${scope}:${childScope}`, { ...defaults, ...childDefaults });
+    },
     info(message, data) {
-      writeLog("info", scope, message, data);
+      writeLog("info", scope, message, data, defaults);
     },
     warn(message, data) {
-      writeLog("warn", scope, message, data);
+      writeLog("warn", scope, message, data, defaults);
     },
     error(message, data) {
-      writeLog("error", scope, message, data);
+      writeLog("error", scope, message, data, defaults);
     }
   };
 }
 
-function writeLog(level, scope, message, data) {
+function writeLog(level, scope, message, data, defaults = {}) {
   const entry = {
     time: new Date().toISOString(),
     level,
     scope,
+    ...defaults,
     message,
     ...(data === undefined ? {} : { data })
   };
@@ -132,6 +150,174 @@ function createJobResult({
   };
 }
 
+function createAgentResult({
+  success,
+  message,
+  artifacts,
+  metrics = {}
+}) {
+  if (typeof success !== "boolean") {
+    throw new Error("Agent result requires a boolean success field.");
+  }
+
+  return {
+    success,
+    ...(message ? { message } : {}),
+    ...(artifacts === undefined ? {} : { artifacts }),
+    metrics
+  };
+}
+
+function createCredentialsManager({ projectCredentials = {}, globalCredentials = {} } = {}) {
+  return {
+    get(name) {
+      if (Object.prototype.hasOwnProperty.call(projectCredentials, name)) {
+        return projectCredentials[name];
+      }
+
+      return globalCredentials[name];
+    }
+  };
+}
+
+function createWorkspaceManager({ rootDir }) {
+  const baseDir = path.join(rootDir, "workspaces");
+
+  return {
+    rootDir: baseDir,
+    getJobWorkspace(job) {
+      const repoName = sanitizePathSegment(job.repo || "shared");
+      const issueSegment = job.issue !== null && job.issue !== undefined ? `issue-${job.issue}` : job.jobId;
+      return path.join(baseDir, repoName, sanitizePathSegment(issueSegment));
+    },
+    ensureJobWorkspace(job) {
+      const workspacePath = this.getJobWorkspace(job);
+      fs.mkdirSync(workspacePath, { recursive: true });
+      return workspacePath;
+    },
+    cloneRepo(repoSource, options = {}) {
+      const repoName =
+        options.repoName || deriveRepoName(options.job?.repo || repoSource || options.job?.project || "repo");
+      const targetDir = options.targetDir || this.ensureJobWorkspace(options.job || fallbackJob(repoName));
+      const repoDir = path.join(targetDir, repoName);
+
+      if (fs.existsSync(repoDir)) {
+        return repoDir;
+      }
+
+      if (repoSource && fs.existsSync(repoSource)) {
+        fs.cpSync(repoSource, repoDir, { recursive: true });
+        return repoDir;
+      }
+
+      if (repoSource) {
+        execFileSync("git", ["clone", repoSource, repoDir], { stdio: ["ignore", "pipe", "pipe"] });
+        return repoDir;
+      }
+
+      fs.mkdirSync(repoDir, { recursive: true });
+      return repoDir;
+    }
+  };
+}
+
+function createGitClient({ cwd }) {
+  if (!cwd) {
+    throw new Error("Git client requires a working directory.");
+  }
+
+  return {
+    cloneRepo(repoSource, targetDir) {
+      execFileSync("git", ["clone", repoSource, targetDir], { cwd, stdio: ["ignore", "pipe", "pipe"] });
+      return targetDir;
+    },
+    createBranch(name) {
+      execFileSync("git", ["checkout", "-b", name], { cwd, stdio: ["ignore", "pipe", "pipe"] });
+      return name;
+    },
+    commit(message) {
+      execFileSync("git", ["commit", "-m", message, "--allow-empty"], {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+      return message;
+    },
+    push(remote = "origin", branch) {
+      const args = branch ? ["push", remote, branch] : ["push", remote];
+      execFileSync("git", args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+      return { remote, branch: branch || null };
+    },
+    createPullRequest(options = {}) {
+      return {
+        provider: "manual",
+        title: options.title || "",
+        body: options.body || "",
+        head: options.head || null,
+        base: options.base || "main"
+      };
+    }
+  };
+}
+
+function createJobPublisher({ rootDir, queue = "dragon.jobs" }) {
+  return {
+    publish(jobInput) {
+      const job = createJob(jobInput);
+      const queueDir = path.join(rootDir, ".dragon", "queues");
+      fs.mkdirSync(queueDir, { recursive: true });
+      const queuePath = path.join(queueDir, `${sanitizePathSegment(queue)}.ndjson`);
+      fs.appendFileSync(queuePath, `${JSON.stringify(job)}\n`, "utf8");
+      return {
+        queue,
+        path: queuePath,
+        jobId: job.jobId
+      };
+    }
+  };
+}
+
+function createAgentContext({
+  agent,
+  job,
+  args = [],
+  flags = {},
+  rootDir,
+  config = {},
+  projectCredentials = {},
+  globalCredentials = {}
+}) {
+  const workspace = createWorkspaceManager({ rootDir });
+  const workspacePath = workspace.ensureJobWorkspace(job);
+  const logger = createLogger(`agent:${job.agent}`, {
+    jobId: job.jobId,
+    agent: job.agent
+  });
+  const credentials = createCredentialsManager({ projectCredentials, globalCredentials });
+  const git = createGitClient({ cwd: workspacePath });
+  const jobs = createJobPublisher({ rootDir });
+
+  return {
+    job,
+    payload: job.payload,
+    args,
+    flags,
+    workspace: {
+      ...workspace,
+      path: workspacePath
+    },
+    logger,
+    credentials,
+    repo: job.repo,
+    config,
+    git,
+    jobs,
+    agent: {
+      name: agent.name,
+      version: agent.version
+    }
+  };
+}
+
 function requireNonEmptyString(value, field) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`${field} must be a non-empty string.`);
@@ -149,11 +335,33 @@ function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function sanitizePathSegment(value) {
+  return String(value).replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+function deriveRepoName(value) {
+  return path.basename(String(value)).replace(/\.git$/, "");
+}
+
+function fallbackJob(repoName) {
+  return createJob({
+    agent: "workspace",
+    action: "clone_repo",
+    repo: repoName
+  });
+}
+
 module.exports = {
   createAgent,
+  createAgentContext,
+  createAgentResult,
+  createCredentialsManager,
+  createGitClient,
   createJob,
+  createJobPublisher,
   createJobResult,
   createLogger,
+  createWorkspaceManager,
   DEFAULT_RETRY_POLICY,
   JOB_STATUS,
   validateJob

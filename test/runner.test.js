@@ -13,7 +13,14 @@ const {
   workspaceRoot
 } = require("../runner/dragon-agent-runner/src/index");
 const {
+  createAgent,
+  createAgentContext,
+  createAgentResult,
+  createCredentialsManager,
+  createGitClient,
   createJob,
+  createJobPublisher,
+  createWorkspaceManager,
   DEFAULT_RETRY_POLICY,
   JOB_STATUS,
   validateJob
@@ -47,8 +54,9 @@ test("runAgent executes a plugin", async () => {
     flags: { issue: "42" }
   });
 
-  assert.equal(result.agent, "developer");
-  assert.equal(result.target, "42");
+  assert.equal(result.success, true);
+  assert.equal(result.artifacts.agent, "developer");
+  assert.equal(result.artifacts.target, "42");
 });
 
 test("createJob applies schema defaults", () => {
@@ -93,7 +101,8 @@ test("runJob returns structured success results", async () => {
   assert.equal(result.jobId, "job-42");
   assert.equal(result.status, JOB_STATUS.SUCCESS);
   assert.equal(result.agent, "developer");
-  assert.equal(result.result.target, "unscoped-work");
+  assert.equal(result.result.success, true);
+  assert.equal(result.result.artifacts.target, "42");
   assert.equal(result.agentVersion, "0.1.0");
   assert.equal(result.metrics.attempt, 1);
 });
@@ -151,3 +160,125 @@ test("runJob deadletters after retries are exhausted", async () => {
   assert.equal(fs.existsSync(deadletterPath), true);
   assert.match(fs.readFileSync(deadletterPath, "utf8"), /deadletter-job/);
 });
+
+test("createAgent supports codex interface fields", async () => {
+  const agent = createAgent({
+    name: "sample",
+    description: "Sample agent",
+    version: "1.2.3",
+    async execute() {
+      return createAgentResult({ success: true });
+    }
+  });
+
+  assert.equal(agent.name, "sample");
+  assert.equal(agent.version, "1.2.3");
+  const result = await agent.execute({});
+  assert.equal(result.success, true);
+});
+
+test("credentials manager resolves project before global", () => {
+  const credentials = createCredentialsManager({
+    projectCredentials: { github: "project-token" },
+    globalCredentials: { github: "global-token", npm: "npm-token" }
+  });
+
+  assert.equal(credentials.get("github"), "project-token");
+  assert.equal(credentials.get("npm"), "npm-token");
+});
+
+test("workspace manager creates isolated issue workspaces", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-workspace-"));
+  const workspace = createWorkspaceManager({ rootDir: tempRoot });
+  const job = createJob({
+    agent: "developer",
+    action: "implement_issue",
+    repo: "dragon-crm",
+    issue: 42
+  });
+
+  const workspacePath = workspace.ensureJobWorkspace(job);
+  assert.match(workspacePath, /workspaces[\\/]dragon-crm[\\/]issue-42$/);
+  assert.equal(fs.existsSync(workspacePath), true);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("job publisher writes queue entries", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-publisher-"));
+  const publisher = createJobPublisher({ rootDir: tempRoot, queue: "dragon.jobs" });
+  const publishResult = publisher.publish({
+    agent: "review",
+    action: "review_pr",
+    repo: "dragon-crm"
+  });
+
+  assert.equal(publishResult.queue, "dragon.jobs");
+  const contents = fs.readFileSync(publishResult.path, "utf8");
+  assert.match(contents, /"agent":"review"/);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("agent context exposes codex runtime helpers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-context-"));
+  const agent = createAgent({
+    name: "developer",
+    description: "Developer",
+    async execute() {
+      return createAgentResult({ success: true });
+    }
+  });
+  const job = createJob({
+    agent: "developer",
+    action: "implement_issue",
+    repo: "dragon-crm",
+    issue: 7,
+    payload: { branch: "feature/login" }
+  });
+
+  const context = createAgentContext({
+    agent,
+    job,
+    rootDir: tempRoot,
+    projectCredentials: { github: "project" },
+    globalCredentials: { github: "global" }
+  });
+
+  assert.equal(context.payload.branch, "feature/login");
+  assert.equal(context.repo, "dragon-crm");
+  assert.equal(context.credentials.get("github"), "project");
+  assert.match(context.workspace.path, /workspaces[\\/]dragon-crm[\\/]issue-7$/);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("git client supports branch and commit helpers", () => {
+  const repoDir = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-git-"));
+  execGit(["init"], repoDir);
+  execGit(["config", "user.name", "Dragon Test"], repoDir);
+  execGit(["config", "user.email", "dragon@example.com"], repoDir);
+  fs.writeFileSync(path.join(repoDir, "README.md"), "# temp\n", "utf8");
+  execGit(["add", "README.md"], repoDir);
+  execGit(["commit", "-m", "chore: seed"], repoDir);
+
+  const git = createGitClient({ cwd: repoDir });
+  git.createBranch("feature/test");
+  fs.writeFileSync(path.join(repoDir, "notes.txt"), "hello\n", "utf8");
+  execGit(["add", "notes.txt"], repoDir);
+  git.commit("feat: notes");
+  const branch = execGit(["branch", "--show-current"], repoDir).trim();
+
+  assert.equal(branch, "feature/test");
+
+  fs.rmSync(repoDir, { recursive: true, force: true });
+});
+
+function execGit(args, cwd) {
+  const { execFileSync } = require("child_process");
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+}

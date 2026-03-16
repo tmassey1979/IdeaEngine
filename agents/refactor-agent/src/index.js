@@ -1,16 +1,21 @@
-const { createAgent } = require("../../../sdk/dragon-agent-sdk/src/index");
+const { createAgent, createAgentResult } = require("../../../sdk/dragon-agent-sdk/src/index");
 
 module.exports = createAgent({
-  id: "refactor",
+  name: "refactor",
   description: "Improves structure without changing intended behavior.",
-  async run(context) {
+  version: "0.1.0",
+  async execute(context) {
     const target = context.flags.target || context.args[0] || "current-module";
     context.logger.info("Preparing refactor guidance.", { target });
 
-    return {
-      agent: "refactor",
-      target,
-      nextStep: "Simplify structure while keeping behavior stable."
-    };
+    return createAgentResult({
+      success: true,
+      message: "Refactor plan prepared.",
+      artifacts: {
+        agent: "refactor",
+        target,
+        nextStep: "Simplify structure while keeping behavior stable."
+      }
+    });
   }
 });

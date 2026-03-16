@@ -2,8 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const {
   createJob,
+  createAgentContext,
   createJobResult,
-  createLogger,
   DEFAULT_RETRY_POLICY,
   JOB_STATUS
 } = require("../../../sdk/dragon-agent-sdk/src/index");
@@ -45,14 +45,34 @@ async function runAgent(agentId, options = {}) {
     );
   }
 
-  const logger = createLogger(`agent:${agentId}`);
-  return agent.run({
-    mode: options.mode || "cli",
+  const rootDir = options.rootDir || workspaceRoot();
+  const job =
+    options.job ||
+    createJob({
+      agent: agent.name || agent.id,
+      action: options.mode === "service" ? "run" : "cli_run",
+      repo: options.flags?.repo || null,
+      issue: options.flags?.issue ? Number(options.flags.issue) : null,
+      payload: {
+        args: options.args || [],
+        flags: options.flags || {}
+      }
+    });
+
+  const context = createAgentContext({
+    agent,
+    job,
     args: options.args || [],
     flags: options.flags || {},
-    job: options.job || null,
-    logger
+    rootDir,
+    config: options.config || {},
+    projectCredentials: options.projectCredentials || {},
+    globalCredentials: options.globalCredentials || {}
   });
+
+  context.mode = options.mode || "cli";
+  context.execution = options.execution || null;
+  return agent.execute(context);
 }
 
 async function runJob(jobInput, options = {}) {
