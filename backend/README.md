@@ -53,6 +53,7 @@ GitHub sync now also includes a compact recovery-chain summary so parent and chi
 If a parent already has active recovery children, quarantine sync now reuses the most recent linked recovery issue instead of spawning overlapping recovery stories for the same parent.
 Scheduling now follows that same rule: when multiple unresolved recovery stories exist for one parent, the loop prefers the most recent one and ignores the older overlap.
 Queue consumption now follows it too: before consuming work, the loop removes superseded older recovery jobs so only the latest unresolved recovery path executes for that parent.
+GitHub sync now follows it as well: when multiple active recovery children exist, older overlapping recovery issues are marked `superseded` and get a maintained comment pointing to the newer active recovery path.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.

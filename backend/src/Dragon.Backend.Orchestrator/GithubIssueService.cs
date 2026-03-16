@@ -8,6 +8,7 @@ public sealed class GithubIssueService
 {
     private const string HeartbeatMarker = "<!-- dragon-backend-heartbeat -->";
     private const string RemediationMarker = "<!-- dragon-backend-remediation -->";
+    private const string SupersededMarker = "<!-- dragon-backend-superseded -->";
     private static readonly TimeSpan StalledThreshold = TimeSpan.FromMinutes(15);
     private readonly GithubCommandRunner commandRunner;
 
@@ -272,6 +273,7 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        MarkSupersededRecoveryIssues(owner, repo, workflow, rootDirectory);
         var currentStage = InferCurrentStage(workflow);
         var recoveryIssueNumber = EnsureRecoveryIssue(owner, repo, workflow, currentStage, executionRecords, rootDirectory);
         var commentBody = string.Join(
@@ -301,6 +303,7 @@ public sealed class GithubIssueService
 
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
         EnsureLabel(owner, repo, "recovery", "1D76DB", "Follow-up recovery work spawned from quarantine.", rootDirectory);
+        EnsureLabel(owner, repo, "superseded", "6E7781", "Older overlapping work that has been replaced by a newer path.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
@@ -322,6 +325,54 @@ public sealed class GithubIssueService
         }
 
         return $"current #{workflow.IssueNumber}";
+    }
+
+    private void MarkSupersededRecoveryIssues(
+        string owner,
+        string repo,
+        IssueWorkflowState workflow,
+        string rootDirectory)
+    {
+        if (!(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false))
+        {
+            return;
+        }
+
+        var activeRecoveryIssueNumbers = workflow.ActiveRecoveryIssueNumbers!
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
+        if (activeRecoveryIssueNumbers.Length < 2)
+        {
+            return;
+        }
+
+        var latestRecoveryIssueNumber = activeRecoveryIssueNumbers[^1];
+        EnsureLabel(owner, repo, "superseded", "6E7781", "Older overlapping work that has been replaced by a newer path.", rootDirectory);
+
+        foreach (var issueNumber in activeRecoveryIssueNumbers[..^1])
+        {
+            var commentBody = string.Join(
+                Environment.NewLine,
+                [
+                    SupersededMarker,
+                    "Automated backend recovery update:",
+                    "- recovery status: superseded",
+                    $"- source issue: #{workflow.IssueNumber}",
+                    $"- superseded by: #{latestRecoveryIssueNumber}",
+                    "- reason: a newer unresolved recovery path now exists for the same parent issue",
+                    "- next step: continue work on the newer recovery issue and keep this older path as history unless it is explicitly reactivated"
+                ]
+            );
+
+            RemoveLabel(owner, repo, issueNumber, "in-progress", rootDirectory);
+            RemoveLabel(owner, repo, issueNumber, "quarantined", rootDirectory);
+            RemoveLabel(owner, repo, issueNumber, "stalled", rootDirectory);
+            AddLabel(owner, repo, issueNumber, "superseded", rootDirectory);
+            UpsertMarkedComment(owner, repo, issueNumber, SupersededMarker, commentBody, rootDirectory);
+        }
+
+        RemoveLabel(owner, repo, latestRecoveryIssueNumber, "superseded", rootDirectory);
     }
 
     private int? EnsureRecoveryIssue(
