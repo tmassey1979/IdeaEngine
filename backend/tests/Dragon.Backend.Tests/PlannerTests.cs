@@ -247,6 +247,16 @@ public sealed class PlannerTests
         var service = new GithubIssueService((arguments, _) =>
         {
             commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal))
+            {
+                return "https://github.com/tmassey1979/IdeaEngine/issues/999";
+            }
+
             return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
                 ? "[]"
                 : string.Empty;
@@ -256,12 +266,15 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
-        Assert.Contains("label create quarantined", commands[0], StringComparison.Ordinal);
+        Assert.Contains(commands, command => command.Contains("label create quarantined", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label quarantined", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("--label recovery", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: #999", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("Recovery checklist", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
@@ -286,6 +299,21 @@ public sealed class PlannerTests
         var service = new GithubIssueService((arguments, _) =>
         {
             commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return """
+                [
+                  {
+                    "number": 321,
+                    "title": "[Recovery] Issue #22: Core",
+                    "labels": [
+                      { "name": "recovery" }
+                    ]
+                  }
+                ]
+                """;
+            }
+
             return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
                 ? """[{ "id": 77, "body": "<!-- dragon-backend-remediation --> old" }]"""
                 : string.Empty;
@@ -295,9 +323,11 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issues/comments/77", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--method PATCH", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("blocked stage: developer", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: #321", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -637,6 +667,16 @@ public sealed class PlannerTests
         var github = new GithubIssueService((arguments, _) =>
         {
             commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal))
+            {
+                return "https://github.com/tmassey1979/IdeaEngine/issues/998";
+            }
+
             return string.Empty;
         });
         var loop = new SelfBuildLoop(root, githubIssueService: github);
@@ -657,6 +697,7 @@ public sealed class PlannerTests
         Assert.NotNull(result.GithubSync);
         Assert.True(result.GithubSync!.Updated);
         Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
 
@@ -676,6 +717,16 @@ public sealed class PlannerTests
         var github = new GithubIssueService((arguments, _) =>
         {
             commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal))
+            {
+                return "https://github.com/tmassey1979/IdeaEngine/issues/997";
+            }
+
             return string.Empty;
         });
         var executor = new LocalJobExecutor((_, _, _) => new CommandResult(1, string.Empty, "forced failure"));
@@ -697,6 +748,7 @@ public sealed class PlannerTests
         Assert.True(quarantineCycle.GithubSync!.Attempted);
         Assert.True(quarantineCycle.GithubSync.Updated);
         Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }

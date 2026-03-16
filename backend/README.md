@@ -14,6 +14,7 @@ Current scope:
 - repeated-failure quarantine logic that marks stuck stories and skips reseeding them
 - long-stall quarantine logic that escalates workflows with no stage movement for too long
 - GitHub quarantine updates that maintain a remediation trail and label stuck stories without closing them
+- recovery-story creation for quarantined work so blocked issues spawn narrower follow-up backlog items
 - GitHub heartbeat comments that keep one live in-progress status thread per story
 - automatic GitHub label transitions for in-progress, quarantined, and completed states
 - stage-aware heartbeat content that shows the current stage, when it last changed, whether it appears stalled, and the latest stage outcome
@@ -38,6 +39,7 @@ Repeated failures are also guarded: when the same stage keeps failing across cyc
 Long stalls are guarded too: before seeding new work, the loop now sweeps existing workflows and quarantines any story whose current stage has shown no progress for more than an hour.
 
 The quarantine sync now keeps a dedicated remediation thread on the GitHub issue with the blocked stage, recent failure context, changed paths, and a short recovery checklist.
+It also creates or reuses a `[Recovery]` GitHub story so stuck work comes with a trackable next step.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.

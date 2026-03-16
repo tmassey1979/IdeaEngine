@@ -253,6 +253,7 @@ public sealed class GithubIssueService
         string rootDirectory)
     {
         var currentStage = InferCurrentStage(workflow);
+        var recoveryIssueNumber = EnsureRecoveryIssue(owner, repo, workflow, currentStage, executionRecords, rootDirectory);
         var commentBody = string.Join(
             Environment.NewLine,
             [
@@ -261,6 +262,7 @@ public sealed class GithubIssueService
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
+                recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
                 executionRecords.Count > 0
                     ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent failures: none recorded",
@@ -276,12 +278,111 @@ public sealed class GithubIssueService
         );
 
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
+        EnsureLabel(owner, repo, "recovery", "1D76DB", "Follow-up recovery work spawned from quarantine.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         UpsertMarkedComment(owner, repo, workflow.IssueNumber, RemediationMarker, commentBody, rootDirectory);
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with quarantine trace.");
+    }
+
+    private int? EnsureRecoveryIssue(
+        string owner,
+        string repo,
+        IssueWorkflowState workflow,
+        string currentStage,
+        IReadOnlyList<ExecutionRecord> executionRecords,
+        string rootDirectory)
+    {
+        var title = BuildRecoveryIssueTitle(workflow);
+        var existingIssue = FindOpenIssueByTitle(owner, repo, title, rootDirectory);
+        if (existingIssue is not null)
+        {
+            return existingIssue.Value;
+        }
+
+        var body = BuildRecoveryIssueBody(workflow, currentStage, executionRecords);
+        var result = commandRunner(
+            $"issue create --repo {owner}/{repo} --title \"{EscapeForDoubleQuotes(title)}\" --body \"{EscapeForDoubleQuotes(body)}\" --label story --label recovery --label backlog",
+            rootDirectory
+        );
+
+        return ParseIssueNumber(result);
+    }
+
+    private int? FindOpenIssueByTitle(string owner, string repo, string title, string rootDirectory)
+    {
+        var json = commandRunner(
+            $"issue list --repo {owner}/{repo} --state open --limit 500 --json number,title,labels",
+            rootDirectory
+        );
+
+        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        foreach (var entry in document.RootElement.EnumerateArray())
+        {
+            var issueTitle = entry.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() ?? string.Empty : string.Empty;
+            if (!string.Equals(issueTitle, title, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var labels = entry.GetProperty("labels")
+                .EnumerateArray()
+                .Select(label => label.GetProperty("name").GetString())
+                .OfType<string>()
+                .ToArray();
+            if (labels.Contains("recovery", StringComparer.OrdinalIgnoreCase))
+            {
+                return entry.GetProperty("number").GetInt32();
+            }
+        }
+
+        return null;
+    }
+
+    private static string BuildRecoveryIssueTitle(IssueWorkflowState workflow) =>
+        $"[Recovery] Issue #{workflow.IssueNumber}: {workflow.IssueTitle}";
+
+    private static string BuildRecoveryIssueBody(
+        IssueWorkflowState workflow,
+        string currentStage,
+        IReadOnlyList<ExecutionRecord> executionRecords)
+    {
+        var changedPaths = executionRecords.SelectMany(record => record.ChangedPaths).Distinct().ToArray();
+        return string.Join(
+            Environment.NewLine,
+            [
+                $"Recovery story for quarantined issue #{workflow.IssueNumber}.",
+                "",
+                "Context:",
+                $"- source issue: #{workflow.IssueNumber}",
+                $"- blocked stage: {currentStage}",
+                $"- quarantine reason: {workflow.Note ?? "No note recorded."}",
+                changedPaths.Length > 0 ? $"- changed paths: {string.Join(", ", changedPaths)}" : "- changed paths: none recorded",
+                "",
+                "Suggested recovery steps:",
+                "- reproduce the blocked stage locally",
+                "- narrow the failing scope to the smallest viable fix",
+                "- update the source issue and close this recovery story once the path is clear"
+            ]
+        );
+    }
+
+    private static int? ParseIssueNumber(string result)
+    {
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            return null;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(result, @"/issues/(?<number>\d+)");
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return int.Parse(match.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private void EnsureLabel(string owner, string repo, string name, string color, string description, string rootDirectory)
