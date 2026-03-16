@@ -121,6 +121,39 @@ function publishNextJob({
   };
 }
 
+function queuePath(rootDir = workspaceRoot(), queue = "dragon.jobs") {
+  return path.join(rootDir, ".dragon", "queues", `${queue}.ndjson`);
+}
+
+function readQueueJobs({ rootDir = workspaceRoot(), queue = "dragon.jobs" }) {
+  const filePath = queuePath(rootDir, queue);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  return fs
+    .readFileSync(filePath, "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+function dequeueNextJob({ rootDir = workspaceRoot(), queue = "dragon.jobs" }) {
+  const filePath = queuePath(rootDir, queue);
+  const jobs = readQueueJobs({ rootDir, queue });
+  const nextJob = jobs.shift() || null;
+
+  if (jobs.length > 0) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, `${jobs.map((job) => JSON.stringify(job)).join("\n")}\n`, "utf8");
+  } else if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+
+  return nextJob;
+}
+
 async function executeSelfBuildStep({
   owner,
   repo,
@@ -173,6 +206,101 @@ async function executeSelfBuildStep({
     execution,
     followUps,
     executionRecord
+  };
+}
+
+async function consumeQueuedJob({
+  rootDir = workspaceRoot(),
+  catalogRoot = workspaceRoot(),
+  queue = "dragon.jobs"
+}) {
+  const job = dequeueNextJob({ rootDir, queue });
+  if (!job) {
+    return {
+      consumed: false,
+      reason: "No queued jobs were available."
+    };
+  }
+
+  const execution = await runJob(job, {
+    rootDir,
+    catalogRoot,
+    queue
+  });
+  const followUps = job.agent === "developer"
+    ? publishFollowUpJobs({
+        execution,
+        issue: {
+          number: job.issue,
+          title: job.payload?.title || `Issue ${job.issue}`
+        },
+        repo: job.repo,
+        project: job.project,
+        rootDir,
+        queue
+      })
+    : [];
+  const workflow = updateIssueWorkflowState({
+    rootDir,
+    issueNumber: job.issue,
+    issueTitle: job.payload?.title || `Issue ${job.issue}`,
+    agent: job.agent,
+    execution,
+    followUps
+  });
+  const executionRecord = persistExecutionRecord({
+    rootDir,
+    issue: {
+      number: job.issue,
+      title: job.payload?.title || `Issue ${job.issue}`
+    },
+    initialJob: job,
+    execution,
+    followUps
+  });
+
+  return {
+    consumed: true,
+    job,
+    execution,
+    followUps,
+    workflow,
+    executionRecord
+  };
+}
+
+async function cycleOnce({
+  owner,
+  repo,
+  rootDir = workspaceRoot(),
+  catalogRoot = workspaceRoot(),
+  project = "DragonIdeaEngine",
+  queue = "dragon.jobs",
+  issues
+}) {
+  const queuedJobs = readQueueJobs({ rootDir, queue });
+  if (queuedJobs.length > 0) {
+    return {
+      mode: "consume",
+      result: await consumeQueuedJob({
+        rootDir,
+        catalogRoot,
+        queue
+      })
+    };
+  }
+
+  return {
+    mode: "seed",
+    result: await executeSelfBuildStep({
+      owner,
+      repo,
+      rootDir,
+      catalogRoot,
+      project,
+      queue,
+      issues
+    })
   };
 }
 
@@ -232,6 +360,64 @@ function persistExecutionRecord({ rootDir, issue, initialJob, execution, followU
   };
 }
 
+function updateIssueWorkflowState({
+  rootDir,
+  issueNumber,
+  issueTitle,
+  agent,
+  execution,
+  followUps
+}) {
+  const stateDir = path.join(rootDir, ".dragon", "state");
+  const statePath = path.join(stateDir, "issues.json");
+  fs.mkdirSync(stateDir, { recursive: true });
+
+  const state = fs.existsSync(statePath)
+    ? JSON.parse(fs.readFileSync(statePath, "utf8"))
+    : {};
+
+  const record = state[issueNumber] || {
+    issueNumber,
+    title: issueTitle,
+    stages: {},
+    overall: "queued"
+  };
+
+  record.title = issueTitle;
+  record.stages[agent] = {
+    status: execution.status,
+    jobId: execution.jobId,
+    observedAt: execution.observedAt
+  };
+  if (followUps.length > 0) {
+    record.followUps = followUps.map((item) => ({
+      agent: item.agent,
+      jobId: item.publishResult.jobId
+    }));
+  }
+
+  const stageStatuses = ["developer", "review", "test"].map(
+    (stage) => record.stages[stage]?.status || null
+  );
+  if (stageStatuses.every((status) => status === "success")) {
+    record.overall = "validated";
+  } else if (stageStatuses.some((status) => status === "deadletter")) {
+    record.overall = "blocked";
+  } else if (stageStatuses.some((status) => status === "retry")) {
+    record.overall = "retrying";
+  } else if (stageStatuses.some(Boolean)) {
+    record.overall = "in_progress";
+  }
+
+  state[issueNumber] = record;
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+
+  return {
+    path: statePath,
+    issue: record
+  };
+}
+
 function listGithubIssues({ owner, repo, ghBin = resolveGhBin() }) {
   const raw = execFileSync(
     ghBin,
@@ -288,13 +474,19 @@ function resolveGhBin() {
 
 module.exports = {
   buildCapabilityCatalog,
+  consumeQueuedJob,
   createSelfBuildJob,
+  cycleOnce,
+  dequeueNextJob,
   executeSelfBuildStep,
   listGithubIssues,
   persistExecutionRecord,
   publishFollowUpJobs,
   publishNextJob,
+  queuePath,
+  readQueueJobs,
   recommendAgentForIssue,
   runSelfBuildCycle,
-  selectNextIssue
+  selectNextIssue,
+  updateIssueWorkflowState
 };

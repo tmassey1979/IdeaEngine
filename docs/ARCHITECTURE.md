@@ -28,6 +28,7 @@ templates/
 - agents receive workspace, git, credentials, job publishing, and logging utilities through the SDK context.
 - `dragon-orchestrator` can inspect the repo backlog, select the next open story, and publish a follow-up implementation job for the system to work on itself.
 - `dragon-orchestrator execute-once` can now run that selected job immediately, persist an execution record, and enqueue review/test follow-up jobs for the next loop iteration.
+- `dragon-orchestrator cycle-once` now prefers queued work first, which lets the system continue through developer -> review -> test stages across repeated invocations while maintaining per-issue workflow state under `.dragon/state/issues.json`.
 
 ## Next Expected Layers
 

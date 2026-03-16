@@ -5,13 +5,18 @@ const path = require("path");
 
 const {
   buildCapabilityCatalog,
+  consumeQueuedJob,
   createSelfBuildJob,
+  cycleOnce,
+  dequeueNextJob,
   executeSelfBuildStep,
   persistExecutionRecord,
   publishFollowUpJobs,
   publishNextJob,
+  readQueueJobs,
   recommendAgentForIssue,
-  selectNextIssue
+  selectNextIssue,
+  updateIssueWorkflowState
 } = require("../services/dragon-orchestrator/src/index");
 const { workspaceRoot } = require("../runner/dragon-agent-runner/src/index");
 
@@ -147,6 +152,104 @@ test("executeSelfBuildStep runs one build step and queues follow-ups", async () 
   assert.equal(result.execution.status, "success");
   assert.equal(result.followUps.length, 2);
   assert.equal(fs.existsSync(result.executionRecord.path), true);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("dequeueNextJob removes the oldest queued job", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-dequeue-"));
+  publishNextJob({
+    rootDir: tempRoot,
+    repo: "IdeaEngine",
+    project: "DragonIdeaEngine",
+    issues: [
+      { number: 21, title: "First", state: "OPEN", labels: ["story"] },
+      { number: 22, title: "Second", state: "OPEN", labels: ["story"] }
+    ]
+  });
+
+  const job = dequeueNextJob({ rootDir: tempRoot });
+  assert.equal(job.issue, 21);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("consumeQueuedJob executes queued work and updates workflow state", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-consume-"));
+  publishNextJob({
+    rootDir: tempRoot,
+    repo: "IdeaEngine",
+    project: "DragonIdeaEngine",
+    issues: [{ number: 22, title: "Core", state: "OPEN", labels: ["story"] }]
+  });
+
+  const consumed = await consumeQueuedJob({
+    rootDir: tempRoot,
+    catalogRoot: workspaceRoot()
+  });
+
+  assert.equal(consumed.consumed, true);
+  assert.equal(consumed.execution.status, "success");
+  assert.equal(consumed.followUps.length, 2);
+  assert.equal(consumed.workflow.issue.stages.developer.status, "success");
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("updateIssueWorkflowState marks issues validated when stages succeed", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-state-"));
+
+  updateIssueWorkflowState({
+    rootDir: tempRoot,
+    issueNumber: 22,
+    issueTitle: "Core",
+    agent: "developer",
+    execution: { status: "success", jobId: "job-dev", observedAt: new Date().toISOString() },
+    followUps: []
+  });
+  const workflow = updateIssueWorkflowState({
+    rootDir: tempRoot,
+    issueNumber: 22,
+    issueTitle: "Core",
+    agent: "review",
+    execution: { status: "success", jobId: "job-review", observedAt: new Date().toISOString() },
+    followUps: []
+  });
+  const finalWorkflow = updateIssueWorkflowState({
+    rootDir: tempRoot,
+    issueNumber: 22,
+    issueTitle: "Core",
+    agent: "test",
+    execution: { status: "success", jobId: "job-test", observedAt: new Date().toISOString() },
+    followUps: []
+  });
+
+  assert.equal(workflow.issue.overall, "in_progress");
+  assert.equal(finalWorkflow.issue.overall, "validated");
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("cycleOnce consumes queued jobs before seeding new ones", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-cycle-"));
+  publishNextJob({
+    rootDir: tempRoot,
+    repo: "IdeaEngine",
+    project: "DragonIdeaEngine",
+    issues: [{ number: 77, title: "Seeded", state: "OPEN", labels: ["story"] }]
+  });
+
+  const cycle = await cycleOnce({
+    owner: "tmassey1979",
+    repo: "IdeaEngine",
+    rootDir: tempRoot,
+    catalogRoot: workspaceRoot(),
+    issues: [{ number: 88, title: "Later", state: "OPEN", labels: ["story"] }]
+  });
+
+  assert.equal(cycle.mode, "consume");
+  assert.equal(cycle.result.job.issue, 77);
+  assert.equal(readQueueJobs({ rootDir: tempRoot }).length, 2);
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });

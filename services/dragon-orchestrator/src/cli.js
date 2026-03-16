@@ -3,8 +3,11 @@
 const { parseArgv } = require("../../../runner/dragon-agent-runner/src/index");
 const {
   buildCapabilityCatalog,
+  consumeQueuedJob,
+  cycleOnce,
   executeSelfBuildStep,
   listGithubIssues,
+  readQueueJobs,
   runSelfBuildCycle
 } = require("./index");
 
@@ -31,6 +34,13 @@ async function main() {
     return;
   }
 
+  if (command === "queue") {
+    process.stdout.write(
+      `${JSON.stringify(readQueueJobs({ queue: flags.queue || "dragon.jobs" }), null, 2)}\n`
+    );
+    return;
+  }
+
   if (command === "run-once") {
     const result = runSelfBuildCycle({
       owner: requiredFlag(flags, "owner"),
@@ -44,6 +54,25 @@ async function main() {
 
   if (command === "execute-once") {
     const result = await executeSelfBuildStep({
+      owner: requiredFlag(flags, "owner"),
+      repo: requiredFlag(flags, "repo"),
+      project: flags.project || "DragonIdeaEngine",
+      queue: flags.queue || "dragon.jobs"
+    });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+
+  if (command === "consume-next") {
+    const result = await consumeQueuedJob({
+      queue: flags.queue || "dragon.jobs"
+    });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+
+  if (command === "cycle-once") {
+    const result = await cycleOnce({
       owner: requiredFlag(flags, "owner"),
       repo: requiredFlag(flags, "repo"),
       project: flags.project || "DragonIdeaEngine",
@@ -73,6 +102,9 @@ function printHelp() {
       "Usage:",
       "  dragon-orchestrator run-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
       "  dragon-orchestrator execute-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
+      "  dragon-orchestrator consume-next [--queue <queue>]",
+      "  dragon-orchestrator cycle-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
+      "  dragon-orchestrator queue [--queue <queue>]",
       "  dragon-orchestrator backlog --owner <owner> --repo <repo>",
       "  dragon-orchestrator capabilities"
     ].join("\n") + "\n"
