@@ -247,7 +247,9 @@ public sealed class PlannerTests
         var service = new GithubIssueService((arguments, _) =>
         {
             commands.Add(arguments);
-            return string.Empty;
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
         });
 
         var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", quarantined, records.Read(22), root);
@@ -256,9 +258,46 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.Contains("label create quarantined", commands[0], StringComparison.Ordinal);
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label quarantined", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("Recovery checklist", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncQuarantinedWorkflow_UpdatesExistingRemediationComment()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures."
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? """[{ "id": 77, "body": "<!-- dragon-backend-remediation --> old" }]"""
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issues/comments/77", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("--method PATCH", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("blocked stage: developer", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -617,7 +656,7 @@ public sealed class PlannerTests
         Assert.Contains("prolonged stall", result.FailureDisposition.Reason, StringComparison.Ordinal);
         Assert.NotNull(result.GithubSync);
         Assert.True(result.GithubSync!.Updated);
-        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
 
@@ -657,7 +696,7 @@ public sealed class PlannerTests
         Assert.NotNull(quarantineCycle.GithubSync);
         Assert.True(quarantineCycle.GithubSync!.Attempted);
         Assert.True(quarantineCycle.GithubSync.Updated);
-        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }

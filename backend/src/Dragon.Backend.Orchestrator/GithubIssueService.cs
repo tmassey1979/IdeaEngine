@@ -6,6 +6,7 @@ namespace Dragon.Backend.Orchestrator;
 public sealed class GithubIssueService
 {
     private const string HeartbeatMarker = "<!-- dragon-backend-heartbeat -->";
+    private const string RemediationMarker = "<!-- dragon-backend-remediation -->";
     private static readonly TimeSpan StalledThreshold = TimeSpan.FromMinutes(15);
     private readonly GithubCommandRunner commandRunner;
 
@@ -251,29 +252,34 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        var currentStage = InferCurrentStage(workflow);
         var commentBody = string.Join(
             Environment.NewLine,
             [
+                RemediationMarker,
                 "Automated backend quarantine update:",
                 $"- workflow status: {workflow.OverallStatus}",
+                $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 executionRecords.Count > 0
                     ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent failures: none recorded",
                 executionRecords.SelectMany(record => record.ChangedPaths).Distinct().Any()
                     ? $"- changed paths: {string.Join(", ", executionRecords.SelectMany(record => record.ChangedPaths).Distinct())}"
-                    : "- changed paths: none recorded"
+                    : "- changed paths: none recorded",
+                "",
+                "Recovery checklist:",
+                "- inspect the blocked stage and reproduce the failure or stall locally",
+                "- decide whether the issue needs a narrower follow-up story or a direct fix",
+                "- update this issue with the chosen recovery path before removing quarantine"
             ]
         );
 
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
-        commandRunner(
-            $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
-            rootDirectory
-        );
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
+        UpsertMarkedComment(owner, repo, workflow.IssueNumber, RemediationMarker, commentBody, rootDirectory);
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with quarantine trace.");
     }
@@ -318,7 +324,12 @@ public sealed class GithubIssueService
 
     private void UpsertHeartbeatComment(string owner, string repo, int issueNumber, string body, string rootDirectory)
     {
-        var existingCommentId = FindHeartbeatCommentId(owner, repo, issueNumber, rootDirectory);
+        UpsertMarkedComment(owner, repo, issueNumber, HeartbeatMarker, body, rootDirectory);
+    }
+
+    private void UpsertMarkedComment(string owner, string repo, int issueNumber, string marker, string body, string rootDirectory)
+    {
+        var existingCommentId = FindMarkedCommentId(owner, repo, issueNumber, marker, rootDirectory);
         if (existingCommentId is null)
         {
             commandRunner(
@@ -334,7 +345,7 @@ public sealed class GithubIssueService
         );
     }
 
-    private long? FindHeartbeatCommentId(string owner, string repo, int issueNumber, string rootDirectory)
+    private long? FindMarkedCommentId(string owner, string repo, int issueNumber, string marker, string rootDirectory)
     {
         var json = commandRunner(
             $"api repos/{owner}/{repo}/issues/{issueNumber}/comments",
@@ -345,7 +356,7 @@ public sealed class GithubIssueService
         foreach (var entry in document.RootElement.EnumerateArray())
         {
             var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
-            if (body.Contains(HeartbeatMarker, StringComparison.Ordinal))
+            if (body.Contains(marker, StringComparison.Ordinal))
             {
                 return entry.GetProperty("id").GetInt64();
             }
