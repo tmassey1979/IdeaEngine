@@ -41,6 +41,11 @@ public sealed class GithubIssueService
                 continue;
             }
 
+            if (labels.Contains("superseded", StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var title = entry.GetProperty("title").GetString() ?? string.Empty;
             backlogIndex.TryGetValue(title, out var metadata);
 
