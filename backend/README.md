@@ -57,6 +57,7 @@ GitHub sync now follows it as well: when multiple active recovery children exist
 GitHub backlog discovery now follows it too: superseded recovery issues are excluded from the live issue set the loop uses for scheduling.
 If a recovery issue becomes active again or validates, GitHub sync now clears any stale `superseded` label so the visible state can recover cleanly.
 Recovery scheduling is now more selective too: recovery stories are prioritized while they are still the active path for a quarantined parent, but ordinary backlog work regains priority once that recovery hold has been released.
+When a parent has returned to active flow and no recovery child remains active, GitHub sync now retires leftover open recovery issues for that parent so the backlog stops carrying stale cleanup branches.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.

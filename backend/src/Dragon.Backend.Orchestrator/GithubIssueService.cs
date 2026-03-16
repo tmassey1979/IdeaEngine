@@ -9,6 +9,7 @@ public sealed class GithubIssueService
     private const string HeartbeatMarker = "<!-- dragon-backend-heartbeat -->";
     private const string RemediationMarker = "<!-- dragon-backend-remediation -->";
     private const string SupersededMarker = "<!-- dragon-backend-superseded -->";
+    private const string RecoveryRetiredMarker = "<!-- dragon-backend-recovery-retired -->";
     private static readonly TimeSpan StalledThreshold = TimeSpan.FromMinutes(15);
     private readonly GithubCommandRunner commandRunner;
 
@@ -185,6 +186,12 @@ public sealed class GithubIssueService
         {
             RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         }
+
+        if (releasedFromRecoveryHold && !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false))
+        {
+            RetireReleasedRecoveryIssues(owner, repo, workflow, rootDirectory);
+        }
+
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
         return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
     }
@@ -441,6 +448,84 @@ public sealed class GithubIssueService
 
         return null;
     }
+
+    private void RetireReleasedRecoveryIssues(
+        string owner,
+        string repo,
+        IssueWorkflowState workflow,
+        string rootDirectory)
+    {
+        if (workflow.SourceIssueNumber is not null)
+        {
+            return;
+        }
+
+        foreach (var recoveryIssue in FindOpenRecoveryIssuesForSource(owner, repo, workflow.IssueNumber, rootDirectory))
+        {
+            RemoveLabel(owner, repo, recoveryIssue.Number, "in-progress", rootDirectory);
+            RemoveLabel(owner, repo, recoveryIssue.Number, "quarantined", rootDirectory);
+            RemoveLabel(owner, repo, recoveryIssue.Number, "stalled", rootDirectory);
+            RemoveLabel(owner, repo, recoveryIssue.Number, "superseded", rootDirectory);
+            commandRunner(
+                $"issue close {recoveryIssue.Number} --repo {owner}/{repo} --comment \"{EscapeForDoubleQuotes(BuildRecoveryRetiredComment(workflow.IssueNumber))}\"",
+                rootDirectory
+            );
+        }
+    }
+
+    private IReadOnlyList<GithubIssue> FindOpenRecoveryIssuesForSource(string owner, string repo, int sourceIssueNumber, string rootDirectory)
+    {
+        var json = commandRunner(
+            $"issue list --repo {owner}/{repo} --state open --limit 500 --json number,title,body,labels",
+            rootDirectory
+        );
+
+        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        var issues = new List<GithubIssue>();
+        foreach (var entry in document.RootElement.EnumerateArray())
+        {
+            var labels = entry.GetProperty("labels")
+                .EnumerateArray()
+                .Select(label => label.GetProperty("name").GetString())
+                .OfType<string>()
+                .ToArray();
+            var title = entry.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() ?? string.Empty : string.Empty;
+            var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
+
+            if (!labels.Contains("recovery", StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (InferSourceIssueNumber(title, body) != sourceIssueNumber)
+            {
+                continue;
+            }
+
+            issues.Add(new GithubIssue(
+                entry.GetProperty("number").GetInt32(),
+                title,
+                "OPEN",
+                labels,
+                body,
+                SourceIssueNumber: sourceIssueNumber
+            ));
+        }
+
+        return issues.OrderBy(issue => issue.Number).ToArray();
+    }
+
+    private static string BuildRecoveryRetiredComment(int sourceIssueNumber) =>
+        string.Join(
+            Environment.NewLine,
+            [
+                RecoveryRetiredMarker,
+                "Automated backend recovery update:",
+                "- recovery status: retired",
+                $"- source issue: #{sourceIssueNumber}",
+                "- reason: the parent issue has returned to active flow and this recovery path is no longer the active route forward"
+            ]
+        );
 
     private static string BuildRecoveryIssueTitle(IssueWorkflowState workflow) =>
         $"[Recovery] Issue #{workflow.IssueNumber}: {workflow.IssueTitle}";

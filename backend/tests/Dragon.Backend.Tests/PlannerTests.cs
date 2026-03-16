@@ -536,6 +536,23 @@ public sealed class PlannerTests
         var service = new GithubIssueService((arguments, _) =>
         {
             commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return """
+                [
+                  {
+                    "number": 500,
+                    "title": "[Recovery] Issue #22: Core",
+                    "body": "Recovery story for quarantined issue #22.\n\nContext:\n- source issue: #22",
+                    "labels": [
+                      { "name": "recovery" },
+                      { "name": "story" }
+                    ]
+                  }
+                ]
+                """;
+            }
+
             return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
                 ? "[]"
                 : string.Empty;
@@ -545,6 +562,7 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issue close 500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery hold: released; parent returned to active flow", StringComparison.Ordinal));
     }
