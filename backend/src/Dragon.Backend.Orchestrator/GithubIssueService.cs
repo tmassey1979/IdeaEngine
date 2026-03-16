@@ -6,6 +6,7 @@ namespace Dragon.Backend.Orchestrator;
 public sealed class GithubIssueService
 {
     private const string HeartbeatMarker = "<!-- dragon-backend-heartbeat -->";
+    private static readonly TimeSpan StalledThreshold = TimeSpan.FromMinutes(15);
     private readonly GithubCommandRunner commandRunner;
 
     public GithubIssueService(GithubCommandRunner? commandRunner = null)
@@ -89,6 +90,7 @@ public sealed class GithubIssueService
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         commandRunner(
             $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
             rootDirectory
@@ -112,6 +114,7 @@ public sealed class GithubIssueService
         var currentStageState = workflow.Stages.TryGetValue(currentStage, out var stageState) ? stageState : null;
         var latestExecution = executionRecords.OrderByDescending(record => record.RecordedAt).FirstOrDefault();
         var currentStageTiming = FormatStageTiming(currentStageState?.ObservedAt, workflow.UpdatedAt);
+        var stallState = DetermineStallState(currentStageState?.ObservedAt, workflow.UpdatedAt);
         var latestExecutionTiming = latestExecution is not null
             ? $"{latestExecution.RecordedAt:O} ({FormatElapsed(workflow.UpdatedAt - latestExecution.RecordedAt)} ago)"
             : null;
@@ -123,6 +126,10 @@ public sealed class GithubIssueService
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
+                $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
+                stallState.IsStalled
+                    ? $"- stalled reason: current stage has been idle for {FormatElapsed(stallState.Elapsed)}"
+                    : "- stalled reason: none",
                 latestExecution is not null
                     ? $"- latest outcome: {latestExecution.JobAgent} {latestExecution.Status} ({latestExecution.Summary})"
                     : "- latest outcome: none recorded",
@@ -138,10 +145,35 @@ public sealed class GithubIssueService
         );
 
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
+        EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+        if (stallState.IsStalled)
+        {
+            AddLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        }
+        else
+        {
+            RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        }
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
         return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
+    }
+
+    private static StallState DetermineStallState(DateTimeOffset? observedAt, DateTimeOffset now)
+    {
+        if (observedAt is null)
+        {
+            return new StallState(false, TimeSpan.Zero);
+        }
+
+        var elapsed = now - observedAt.Value;
+        if (elapsed < TimeSpan.Zero)
+        {
+            elapsed = TimeSpan.Zero;
+        }
+
+        return new StallState(elapsed >= StalledThreshold, elapsed);
     }
 
     private static string FormatStageTiming(DateTimeOffset? observedAt, DateTimeOffset now)
@@ -236,6 +268,7 @@ public sealed class GithubIssueService
 
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         commandRunner(
             $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
             rootDirectory
@@ -324,3 +357,8 @@ public sealed class GithubIssueService
     private static string EscapeForDoubleQuotes(string value) =>
         value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
 }
+
+public sealed record StallState(
+    bool IsStalled,
+    TimeSpan Elapsed
+);

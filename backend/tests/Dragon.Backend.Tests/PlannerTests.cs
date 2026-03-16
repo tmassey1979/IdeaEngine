@@ -302,8 +302,12 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("current stage updated: unknown", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled: no", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled reason: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -374,6 +378,41 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("current stage updated: 2026-03-16T15:28:00.0000000+00:00 (2m 0s ago)", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncInProgressWorkflow_FlagsStalledStageWhenThresholdIsExceeded()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", now.AddMinutes(-20), "still failing")
+            },
+            now
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("current stage: developer", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled reason: current stage has been idle for 20m 0s", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("add-label stalled", StringComparison.Ordinal));
     }
 
     [Fact]

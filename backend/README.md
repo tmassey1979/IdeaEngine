@@ -15,7 +15,7 @@ Current scope:
 - GitHub quarantine updates that comment on and label stuck stories without closing them
 - GitHub heartbeat comments that keep one live in-progress status thread per story
 - automatic GitHub label transitions for in-progress, quarantined, and completed states
-- stage-aware heartbeat content that shows the current stage, when it last changed, and the latest stage outcome
+- stage-aware heartbeat content that shows the current stage, when it last changed, whether it appears stalled, and the latest stage outcome
 - a small CLI that can print planned self-build jobs from backlog context and run one local self-build cycle
 
 Useful commands:
@@ -35,6 +35,6 @@ dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tma
 Repeated failures are also guarded: when the same stage keeps failing across cycles, the issue is marked `quarantined` in `.dragon/state/issues.json`, the loop stops reseeding it automatically, and the GitHub issue gets a quarantine comment plus a `quarantined` label instead of being closed.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
-That heartbeat now includes the current stage, when that stage was last observed, and the latest recorded stage outcome.
+That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.
 
-GitHub labels now follow the workflow too: active stories keep `in-progress`, quarantined stories swap to `quarantined`, and validated stories remove the temporary workflow labels before closing.
+GitHub labels now follow the workflow too: active stories keep `in-progress`, stalled stories add `stalled`, quarantined stories swap to `quarantined`, and validated stories remove the temporary workflow labels before closing.
