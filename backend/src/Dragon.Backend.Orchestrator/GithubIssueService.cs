@@ -5,6 +5,7 @@ namespace Dragon.Backend.Orchestrator;
 
 public sealed class GithubIssueService
 {
+    private const string HeartbeatMarker = "<!-- dragon-backend-heartbeat -->";
     private readonly GithubCommandRunner commandRunner;
 
     public GithubIssueService(GithubCommandRunner? commandRunner = null)
@@ -67,7 +68,7 @@ public sealed class GithubIssueService
 
         if (!string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         {
-            return new GithubSyncResult(false, false, "Workflow is not validated yet.");
+            return SyncHeartbeatWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
         }
 
         var commentBody = string.Join(
@@ -95,6 +96,31 @@ public sealed class GithubIssueService
         );
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with execution trace.");
+    }
+
+    private GithubSyncResult SyncHeartbeatWorkflow(
+        string owner,
+        string repo,
+        IssueWorkflowState workflow,
+        IReadOnlyList<ExecutionRecord> executionRecords,
+        string rootDirectory)
+    {
+        var commentBody = string.Join(
+            Environment.NewLine,
+            [
+                HeartbeatMarker,
+                "Automated backend heartbeat:",
+                $"- workflow status: {workflow.OverallStatus}",
+                $"- stages: {string.Join(", ", workflow.Stages.Select(stage => $"{stage.Key}={stage.Value.Status}"))}",
+                executionRecords.Count > 0
+                    ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
+                    : "- recent executions: none recorded",
+                workflow.Note is not null ? $"- note: {workflow.Note}" : "- note: none"
+            ]
+        );
+
+        UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
+        return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
     }
 
     private GithubSyncResult SyncQuarantinedWorkflow(
@@ -145,6 +171,44 @@ public sealed class GithubIssueService
         {
             // The label may already exist, which is fine for our sync path.
         }
+    }
+
+    private void UpsertHeartbeatComment(string owner, string repo, int issueNumber, string body, string rootDirectory)
+    {
+        var existingCommentId = FindHeartbeatCommentId(owner, repo, issueNumber, rootDirectory);
+        if (existingCommentId is null)
+        {
+            commandRunner(
+                $"api repos/{owner}/{repo}/issues/{issueNumber}/comments --method POST -f body=\"{EscapeForDoubleQuotes(body)}\"",
+                rootDirectory
+            );
+            return;
+        }
+
+        commandRunner(
+            $"api repos/{owner}/{repo}/issues/comments/{existingCommentId} --method PATCH -f body=\"{EscapeForDoubleQuotes(body)}\"",
+            rootDirectory
+        );
+    }
+
+    private long? FindHeartbeatCommentId(string owner, string repo, int issueNumber, string rootDirectory)
+    {
+        var json = commandRunner(
+            $"api repos/{owner}/{repo}/issues/{issueNumber}/comments",
+            rootDirectory
+        );
+
+        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        foreach (var entry in document.RootElement.EnumerateArray())
+        {
+            var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
+            if (body.Contains(HeartbeatMarker, StringComparison.Ordinal))
+            {
+                return entry.GetProperty("id").GetInt64();
+            }
+        }
+
+        return null;
     }
 
     private static string EscapeForDoubleQuotes(string value) =>

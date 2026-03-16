@@ -261,6 +261,78 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncInProgressWorkflow_CreatesHeartbeatComment()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+        var records = new[]
+        {
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-1", "success", "done", DateTimeOffset.UtcNow, [], ["review", "test"])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Equal(2, commands.Count);
+        Assert.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", commands[0], StringComparison.Ordinal);
+        Assert.Contains("--method POST", commands[1], StringComparison.Ordinal);
+        Assert.Contains("dragon-backend-heartbeat", commands[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SyncInProgressWorkflow_UpdatesExistingHeartbeatComment()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? """[{ "id": 99, "body": "<!-- dragon-backend-heartbeat --> old" }]"""
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Equal(2, commands.Count);
+        Assert.Contains("issues/22/comments", commands[0], StringComparison.Ordinal);
+        Assert.Contains("issues/comments/99", commands[1], StringComparison.Ordinal);
+        Assert.Contains("--method PATCH", commands[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CycleOnce_CanAutomaticallySyncValidatedGithubWorkflow()
     {
         var root = CreateTempRoot();
@@ -296,9 +368,8 @@ public sealed class PlannerTests
         Assert.True(result.GithubSync!.Attempted);
         Assert.True(result.GithubSync.Updated);
         Assert.NotNull(result.ExecutionRecord);
-        Assert.Equal(2, commands.Count);
-        Assert.Contains("issue comment 22", commands[0], StringComparison.Ordinal);
-        Assert.Contains("issue close 22", commands[1], StringComparison.Ordinal);
+        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
 
     [Fact]
