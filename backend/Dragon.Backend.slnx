@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dragon.Backend.Cli/Dragon.Backend.Cli.csproj" />
+    <Project Path="src/Dragon.Backend.Contracts/Dragon.Backend.Contracts.csproj" />
+    <Project Path="src/Dragon.Backend.Orchestrator/Dragon.Backend.Orchestrator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dragon.Backend.Tests/Dragon.Backend.Tests.csproj" />
+  </Folder>
+</Solution>

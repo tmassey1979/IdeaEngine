@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "test": "node --test",
+    "test:backend": "dotnet test backend/Dragon.Backend.slnx",
     "runner": "node runner/dragon-agent-runner/src/cli.js",
     "orchestrator": "node services/dragon-orchestrator/src/cli.js"
   },

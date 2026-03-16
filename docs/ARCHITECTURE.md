@@ -20,6 +20,9 @@ templates/
 
 ## Current Runtime
 
+- The long-term backend/runtime target is C#.
+- The current JavaScript runner/orchestrator remains in place as a working prototype for behavior and backlog flow.
+- A new C# backend foundation now lives under `backend/` and currently covers shared self-build contracts, backlog indexing, and bounded developer-operation planning.
 - `dragon-agent-runner` loads agent plugins from the workspace.
 - agents expose `name`, `description`, `version`, and `execute(context)` through the shared SDK.
 - CLI mode runs one agent directly.
