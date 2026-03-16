@@ -47,7 +47,7 @@ public sealed class GithubIssueService
                 continue;
             }
 
-            if (labels.Contains("validated", StringComparer.OrdinalIgnoreCase))
+            if (labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -183,7 +183,7 @@ public sealed class GithubIssueService
                     ? $"- active recovery children: {string.Join(", ", workflow.ActiveRecoveryIssueNumbers!.Select(value => $"#{value}"))}"
                     : "- active recovery children: none",
                 autoCloseDeferred
-                    ? "- auto-close: deferred because no execution-backed changed paths were recorded"
+                    ? "- auto-close: deferred because no execution-backed changed paths were recorded; waiting on follow-up"
                     : "- auto-close: not applicable for current workflow state",
                 requeuedAfterRecoveryHold
                     ? "- recovery hold: released and parent requeued for active flow"
@@ -199,17 +199,19 @@ public sealed class GithubIssueService
 
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
         EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
-        EnsureLabel(owner, repo, "validated", "1B7F3B", "Validated by the backend loop and left open for follow-up visibility.", rootDirectory);
+        EnsureLabel(owner, repo, "waiting-follow-up", "1B7F3B", "Validated by the backend loop and left open while follow-up is still needed.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         if (string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         {
             RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
-            AddLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+            RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+            AddLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
         }
         else
         {
             RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+            RemoveLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
             AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         }
 
@@ -351,6 +353,7 @@ public sealed class GithubIssueService
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         UpsertMarkedComment(owner, repo, workflow.IssueNumber, RemediationMarker, commentBody, rootDirectory);

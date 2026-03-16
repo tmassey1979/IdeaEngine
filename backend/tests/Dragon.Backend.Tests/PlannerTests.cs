@@ -139,7 +139,7 @@ public sealed class PlannerTests
         var loop = new SelfBuildLoop(root);
         var issues = new[]
         {
-            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story", "validated"]),
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story", "waiting-follow-up"]),
             new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"])
         };
 
@@ -155,7 +155,7 @@ public sealed class PlannerTests
         var loop = new SelfBuildLoop(root);
         var issues = new[]
         {
-            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story", "validated"])
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story", "waiting-follow-up"])
         };
 
         var result = loop.RunUntilIdle(issues, maxCycles: 5);
@@ -692,7 +692,7 @@ public sealed class PlannerTests
             "state": "OPEN",
             "labels": [
               { "name": "story" },
-              { "name": "validated" }
+              { "name": "waiting-follow-up" }
             ]
           },
           {
@@ -796,10 +796,11 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue close 102", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("label create validated", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create waiting-follow-up", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --remove-label in-progress", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("auto-close: deferred because no execution-backed changed paths were recorded", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("auto-close: deferred because no execution-backed changed paths were recorded; waiting on follow-up", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1013,6 +1014,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("label create quarantined", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label quarantined", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--label recovery", StringComparison.Ordinal));

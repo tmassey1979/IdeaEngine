@@ -381,6 +381,7 @@ public sealed class SelfBuildLoop
     private static bool IsSchedulableStoryIssue(GithubIssue issue) =>
         issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase) &&
         !issue.Labels.Contains("validated", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase) &&
         !issue.Labels.Contains("superseded", StringComparer.OrdinalIgnoreCase);
 
     private static bool IsImplementationAction(string action) =>
