@@ -1190,6 +1190,7 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("label create in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label quarantined", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("add-label in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
