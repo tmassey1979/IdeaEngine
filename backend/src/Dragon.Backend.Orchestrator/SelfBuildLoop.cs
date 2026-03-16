@@ -57,6 +57,12 @@ public sealed class SelfBuildLoop
         string? githubOwner = null,
         bool syncValidatedWorkflows = false)
     {
+        var resumedParent = ResumeReleasedParent(issues, repo, project);
+        if (resumedParent is not null)
+        {
+            return resumedParent;
+        }
+
         var stalledWorkflow = SweepStalledWorkflow(repo, githubOwner, syncValidatedWorkflows);
         if (stalledWorkflow is not null)
         {
@@ -147,6 +153,41 @@ public sealed class SelfBuildLoop
             queueStore.RemoveAll(job => job.Issue == workflow.IssueNumber);
             var githubSync = TrySyncWorkflow(githubOwner, repo, updatedWorkflow, syncValidatedWorkflows);
             return new CycleResult("quarantine", null, null, [], updatedWorkflow, githubSync, null, disposition);
+        }
+
+        return null;
+    }
+
+    private CycleResult? ResumeReleasedParent(
+        IReadOnlyList<GithubIssue> issues,
+        string repo,
+        string project)
+    {
+        var queuedIssueNumbers = queueStore.ReadAll().Select(job => job.Issue).ToHashSet();
+        foreach (var workflow in workflowStateStore.ReadAll().Values.OrderBy(item => item.IssueNumber))
+        {
+            if (!string.Equals(workflow.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(workflow.Note, "Recovery child completed; parent returned to active flow.", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (queuedIssueNumbers.Contains(workflow.IssueNumber))
+            {
+                continue;
+            }
+
+            var issue = issues.FirstOrDefault(candidate => candidate.Number == workflow.IssueNumber);
+            if (issue is null)
+            {
+                continue;
+            }
+
+            var agent = RecommendAgent(issue);
+            var job = SelfBuildJobFactory.Create(issue, agent, repo, project);
+            queueStore.Enqueue(job);
+            var updatedWorkflow = workflowStateStore.UpdateNote(workflow.IssueNumber, "Recovery child completed; parent requeued for active flow.");
+            return new CycleResult("resume", job, null, [], updatedWorkflow);
         }
 
         return null;

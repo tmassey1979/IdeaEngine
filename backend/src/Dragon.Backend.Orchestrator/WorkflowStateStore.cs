@@ -112,6 +112,30 @@ public sealed class WorkflowStateStore
         return updated;
     }
 
+    public IssueWorkflowState UpdateNote(int issueNumber, string note)
+    {
+        var snapshots = ReadAll().ToDictionary(entry => entry.Key, entry => entry.Value);
+        if (!snapshots.TryGetValue(issueNumber, out var existing))
+        {
+            throw new InvalidOperationException($"Cannot update note for unknown issue #{issueNumber}.");
+        }
+
+        var updated = existing with
+        {
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Note = note
+        };
+
+        snapshots[issueNumber] = updated;
+        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
+        File.WriteAllText(
+            StatePath,
+            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
+        );
+
+        return updated;
+    }
+
     private static void ReconcileRecoveryLinkage(IDictionary<int, IssueWorkflowState> snapshots, int issueNumber)
     {
         if (!snapshots.TryGetValue(issueNumber, out var workflow) || workflow.SourceIssueNumber is null)

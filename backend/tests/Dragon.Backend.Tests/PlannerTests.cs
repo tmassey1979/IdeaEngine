@@ -176,6 +176,49 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_RequeuesParentAfterRecoveryHoldIsReleased()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-parent", "developer", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "quarantined", "Parent is quarantined.");
+
+        var recoveryJob = new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Issue #22: Core", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "22",
+                ["workType"] = "recovery"
+            }
+        );
+
+        store.Update(recoveryJob, new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(recoveryJob, new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(recoveryJob, new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"])
+        };
+
+        var result = loop.CycleOnce(issues);
+
+        Assert.Equal("resume", result.Mode);
+        Assert.NotNull(result.Job);
+        Assert.Equal(22, result.Job!.Issue);
+        Assert.Equal("implement_issue", result.Job.Action);
+        Assert.Equal("Recovery child completed; parent requeued for active flow.", result.Workflow!.Note);
+        Assert.Single(loop.ReadQueue());
+    }
+
+    [Fact]
     public void CycleOnce_SeedsThenExecutesDeveloperFlow()
     {
         var root = CreateTempRoot();

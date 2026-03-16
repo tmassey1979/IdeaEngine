@@ -47,6 +47,7 @@ Those recovery stories now seed ahead of ordinary stories and carry explicit `re
 They also carry `sourceIssueNumber` linkage so the loop can reason about the parent quarantined story explicitly.
 That linkage is now persisted in workflow state too, which lets the loop skip reseeding parent issues with active recovery children and avoid auto-closing a validated parent while linked recovery work is still open.
 When the last linked recovery child validates, the parent returns to active flow and GitHub heartbeat sync now calls out that recovery hold release explicitly.
+The loop now also requeues that released parent once, so paused work resumes automatically instead of only becoming eligible again.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.
