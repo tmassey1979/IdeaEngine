@@ -22,7 +22,7 @@ async function main() {
   }
 
   if (flags.service) {
-    await runServiceMode();
+    await runServiceMode(flags);
     return;
   }
 
@@ -42,7 +42,7 @@ async function main() {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-async function runServiceMode() {
+async function runServiceMode(serviceFlags = {}) {
   const rl = readline.createInterface({
     input: process.stdin,
     crlfDelay: Infinity
@@ -81,7 +81,11 @@ async function runServiceMode() {
           flags
         }
       });
-      const result = await runJob(job, { args, flags });
+      const result = await runJob(job, {
+        args,
+        flags,
+        queue: serviceFlags.queue || "stdin"
+      });
       process.stdout.write(`${JSON.stringify(result)}\n`);
     } catch (error) {
       process.stdout.write(
@@ -109,6 +113,7 @@ function printHelp() {
       "Usage:",
       "  dragon-agent-runner <agent> [args...] [--flag value]",
       "  dragon-agent-runner --service",
+      "  dragon-agent-runner --service --queue rabbitmq",
       "",
       "Available agents:",
       agentList || "  - none"

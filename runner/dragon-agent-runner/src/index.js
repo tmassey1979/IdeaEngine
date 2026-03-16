@@ -4,8 +4,11 @@ const {
   createJob,
   createJobResult,
   createLogger,
+  DEFAULT_RETRY_POLICY,
   JOB_STATUS
 } = require("../../../sdk/dragon-agent-sdk/src/index");
+
+const DEADLETTER_QUEUE = "dragon.deadletter";
 
 function discoverAgents(rootDir = workspaceRoot()) {
   const agentsDir = path.join(rootDir, "agents");
@@ -55,6 +58,7 @@ async function runAgent(agentId, options = {}) {
 async function runJob(jobInput, options = {}) {
   const job = createJob(jobInput);
   const startedAt = Date.now();
+  const execution = createExecutionContext(job, options);
 
   try {
     const result = await runAgent(job.agent, {
@@ -62,29 +66,139 @@ async function runJob(jobInput, options = {}) {
       mode: "service",
       args: options.args || [],
       flags: options.flags || {},
-      job
+      job,
+      execution
     });
 
-    return createJobResult({
-      job,
-      startedAt,
-      result,
+    return createObservedResult(
+      createJobResult({
+        job,
+        startedAt,
+        result,
+        logs: buildExecutionLogs(job, execution, [
+          {
+            level: "info",
+            message: `Job routed to agent "${job.agent}".`
+          }
+        ])
+      }),
+      execution
+    );
+  } catch (error) {
+    const lifecycle = buildFailureLifecycle(job, execution, error, options);
+    return createObservedResult(
+      createJobResult({
+        job,
+        startedAt,
+        status: lifecycle.status,
+        result: lifecycle.result,
+        logs: buildExecutionLogs(job, execution, lifecycle.logs),
+        errors: [error.message]
+      }),
+      execution
+    );
+  }
+}
+
+function createExecutionContext(job, options = {}) {
+  const attempts = Number(job.metadata?.attempts || options.attempts || 0);
+  const agentVersion = options.agentVersion || "0.1.0";
+
+  return {
+    attempts,
+    agentVersion,
+    queue: options.queue || "stdin",
+    metrics: {
+      queue: options.queue || "stdin",
+      attempt: attempts + 1
+    }
+  };
+}
+
+function buildFailureLifecycle(job, execution, error, options = {}) {
+  const retryPolicy = options.retryPolicy || DEFAULT_RETRY_POLICY;
+  const shouldRetry = execution.attempts < retryPolicy.maxRetries;
+
+  if (shouldRetry) {
+    return {
+      status: JOB_STATUS.RETRY,
+      result: {
+        retry: {
+          nextAttempt: execution.attempts + 1,
+          delaySeconds: retryDelaySeconds(execution.attempts, retryPolicy)
+        }
+      },
       logs: [
         {
-          level: "info",
-          message: `Job routed to agent "${job.agent}".`
+          level: "warn",
+          message: `Job failed and is scheduled for retry ${execution.attempts + 1}.`
         }
       ]
-    });
-  } catch (error) {
-    return createJobResult({
-      job,
-      startedAt,
-      status: JOB_STATUS.FAILED,
-      result: {},
-      errors: [error.message]
-    });
+    };
   }
+
+  const deadletterEntry = persistDeadLetter(job, error, options.rootDir);
+  return {
+    status: JOB_STATUS.DEADLETTER,
+    result: {
+      deadletter: deadletterEntry
+    },
+    logs: [
+      {
+        level: "error",
+        message: `Job exhausted retries and was routed to ${DEADLETTER_QUEUE}.`
+      }
+    ]
+  };
+}
+
+function retryDelaySeconds(attempts, retryPolicy = DEFAULT_RETRY_POLICY) {
+  return retryPolicy.scheduleSeconds[Math.min(attempts, retryPolicy.scheduleSeconds.length - 1)];
+}
+
+function persistDeadLetter(job, error, rootDir = workspaceRoot()) {
+  const queueDir = path.join(rootDir, ".dragon", "queues");
+  fs.mkdirSync(queueDir, { recursive: true });
+
+  const deadletterPath = path.join(queueDir, "dragon.deadletter.ndjson");
+  const entry = {
+    queue: DEADLETTER_QUEUE,
+    failedAt: new Date().toISOString(),
+    job,
+    error: error.message
+  };
+
+  fs.appendFileSync(deadletterPath, `${JSON.stringify(entry)}\n`, "utf8");
+  return {
+    queue: DEADLETTER_QUEUE,
+    path: deadletterPath
+  };
+}
+
+function buildExecutionLogs(job, execution, extraLogs = []) {
+  return [
+    {
+      level: "info",
+      message: "Job execution started.",
+      jobId: job.jobId,
+      agentVersion: execution.agentVersion,
+      queue: execution.queue,
+      attempt: execution.metrics.attempt
+    },
+    ...extraLogs
+  ];
+}
+
+function createObservedResult(result, execution) {
+  return {
+    ...result,
+    metrics: {
+      ...execution.metrics,
+      durationMs: result.duration
+    },
+    observedAt: new Date().toISOString(),
+    agentVersion: execution.agentVersion
+  };
 }
 
 function parseArgv(argv) {
@@ -122,8 +236,12 @@ function workspaceRoot() {
 }
 
 module.exports = {
+  DEADLETTER_QUEUE,
+  buildFailureLifecycle,
   discoverAgents,
   parseArgv,
+  persistDeadLetter,
+  retryDelaySeconds,
   runAgent,
   runJob,
   workspaceRoot

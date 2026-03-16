@@ -24,6 +24,7 @@ templates/
 - agents expose a manifest and a `run(context)` handler.
 - CLI mode runs one agent directly.
 - service mode reads newline-delimited JSON jobs, validates them against the shared schema, and emits structured job results.
+- failed jobs follow the codex retry schedule and spill into a local dead-letter queue file when retries are exhausted.
 
 ## Next Expected Layers
 

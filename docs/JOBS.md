@@ -32,7 +32,14 @@ Dragon Idea Engine jobs use a shared schema across the runner and agent plugins.
   "duration": 123,
   "result": {},
   "logs": [],
-  "errors": []
+  "errors": [],
+  "metrics": {
+    "queue": "rabbitmq",
+    "attempt": 1,
+    "durationMs": 123
+  },
+  "observedAt": "timestamp",
+  "agentVersion": "0.1.0"
 }
 ```
 
@@ -56,3 +63,6 @@ Dragon Idea Engine jobs use a shared schema across the runner and agent plugins.
 - service mode validates every inbound job
 - invalid jobs return a structured failure result
 - valid jobs are routed to the matching agent plugin
+- failed jobs return `retry` until the retry budget is exhausted
+- exhausted jobs are appended to `.dragon/queues/dragon.deadletter.ndjson`
+- every result carries logs, duration, queue/attempt metrics, and agent version
