@@ -135,7 +135,9 @@ public sealed class PlannerTests
         Assert.Equal("consume", consumeTest.Mode);
 
         var statePath = Path.Combine(root, ".dragon", "state", "issues.json");
+        var recordPath = Path.Combine(root, ".dragon", "runs", "issue-22.json");
         Assert.True(File.Exists(statePath));
+        Assert.True(File.Exists(recordPath));
         var state = File.ReadAllText(statePath);
         Assert.Contains("validated", state, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Core System Principles", File.ReadAllText(Path.Combine(root, "docs", "ARCHITECTURE.md")), StringComparison.Ordinal);
@@ -181,9 +183,23 @@ public sealed class PlannerTests
     {
         var root = CreateTempRoot();
         var store = new WorkflowStateStore(root);
+        var records = new ExecutionRecordStore(root);
         store.Update(23, "System Architecture", "developer", new JobExecutionResult("job-1", "developer", "success", "done", DateTimeOffset.UtcNow));
         store.Update(23, "System Architecture", "review", new JobExecutionResult("job-2", "review", "success", "done", DateTimeOffset.UtcNow));
         store.Update(23, "System Architecture", "test", new JobExecutionResult("job-3", "test", "success", "done", DateTimeOffset.UtcNow));
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                23,
+                new SelfBuildJobPayload("System Architecture", ["story"], "System Architecture", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string> { ["changedPaths"] = "docs/ARCHITECTURE.md" }
+            ),
+            new JobExecutionResult("job-1", "developer", "success", "done", DateTimeOffset.UtcNow),
+            []
+        );
 
         var commands = new List<string>();
         var service = new GithubIssueService((arguments, _) =>
@@ -200,6 +216,7 @@ public sealed class PlannerTests
         Assert.Equal(2, commands.Count);
         Assert.Contains("issue comment 23", commands[0], StringComparison.Ordinal);
         Assert.Contains("issue close 23", commands[1], StringComparison.Ordinal);
+        Assert.Contains("changed paths", commands[0], StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -237,6 +254,7 @@ public sealed class PlannerTests
         Assert.NotNull(result.GithubSync);
         Assert.True(result.GithubSync!.Attempted);
         Assert.True(result.GithubSync.Updated);
+        Assert.NotNull(result.ExecutionRecord);
         Assert.Equal(2, commands.Count);
         Assert.Contains("issue comment 22", commands[0], StringComparison.Ordinal);
         Assert.Contains("issue close 22", commands[1], StringComparison.Ordinal);

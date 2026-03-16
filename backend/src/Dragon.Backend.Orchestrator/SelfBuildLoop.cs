@@ -6,6 +6,7 @@ public sealed class SelfBuildLoop
 {
     private readonly QueueStore queueStore;
     private readonly WorkflowStateStore workflowStateStore;
+    private readonly ExecutionRecordStore executionRecordStore;
     private readonly LocalJobExecutor jobExecutor;
     private readonly GithubIssueService githubIssueService;
 
@@ -18,6 +19,7 @@ public sealed class SelfBuildLoop
         RootDirectory = rootDirectory;
         queueStore = new QueueStore(rootDirectory, queueName);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
+        executionRecordStore = new ExecutionRecordStore(rootDirectory);
         this.jobExecutor = jobExecutor ?? new LocalJobExecutor();
         this.githubIssueService = githubIssueService ?? new GithubIssueService();
     }
@@ -59,9 +61,10 @@ public sealed class SelfBuildLoop
         var execution = jobExecutor.Execute(RootDirectory, job);
         var workflow = workflowStateStore.Update(job.Issue, job.Payload.Title, job.Agent, execution);
         var followUps = PublishFollowUps(job, execution);
+        var executionRecord = executionRecordStore.Append(job, execution, followUps);
         var githubSync = TrySyncWorkflow(githubOwner, repo, workflow, syncValidatedWorkflows);
 
-        return new CycleResult("consume", job, execution, followUps, workflow, githubSync);
+        return new CycleResult("consume", job, execution, followUps, workflow, githubSync, executionRecord);
     }
 
     public CycleResult CycleOnceFromGithub(
@@ -82,7 +85,7 @@ public sealed class SelfBuildLoop
             return new GithubSyncResult(false, false, $"No workflow state found for issue #{issueNumber}.");
         }
 
-        return githubIssueService.SyncWorkflow(owner, repo, workflow, RootDirectory);
+        return githubIssueService.SyncWorkflow(owner, repo, workflow, executionRecordStore.Read(issueNumber), RootDirectory);
     }
 
     private GithubSyncResult? TrySyncWorkflow(string? githubOwner, string repo, IssueWorkflowState workflow, bool syncValidatedWorkflows)
@@ -92,7 +95,7 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, RootDirectory);
+        return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
     }
 
     private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)
@@ -177,5 +180,6 @@ public sealed record CycleResult(
     JobExecutionResult? Execution,
     IReadOnlyList<SelfBuildJob> FollowUps,
     IssueWorkflowState? Workflow = null,
-    GithubSyncResult? GithubSync = null
+    GithubSyncResult? GithubSync = null,
+    ExecutionRecord? ExecutionRecord = null
 );

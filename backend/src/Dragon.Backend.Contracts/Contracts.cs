@@ -70,3 +70,16 @@ public sealed record GithubSyncResult(
     bool Updated,
     string Summary
 );
+
+public sealed record ExecutionRecord(
+    int IssueNumber,
+    string IssueTitle,
+    string JobAgent,
+    string JobAction,
+    string JobId,
+    string Status,
+    string Summary,
+    DateTimeOffset RecordedAt,
+    IReadOnlyList<string> ChangedPaths,
+    IReadOnlyList<string> FollowUpAgents
+);

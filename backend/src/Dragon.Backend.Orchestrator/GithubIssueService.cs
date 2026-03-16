@@ -53,7 +53,12 @@ public sealed class GithubIssueService
         return issues.OrderBy(issue => issue.Number).ToArray();
     }
 
-    public GithubSyncResult SyncWorkflow(string owner, string repo, IssueWorkflowState workflow, string rootDirectory)
+    public GithubSyncResult SyncWorkflow(
+        string owner,
+        string repo,
+        IssueWorkflowState workflow,
+        IReadOnlyList<ExecutionRecord> executionRecords,
+        string rootDirectory)
     {
         if (!string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         {
@@ -65,7 +70,13 @@ public sealed class GithubIssueService
             [
                 "Automated backend sync update:",
                 $"- workflow status: {workflow.OverallStatus}",
-                $"- stages: {string.Join(", ", workflow.Stages.Select(stage => $"{stage.Key}={stage.Value.Status}"))}"
+                $"- stages: {string.Join(", ", workflow.Stages.Select(stage => $"{stage.Key}={stage.Value.Status}"))}",
+                executionRecords.Count > 0
+                    ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
+                    : "- recent executions: none recorded",
+                executionRecords.SelectMany(record => record.ChangedPaths).Distinct().Any()
+                    ? $"- changed paths: {string.Join(", ", executionRecords.SelectMany(record => record.ChangedPaths).Distinct())}"
+                    : "- changed paths: none recorded"
             ]
         );
 
@@ -78,7 +89,7 @@ public sealed class GithubIssueService
             rootDirectory
         );
 
-        return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber}.");
+        return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with execution trace.");
     }
 
     private static string EscapeForDoubleQuotes(string value) =>
