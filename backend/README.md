@@ -55,6 +55,7 @@ Scheduling now follows that same rule: when multiple unresolved recovery stories
 Queue consumption now follows it too: before consuming work, the loop removes superseded older recovery jobs so only the latest unresolved recovery path executes for that parent.
 GitHub sync now follows it as well: when multiple active recovery children exist, older overlapping recovery issues are marked `superseded` and get a maintained comment pointing to the newer active recovery path.
 GitHub backlog discovery now follows it too: superseded recovery issues are excluded from the live issue set the loop uses for scheduling.
+If a recovery issue becomes active again or validates, GitHub sync now clears any stale `superseded` label so the visible state can recover cleanly.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.

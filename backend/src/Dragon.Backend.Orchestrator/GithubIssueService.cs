@@ -107,6 +107,7 @@ public sealed class GithubIssueService
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         commandRunner(
             $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
             rootDirectory
@@ -174,6 +175,7 @@ public sealed class GithubIssueService
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
         EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         if (stallState.IsStalled)
         {
@@ -311,6 +313,7 @@ public sealed class GithubIssueService
         EnsureLabel(owner, repo, "superseded", "6E7781", "Older overlapping work that has been replaced by a newer path.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         UpsertMarkedComment(owner, repo, workflow.IssueNumber, RemediationMarker, commentBody, rootDirectory);
 

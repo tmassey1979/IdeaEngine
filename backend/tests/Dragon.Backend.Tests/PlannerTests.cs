@@ -450,6 +450,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("label create in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label quarantined", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label superseded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue comment 23", StringComparison.Ordinal) && command.Contains("changed paths", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
     }
@@ -781,6 +782,7 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label superseded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: parent #22 -> current #500", StringComparison.Ordinal));
     }
 
