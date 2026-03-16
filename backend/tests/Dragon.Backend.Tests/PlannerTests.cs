@@ -372,6 +372,62 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunUntilIdleFromGithub_RefreshesIssueListBetweenCycles()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        Directory.CreateDirectory(Path.Combine(root, "planning"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        File.WriteAllText(Path.Combine(root, "planning", "backlog.json"), """
+        {
+          "stories": [
+            {
+              "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+              "heading": "Core System Principles",
+              "sourceFile": "codex/sections/01-dragon-idea-engine-master-codex.md"
+            }
+          ]
+        }
+        """);
+
+        var issueListCalls = 0;
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.StartsWith("issue list --repo", StringComparison.Ordinal))
+            {
+                issueListCalls += 1;
+                return issueListCalls == 1
+                    ? """
+                    [
+                      {
+                        "number": 22,
+                        "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                        "body": "",
+                        "state": "OPEN",
+                        "labels": [
+                          { "name": "story" }
+                        ]
+                      }
+                    ]
+                    """
+                    : "[]";
+            }
+
+            return "[]";
+        });
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, githubIssueService: service, jobExecutor: executor);
+
+        var result = loop.RunUntilIdleFromGithub("tmassey1979", "IdeaEngine", maxCycles: 10);
+
+        Assert.True(result.ReachedIdle);
+        Assert.False(result.ReachedMaxCycles);
+        Assert.True(issueListCalls >= 2);
+        Assert.Equal(["seed", "consume", "consume", "consume"], result.Cycles.Select(cycle => cycle.Mode));
+    }
+
+    [Fact]
     public void GithubIssueService_MapsOpenStoryIssuesAndBacklogMetadata()
     {
         const string json = """

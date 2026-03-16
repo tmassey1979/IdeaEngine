@@ -122,8 +122,19 @@ public sealed class SelfBuildLoop
         bool syncValidatedWorkflows = false,
         int maxCycles = 100)
     {
-        var issues = LoadGithubIssues(owner, repo);
-        return RunUntilIdle(issues, repo, project, owner, syncValidatedWorkflows, maxCycles);
+        var cycles = new List<CycleResult>();
+        for (var index = 0; index < maxCycles; index += 1)
+        {
+            var issues = LoadGithubIssues(owner, repo);
+            if (queueStore.ReadAll().Count == 0 && !HasSchedulableWork(issues))
+            {
+                return new RunUntilIdleResult(cycles, true, false);
+            }
+
+            cycles.Add(CycleOnce(issues, repo, project, owner, syncValidatedWorkflows));
+        }
+
+        return new RunUntilIdleResult(cycles, false, true);
     }
 
     public GithubSyncResult SyncValidatedWorkflow(string owner, string repo, int issueNumber)
