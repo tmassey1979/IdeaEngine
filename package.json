@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "test": "node --test",
-    "runner": "node runner/dragon-agent-runner/src/cli.js"
+    "runner": "node runner/dragon-agent-runner/src/cli.js",
+    "orchestrator": "node services/dragon-orchestrator/src/cli.js"
   },
   "engines": {
     "node": ">=18"

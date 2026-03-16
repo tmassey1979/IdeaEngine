@@ -1,0 +1,9 @@
+{
+  "name": "@dragon-idea-engine/orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "dragon-orchestrator": "src/cli.js"
+  },
+  "main": "src/index.js"
+}
