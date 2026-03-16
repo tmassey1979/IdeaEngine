@@ -210,9 +210,13 @@ async function executeSelfBuildStep({
 }
 
 async function consumeQueuedJob({
+  owner,
+  repo,
   rootDir = workspaceRoot(),
   catalogRoot = workspaceRoot(),
-  queue = "dragon.jobs"
+  queue = "dragon.jobs",
+  ghBin = resolveGhBin(),
+  exec = execFileSync
 }) {
   const job = dequeueNextJob({ rootDir, queue });
   if (!job) {
@@ -248,6 +252,13 @@ async function consumeQueuedJob({
     execution,
     followUps
   });
+  const githubSync = syncIssueWorkflowToGithub({
+    workflow: workflow.issue,
+    owner,
+    repo,
+    ghBin,
+    exec
+  });
   const executionRecord = persistExecutionRecord({
     rootDir,
     issue: {
@@ -256,7 +267,9 @@ async function consumeQueuedJob({
     },
     initialJob: job,
     execution,
-    followUps
+    followUps,
+    workflow: workflow.issue,
+    githubSync
   });
 
   return {
@@ -265,6 +278,7 @@ async function consumeQueuedJob({
     execution,
     followUps,
     workflow,
+    githubSync,
     executionRecord
   };
 }
@@ -283,6 +297,8 @@ async function cycleOnce({
     return {
       mode: "consume",
       result: await consumeQueuedJob({
+        owner,
+        repo,
         rootDir,
         catalogRoot,
         queue
@@ -357,6 +373,67 @@ function persistExecutionRecord({ rootDir, issue, initialJob, execution, followU
 
   return {
     path: recordPath
+  };
+}
+
+function syncIssueWorkflowToGithub({
+  workflow,
+  owner,
+  repo,
+  ghBin = resolveGhBin(),
+  exec = execFileSync
+}) {
+  if (!owner || !repo) {
+    return {
+      synced: false,
+      reason: "GitHub owner/repo not provided."
+    };
+  }
+
+  if (workflow.overall !== "validated") {
+    return {
+      synced: false,
+      reason: `Workflow is ${workflow.overall}, not validated.`
+    };
+  }
+
+  const body = [
+    "Validated automatically by Dragon Idea Engine.",
+    "",
+    `Stages completed: ${Object.keys(workflow.stages)
+      .sort()
+      .map((stage) => `${stage}=${workflow.stages[stage].status}`)
+      .join(", ")}`
+  ].join("\n");
+
+  exec(
+    ghBin,
+    ["issue", "comment", String(workflow.issueNumber), "--repo", `${owner}/${repo}`, "--body", body],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    }
+  );
+  const closed = exec(
+    ghBin,
+    [
+      "issue",
+      "close",
+      String(workflow.issueNumber),
+      "--repo",
+      `${owner}/${repo}`,
+      "--comment",
+      "Closing automatically after developer, review, and test stages all succeeded."
+    ],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    }
+  ).trim();
+
+  return {
+    synced: true,
+    closed
   };
 }
 
@@ -488,5 +565,6 @@ module.exports = {
   recommendAgentForIssue,
   runSelfBuildCycle,
   selectNextIssue,
+  syncIssueWorkflowToGithub,
   updateIssueWorkflowState
 };

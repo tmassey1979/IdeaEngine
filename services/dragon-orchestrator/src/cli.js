@@ -65,6 +65,8 @@ async function main() {
 
   if (command === "consume-next") {
     const result = await consumeQueuedJob({
+      owner: flags.owner || null,
+      repo: flags.repo || null,
       queue: flags.queue || "dragon.jobs"
     });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -102,7 +104,7 @@ function printHelp() {
       "Usage:",
       "  dragon-orchestrator run-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
       "  dragon-orchestrator execute-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
-      "  dragon-orchestrator consume-next [--queue <queue>]",
+      "  dragon-orchestrator consume-next [--owner <owner>] [--repo <repo>] [--queue <queue>]",
       "  dragon-orchestrator cycle-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
       "  dragon-orchestrator queue [--queue <queue>]",
       "  dragon-orchestrator backlog --owner <owner> --repo <repo>",

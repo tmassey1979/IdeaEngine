@@ -10,6 +10,7 @@ Current responsibilities:
 - publish the resulting job into `.dragon/queues/dragon.jobs.ndjson`
 - execute a single self-build step and queue review/test follow-ups
 - consume queued jobs and track per-issue workflow state across developer, review, and test stages
+- close GitHub stories automatically once local developer, review, and test stages all succeed
 
 Example:
 

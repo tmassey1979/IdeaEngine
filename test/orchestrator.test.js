@@ -16,6 +16,7 @@ const {
   readQueueJobs,
   recommendAgentForIssue,
   selectNextIssue,
+  syncIssueWorkflowToGithub,
   updateIssueWorkflowState
 } = require("../services/dragon-orchestrator/src/index");
 const { workspaceRoot } = require("../runner/dragon-agent-runner/src/index");
@@ -228,6 +229,47 @@ test("updateIssueWorkflowState marks issues validated when stages succeed", () =
   assert.equal(finalWorkflow.issue.overall, "validated");
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("syncIssueWorkflowToGithub closes validated issues", () => {
+  const calls = [];
+  const result = syncIssueWorkflowToGithub({
+    workflow: {
+      issueNumber: 22,
+      overall: "validated",
+      stages: {
+        developer: { status: "success" },
+        review: { status: "success" },
+        test: { status: "success" }
+      }
+    },
+    owner: "tmassey1979",
+    repo: "IdeaEngine",
+    ghBin: "gh",
+    exec(bin, args) {
+      calls.push({ bin, args });
+      return "closed";
+    }
+  });
+
+  assert.equal(result.synced, true);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].args[0], "issue");
+  assert.equal(calls[1].args[1], "close");
+});
+
+test("syncIssueWorkflowToGithub skips non-validated issues", () => {
+  const result = syncIssueWorkflowToGithub({
+    workflow: {
+      issueNumber: 22,
+      overall: "in_progress",
+      stages: {}
+    },
+    owner: "tmassey1979",
+    repo: "IdeaEngine"
+  });
+
+  assert.equal(result.synced, false);
 });
 
 test("cycleOnce consumes queued jobs before seeding new ones", async () => {
