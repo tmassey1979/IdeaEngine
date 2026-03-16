@@ -387,6 +387,8 @@ public sealed class PlannerTests
         store.Update(recoveryJob, new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
         var afterValidation = store.ReadAll();
         Assert.DoesNotContain(500, afterValidation[22].ActiveRecoveryIssueNumbers ?? []);
+        Assert.Equal("in_progress", afterValidation[22].OverallStatus);
+        Assert.Contains("Recovery child completed", afterValidation[22].Note, StringComparison.Ordinal);
     }
 
     [Fact]

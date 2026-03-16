@@ -139,7 +139,15 @@ public sealed class WorkflowStateStore
         snapshots[parent.IssueNumber] = parent with
         {
             ActiveRecoveryIssueNumbers = activeRecoveryIssueNumbers.OrderBy(value => value).ToArray(),
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = DateTimeOffset.UtcNow,
+            OverallStatus = activeRecoveryIssueNumbers.Count == 0 &&
+                string.Equals(parent.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)
+                ? "in_progress"
+                : parent.OverallStatus,
+            Note = activeRecoveryIssueNumbers.Count == 0 &&
+                string.Equals(parent.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)
+                ? "Recovery child completed; parent returned to active flow."
+                : parent.Note
         };
     }
 
