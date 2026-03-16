@@ -88,6 +88,11 @@ public sealed class GithubIssueService
             return SyncHeartbeatWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
         }
 
+        if (!ShouldAutoCloseValidatedWorkflow(executionRecords))
+        {
+            return SyncHeartbeatWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
+        }
+
         var commentBody = string.Join(
             Environment.NewLine,
             [
@@ -120,6 +125,9 @@ public sealed class GithubIssueService
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with execution trace.");
     }
+
+    private static bool ShouldAutoCloseValidatedWorkflow(IReadOnlyList<ExecutionRecord> executionRecords) =>
+        executionRecords.SelectMany(record => record.ChangedPaths).Distinct(StringComparer.Ordinal).Any();
 
     private GithubSyncResult SyncHeartbeatWorkflow(
         string owner,

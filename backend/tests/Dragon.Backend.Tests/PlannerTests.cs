@@ -691,6 +691,48 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_UsesHeartbeatInsteadOfClosingWhenNoChangedPathsWereRecorded()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            102,
+            "System Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["architect"] = new("success", "job-architect", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-review", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-test", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(102, "System Architecture", "architect", "implement_issue", "job-architect", "success", "done", DateTimeOffset.UtcNow, [], ["review"]),
+            new ExecutionRecord(102, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
+            new ExecutionRecord(102, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/102/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 102", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label in-progress", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_DoesNotCloseIssueWithActiveRecoveryChildren()
     {
         var root = CreateTempRoot();
