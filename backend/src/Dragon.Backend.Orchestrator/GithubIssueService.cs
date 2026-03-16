@@ -86,6 +86,7 @@ public sealed class GithubIssueService
             [
                 "Automated backend sync update:",
                 $"- workflow status: {workflow.OverallStatus}",
+                $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- stages: {string.Join(", ", workflow.Stages.Select(stage => $"{stage.Key}={stage.Value.Status}"))}",
                 executionRecords.Count > 0
                     ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
@@ -135,6 +136,7 @@ public sealed class GithubIssueService
                 HeartbeatMarker,
                 "Automated backend heartbeat:",
                 $"- workflow status: {workflow.OverallStatus}",
+                $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -278,6 +280,7 @@ public sealed class GithubIssueService
                 RemediationMarker,
                 "Automated backend quarantine update:",
                 $"- workflow status: {workflow.OverallStatus}",
+                $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -304,6 +307,21 @@ public sealed class GithubIssueService
         UpsertMarkedComment(owner, repo, workflow.IssueNumber, RemediationMarker, commentBody, rootDirectory);
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with quarantine trace.");
+    }
+
+    private static string DescribeRecoveryChain(IssueWorkflowState workflow)
+    {
+        if (workflow.SourceIssueNumber is not null)
+        {
+            return $"parent #{workflow.SourceIssueNumber} -> current #{workflow.IssueNumber}";
+        }
+
+        if (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+        {
+            return $"current #{workflow.IssueNumber} -> children {string.Join(", ", workflow.ActiveRecoveryIssueNumbers!.Select(value => $"#{value}"))}";
+        }
+
+        return $"current #{workflow.IssueNumber}";
     }
 
     private int? EnsureRecoveryIssue(
