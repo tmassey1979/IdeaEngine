@@ -648,6 +648,40 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresOpenValidatedStoriesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 600,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Validated but intentionally left open.",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "validated" }
+            ]
+          },
+          {
+            "number": 601,
+            "title": "[Story] Dragon Idea Engine Master Codex: Autonomous Software Factory Loop",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(601, issue.Number);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_ClosesValidatedIssue()
     {
         var root = CreateTempRoot();
@@ -729,7 +763,9 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue close 102", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --remove-label in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("auto-close: deferred because no execution-backed changed paths were recorded", StringComparison.Ordinal));
     }
 

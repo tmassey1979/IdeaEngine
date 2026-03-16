@@ -47,6 +47,11 @@ public sealed class GithubIssueService
                 continue;
             }
 
+            if (labels.Contains("validated", StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var title = entry.GetProperty("title").GetString() ?? string.Empty;
             backlogIndex.TryGetValue(title, out var metadata);
 
@@ -194,9 +199,20 @@ public sealed class GithubIssueService
 
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
         EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
+        EnsureLabel(owner, repo, "validated", "1B7F3B", "Validated by the backend loop and left open for follow-up visibility.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
-        AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+        if (string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
+        {
+            RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+            AddLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+        }
+        else
+        {
+            RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+            AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+        }
+
         if (stallState.IsStalled)
         {
             AddLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
