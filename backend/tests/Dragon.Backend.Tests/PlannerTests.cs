@@ -52,6 +52,44 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_UsesRepositoryStructureDocument_ForRepositoryStructureStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                103,
+                "[Story] Dragon Idea Engine Master Codex: Repository Structure",
+                "OPEN",
+                ["story"],
+                "Dragon Idea Engine should use a multi-repo workspace structure.",
+                "Repository Structure",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        Assert.Equal("docs/generated/repository-structure-notes.md", operations[0].Path);
+        Assert.Contains("Repository Structure", operations[0].Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_UsesRepositoryStructureDocument_ForRootRepoStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                104,
+                "[Story] Dragon Idea Engine Master Codex: Root Repo",
+                "OPEN",
+                ["story"],
+                "Structure:\nDragonIdeaEngine\n├─ docs\n├─ runner",
+                "Root Repo",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        Assert.Equal("docs/generated/repository-structure-notes.md", operations[0].Path);
+        Assert.Contains("Repository Structure", operations[0].Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CreateDeveloperJob_IncludesPlannedOperations()
     {
         var index = BacklogIndexLoader.Load(FindRepoRoot());

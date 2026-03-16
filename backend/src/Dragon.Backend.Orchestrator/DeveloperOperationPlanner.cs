@@ -33,6 +33,12 @@ public static partial class DeveloperOperationPlanner
             RegistryPattern(),
             "docs/generated/agent-registry.md",
             "Agent Registry"
+        ),
+        new(
+            "repository-structure-doc",
+            RepositoryStructurePattern(),
+            "docs/generated/repository-structure-notes.md",
+            "Repository Structure"
         )
     ];
 
@@ -182,4 +188,7 @@ public static partial class DeveloperOperationPlanner
 
     [GeneratedRegex("(registry|capability|discovery|node|cluster|health monitoring)", RegexOptions.IgnoreCase)]
     private static partial Regex RegistryPattern();
+
+    [GeneratedRegex("(repository structure|root repo|workspace structure|multi-repo)", RegexOptions.IgnoreCase)]
+    private static partial Regex RepositoryStructurePattern();
 }
