@@ -57,22 +57,90 @@ function recommendAgentForIssue(issue, capabilityCatalog) {
 }
 
 function createSelfBuildJob({ issue, agent, repo, project }) {
+  const payload = {
+    title: issue.title,
+    labels: issue.labels
+  };
+
+  if (agent === "developer") {
+    payload.operations = planDeveloperOperations(issue);
+  }
+
   return {
     agent,
     action: "implement_issue",
     repo,
     project,
     issue: issue.number,
-    payload: {
-      title: issue.title,
-      labels: issue.labels
-    },
+    payload,
     metadata: {
       requestedBy: "system",
       source: "dragon-orchestrator",
       issueNumber: issue.number
     }
   };
+}
+
+function planDeveloperOperations(issue) {
+  const title = issue.title.toLowerCase();
+  const body = String(issue.body || "");
+
+  if (title.includes("core system principles")) {
+    return [
+      {
+        type: "append_text",
+        path: "docs/ARCHITECTURE.md",
+        content:
+          "\n## Core System Principles\n\n- Agents are plugins loaded dynamically by the runner.\n- The runner supports CLI and service execution modes.\n- Jobs flow through an event-driven queue contract.\n"
+      }
+    ];
+  }
+
+  if (title.includes("registry architecture") || title.includes("capability catalog")) {
+    return [
+      {
+        type: "write_file",
+        path: "docs/AGENT_REGISTRY.md",
+        content: [
+          "# Agent Registry",
+          "",
+          "This document captures the current runtime capability catalog and the direction for registry-driven routing.",
+          "",
+          "## Current Capabilities",
+          "",
+          "- architect",
+          "- developer",
+          "- review",
+          "- test",
+          "- refactor"
+        ].join("\n")
+      }
+    ];
+  }
+
+  if (title.includes("developer agent")) {
+    return [
+      {
+        type: "append_text",
+        path: "docs/SDK.md",
+        content:
+          "\n## Developer Operations\n\nThe developer agent supports bounded `write_file`, `append_text`, and `replace_text` operations for deterministic self-improvement tasks.\n"
+      }
+    ];
+  }
+
+  return [
+    {
+      type: "append_text",
+      path: "docs/BACKLOG_EXECUTION.md",
+      content: [
+        "",
+        `## Issue #${issue.number}: ${issue.title}`,
+        "",
+        body ? body.split("\n").slice(0, 6).join("\n") : "Planned by the orchestrator for incremental self-build work."
+      ].join("\n")
+    }
+  ];
 }
 
 function publishNextJob({
@@ -510,7 +578,7 @@ function listGithubIssues({ owner, repo, ghBin = resolveGhBin() }) {
       "--limit",
       "400",
       "--json",
-      "number,title,state,labels"
+      "number,title,state,labels,body"
     ],
     {
       encoding: "utf8",
@@ -523,6 +591,7 @@ function listGithubIssues({ owner, repo, ghBin = resolveGhBin() }) {
     number: issue.number,
     title: issue.title,
     state: issue.state,
+    body: issue.body || "",
     labels: issue.labels.map((label) => label.name)
   }));
 }
@@ -559,6 +628,7 @@ module.exports = {
   dequeueNextJob,
   executeSelfBuildStep,
   listGithubIssues,
+  planDeveloperOperations,
   persistExecutionRecord,
   publishFollowUpJobs,
   publishNextJob,

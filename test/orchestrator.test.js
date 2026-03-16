@@ -12,6 +12,7 @@ const {
   dequeueNextJob,
   executeSelfBuildStep,
   persistExecutionRecord,
+  planDeveloperOperations,
   publishFollowUpJobs,
   publishNextJob,
   readQueueJobs,
@@ -58,7 +59,7 @@ test("recommendAgentForIssue maps issue title to best-fit agent", () => {
 
 test("createSelfBuildJob builds a developer job from an issue", () => {
   const job = createSelfBuildJob({
-    issue: { number: 72, title: "Implement runner", labels: ["story"] },
+    issue: { number: 72, title: "Implement runner", labels: ["story"], body: "" },
     agent: "developer",
     repo: "IdeaEngine",
     project: "DragonIdeaEngine"
@@ -67,6 +68,18 @@ test("createSelfBuildJob builds a developer job from an issue", () => {
   assert.equal(job.agent, "developer");
   assert.equal(job.issue, 72);
   assert.equal(job.metadata.source, "dragon-orchestrator");
+  assert.equal(Array.isArray(job.payload.operations), true);
+});
+
+test("planDeveloperOperations adds a core principles update", () => {
+  const operations = planDeveloperOperations({
+    number: 22,
+    title: "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+    body: ""
+  });
+
+  assert.equal(operations[0].path, "docs/ARCHITECTURE.md");
+  assert.match(operations[0].content, /Core System Principles/);
 });
 
 test("publishNextJob emits the next queued self-build job", () => {
@@ -77,7 +90,7 @@ test("publishNextJob emits the next queued self-build job", () => {
     project: "DragonIdeaEngine",
     issues: [
       { number: 102, title: "Review docs", state: "OPEN", labels: ["story"] },
-      { number: 87, title: "Implement developer workflow", state: "OPEN", labels: ["story"] }
+      { number: 87, title: "Implement developer workflow", state: "OPEN", labels: ["story"], body: "" }
     ]
   });
 
