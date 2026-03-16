@@ -1,6 +1,11 @@
 const fs = require("fs");
 const path = require("path");
-const { createLogger } = require("../../../sdk/dragon-agent-sdk/src/index");
+const {
+  createJob,
+  createJobResult,
+  createLogger,
+  JOB_STATUS
+} = require("../../../sdk/dragon-agent-sdk/src/index");
 
 function discoverAgents(rootDir = workspaceRoot()) {
   const agentsDir = path.join(rootDir, "agents");
@@ -47,6 +52,41 @@ async function runAgent(agentId, options = {}) {
   });
 }
 
+async function runJob(jobInput, options = {}) {
+  const job = createJob(jobInput);
+  const startedAt = Date.now();
+
+  try {
+    const result = await runAgent(job.agent, {
+      ...options,
+      mode: "service",
+      args: options.args || [],
+      flags: options.flags || {},
+      job
+    });
+
+    return createJobResult({
+      job,
+      startedAt,
+      result,
+      logs: [
+        {
+          level: "info",
+          message: `Job routed to agent "${job.agent}".`
+        }
+      ]
+    });
+  } catch (error) {
+    return createJobResult({
+      job,
+      startedAt,
+      status: JOB_STATUS.FAILED,
+      result: {},
+      errors: [error.message]
+    });
+  }
+}
+
 function parseArgv(argv) {
   const args = [];
   const flags = {};
@@ -85,5 +125,6 @@ module.exports = {
   discoverAgents,
   parseArgv,
   runAgent,
+  runJob,
   workspaceRoot
 };

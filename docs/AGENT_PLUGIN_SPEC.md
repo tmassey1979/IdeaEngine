@@ -22,7 +22,7 @@ The runner provides:
 
 - `mode`: `cli` or `service`
 - `args`: parsed positional and flag arguments
-- `job`: optional job payload
+- `job`: validated shared job payload in service mode
 - `logger`: structured logging helper
 
 The result returned by `run` should be JSON-serializable.

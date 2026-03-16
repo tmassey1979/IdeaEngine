@@ -1,7 +1,17 @@
 #!/usr/bin/env node
 
 const readline = require("readline");
-const { discoverAgents, parseArgv, runAgent } = require("./index");
+const {
+  discoverAgents,
+  parseArgv,
+  runAgent,
+  runJob
+} = require("./index");
+const {
+  createJob,
+  createJobResult,
+  JOB_STATUS
+} = require("../../../sdk/dragon-agent-sdk/src/index");
 
 async function main() {
   const { args, flags } = parseArgv(process.argv.slice(2));
@@ -44,15 +54,45 @@ async function runServiceMode() {
       continue;
     }
 
-    const job = JSON.parse(trimmed);
-    const result = await runAgent(job.agent, {
-      mode: "service",
-      args: job.args || [],
-      flags: job.flags || {},
-      job
-    });
+    let parsed;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (error) {
+      process.stdout.write(
+        `${JSON.stringify(
+          createInvalidJobResult({
+            jobId: null,
+            message: `Invalid JSON: ${error.message}`
+          })
+        )}\n`
+      );
+      continue;
+    }
 
-    process.stdout.write(`${JSON.stringify({ jobId: job.id || null, result })}\n`);
+    const args = Array.isArray(parsed.args) ? parsed.args : [];
+    const flags = isObject(parsed.flags) ? parsed.flags : {};
+
+    try {
+      const job = createJob({
+        ...parsed,
+        payload: {
+          ...(isObject(parsed.payload) ? parsed.payload : {}),
+          args,
+          flags
+        }
+      });
+      const result = await runJob(job, { args, flags });
+      process.stdout.write(`${JSON.stringify(result)}\n`);
+    } catch (error) {
+      process.stdout.write(
+        `${JSON.stringify(
+          createInvalidJobResult({
+            jobId: parsed.jobId || null,
+            message: error.message
+          })
+        )}\n`
+      );
+    }
   }
 }
 
@@ -74,6 +114,26 @@ function printHelp() {
       agentList || "  - none"
     ].join("\n") + "\n"
   );
+}
+
+function createInvalidJobResult({ jobId, message }) {
+  const fallbackJob = {
+    jobId: jobId || "invalid-job",
+    agent: "unknown"
+  };
+
+  return createJobResult({
+    job: fallbackJob,
+    agent: "runner",
+    status: JOB_STATUS.FAILED,
+    startedAt: Date.now(),
+    result: {},
+    errors: [message]
+  });
+}
+
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 main().catch((error) => {

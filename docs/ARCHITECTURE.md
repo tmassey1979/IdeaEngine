@@ -23,7 +23,7 @@ templates/
 - `dragon-agent-runner` loads agent plugins from the workspace.
 - agents expose a manifest and a `run(context)` handler.
 - CLI mode runs one agent directly.
-- service mode reads jobs from stdin as newline-delimited JSON.
+- service mode reads newline-delimited JSON jobs, validates them against the shared schema, and emits structured job results.
 
 ## Next Expected Layers
 
