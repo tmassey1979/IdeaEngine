@@ -135,6 +135,9 @@ public sealed class GithubIssueService
         var stallState = DetermineStallState(currentStageState?.ObservedAt, workflow.UpdatedAt);
         var releasedFromRecoveryHold = workflow.Note?.Contains("Recovery child completed", StringComparison.OrdinalIgnoreCase) == true;
         var requeuedAfterRecoveryHold = workflow.Note?.Contains("parent requeued for active flow", StringComparison.OrdinalIgnoreCase) == true;
+        var retiredRecoveryIssueNumbers = releasedFromRecoveryHold && !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+            ? RetireReleasedRecoveryIssues(owner, repo, workflow, rootDirectory)
+            : [];
         var latestExecutionTiming = latestExecution is not null
             ? $"{latestExecution.RecordedAt:O} ({FormatElapsed(workflow.UpdatedAt - latestExecution.RecordedAt)} ago)"
             : null;
@@ -169,6 +172,9 @@ public sealed class GithubIssueService
                     : releasedFromRecoveryHold
                     ? "- recovery hold: released; parent returned to active flow"
                     : "- recovery hold: unchanged",
+                retiredRecoveryIssueNumbers.Count > 0
+                    ? $"- retired recovery issues: {string.Join(", ", retiredRecoveryIssueNumbers.Select(value => $"#{value}"))}"
+                    : "- retired recovery issues: none",
                 workflow.Note is not null ? $"- note: {workflow.Note}" : "- note: none"
             ]
         );
@@ -185,11 +191,6 @@ public sealed class GithubIssueService
         else
         {
             RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
-        }
-
-        if (releasedFromRecoveryHold && !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false))
-        {
-            RetireReleasedRecoveryIssues(owner, repo, workflow, rootDirectory);
         }
 
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
@@ -449,7 +450,7 @@ public sealed class GithubIssueService
         return null;
     }
 
-    private void RetireReleasedRecoveryIssues(
+    private IReadOnlyList<int> RetireReleasedRecoveryIssues(
         string owner,
         string repo,
         IssueWorkflowState workflow,
@@ -457,9 +458,10 @@ public sealed class GithubIssueService
     {
         if (workflow.SourceIssueNumber is not null)
         {
-            return;
+            return [];
         }
 
+        var retiredIssueNumbers = new List<int>();
         foreach (var recoveryIssue in FindOpenRecoveryIssuesForSource(owner, repo, workflow.IssueNumber, rootDirectory))
         {
             RemoveLabel(owner, repo, recoveryIssue.Number, "in-progress", rootDirectory);
@@ -470,7 +472,10 @@ public sealed class GithubIssueService
                 $"issue close {recoveryIssue.Number} --repo {owner}/{repo} --comment \"{EscapeForDoubleQuotes(BuildRecoveryRetiredComment(workflow.IssueNumber))}\"",
                 rootDirectory
             );
+            retiredIssueNumbers.Add(recoveryIssue.Number);
         }
+
+        return retiredIssueNumbers;
     }
 
     private IReadOnlyList<GithubIssue> FindOpenRecoveryIssuesForSource(string owner, string repo, int sourceIssueNumber, string rootDirectory)

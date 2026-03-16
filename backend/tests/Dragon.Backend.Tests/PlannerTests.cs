@@ -563,6 +563,7 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("issue close 500", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("retired recovery issues: #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery hold: released; parent returned to active flow", StringComparison.Ordinal));
     }
