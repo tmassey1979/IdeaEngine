@@ -220,6 +220,47 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncQuarantinedWorkflow_CommentsAndLabelsWithoutClosing()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var records = new ExecutionRecordStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-1", "developer", "failed", "boom", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-2", "review", "failed", "boom", DateTimeOffset.UtcNow));
+        var quarantined = store.OverrideOverallStatus(22, "quarantined", "Quarantined after repeated failures.");
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], "Core", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string> { ["changedPaths"] = "docs/ARCHITECTURE.md" }
+            ),
+            new JobExecutionResult("job-1", "developer", "failed", "boom", DateTimeOffset.UtcNow),
+            []
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", quarantined, records.Read(22), root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Equal(3, commands.Count);
+        Assert.Contains("label create quarantined", commands[0], StringComparison.Ordinal);
+        Assert.Contains("issue comment 22", commands[1], StringComparison.Ordinal);
+        Assert.Contains("issue edit 22", commands[2], StringComparison.Ordinal);
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void CycleOnce_CanAutomaticallySyncValidatedGithubWorkflow()
     {
         var root = CreateTempRoot();
@@ -366,6 +407,47 @@ public sealed class PlannerTests
         Assert.Contains("quarantined", state, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("seed", nextSeed.Mode);
         Assert.Equal(23, nextSeed.Job!.Issue);
+    }
+
+    [Fact]
+    public void CycleOnce_CanSyncQuarantinedWorkflowToGithub()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"], "", "Core System Principles", "codex/sections/01-dragon-idea-engine-master-codex.md"),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var commands = new List<string>();
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(1, string.Empty, "forced failure"));
+        var loop = new SelfBuildLoop(root, githubIssueService: github, jobExecutor: executor);
+
+        CycleResult? quarantineCycle = null;
+        for (var index = 0; index < 12; index += 1)
+        {
+            var cycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+            if (cycle.FailureDisposition?.Quarantined == true)
+            {
+                quarantineCycle = cycle;
+                break;
+            }
+        }
+
+        Assert.NotNull(quarantineCycle);
+        Assert.NotNull(quarantineCycle.GithubSync);
+        Assert.True(quarantineCycle.GithubSync!.Attempted);
+        Assert.True(quarantineCycle.GithubSync.Updated);
+        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
 
     private static string FindRepoRoot()

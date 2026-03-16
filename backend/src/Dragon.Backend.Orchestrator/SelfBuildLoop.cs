@@ -66,6 +66,10 @@ public sealed class SelfBuildLoop
         var followUps = PublishFollowUps(job, execution);
         var executionRecord = executionRecordStore.Append(job, execution, followUps);
         var failureDisposition = ApplyFailurePolicy(job.Issue, workflow);
+        if (failureDisposition?.Quarantined == true)
+        {
+            workflow = workflowStateStore.ReadAll()[job.Issue];
+        }
         var githubSync = TrySyncWorkflow(githubOwner, repo, workflow, syncValidatedWorkflows);
 
         return new CycleResult("consume", job, execution, followUps, workflow, githubSync, executionRecord, failureDisposition);

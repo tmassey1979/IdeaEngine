@@ -12,6 +12,7 @@ Current scope:
 - review/test stages that now validate changed files and execute real project test commands
 - per-issue execution records under `.dragon/runs/` that feed GitHub sync comments
 - repeated-failure quarantine logic that marks stuck stories and skips reseeding them
+- GitHub quarantine updates that comment on and label stuck stories without closing them
 - a small CLI that can print planned self-build jobs from backlog context and run one local self-build cycle
 
 Useful commands:
@@ -28,4 +29,4 @@ dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tma
 
 `--sync-github` is guarded: it only comments on and closes an issue after the workflow reaches `validated`, and the sync comment now includes recent execution IDs and changed-path trace data.
 
-Repeated failures are also guarded: when the same stage keeps failing across cycles, the issue is marked `quarantined` in `.dragon/state/issues.json` and the loop stops reseeding it automatically.
+Repeated failures are also guarded: when the same stage keeps failing across cycles, the issue is marked `quarantined` in `.dragon/state/issues.json`, the loop stops reseeding it automatically, and the GitHub issue gets a quarantine comment plus a `quarantined` label instead of being closed.

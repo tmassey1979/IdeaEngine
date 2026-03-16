@@ -60,6 +60,11 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        if (string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+        {
+            return SyncQuarantinedWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
+        }
+
         if (!string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         {
             return new GithubSyncResult(false, false, "Workflow is not validated yet.");
@@ -90,6 +95,56 @@ public sealed class GithubIssueService
         );
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with execution trace.");
+    }
+
+    private GithubSyncResult SyncQuarantinedWorkflow(
+        string owner,
+        string repo,
+        IssueWorkflowState workflow,
+        IReadOnlyList<ExecutionRecord> executionRecords,
+        string rootDirectory)
+    {
+        var commentBody = string.Join(
+            Environment.NewLine,
+            [
+                "Automated backend quarantine update:",
+                $"- workflow status: {workflow.OverallStatus}",
+                $"- note: {workflow.Note ?? "No note recorded."}",
+                executionRecords.Count > 0
+                    ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
+                    : "- recent failures: none recorded",
+                executionRecords.SelectMany(record => record.ChangedPaths).Distinct().Any()
+                    ? $"- changed paths: {string.Join(", ", executionRecords.SelectMany(record => record.ChangedPaths).Distinct())}"
+                    : "- changed paths: none recorded"
+            ]
+        );
+
+        EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
+        commandRunner(
+            $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
+            rootDirectory
+        );
+        commandRunner(
+            $"issue edit {workflow.IssueNumber} --repo {owner}/{repo} --add-label quarantined",
+            rootDirectory
+        );
+
+        return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with quarantine trace.");
+    }
+
+    private void EnsureLabel(string owner, string repo, string name, string color, string description, string rootDirectory)
+    {
+        try
+        {
+            commandRunner(
+                $"label create {name} --repo {owner}/{repo} --color {color} --description \"{EscapeForDoubleQuotes(description)}\"",
+                rootDirectory
+            );
+        }
+        catch (InvalidOperationException)
+        {
+            // The label may already exist, which is fine for our sync path.
+        }
     }
 
     private static string EscapeForDoubleQuotes(string value) =>
