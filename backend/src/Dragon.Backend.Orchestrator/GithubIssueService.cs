@@ -117,6 +117,8 @@ public sealed class GithubIssueService
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         commandRunner(

@@ -752,6 +752,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("label create in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label quarantined", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label superseded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue comment 23", StringComparison.Ordinal) && command.Contains("changed paths", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
