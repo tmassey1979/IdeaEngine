@@ -53,11 +53,37 @@ public sealed class WorkflowStateStore
             issueTitle,
             overallStatus,
             stages,
-            DateTimeOffset.UtcNow
+            DateTimeOffset.UtcNow,
+            existing?.Note
         );
 
         snapshots[issueNumber] = updated;
 
+        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
+        File.WriteAllText(
+            StatePath,
+            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
+        );
+
+        return updated;
+    }
+
+    public IssueWorkflowState OverrideOverallStatus(int issueNumber, string status, string note)
+    {
+        var snapshots = ReadAll().ToDictionary(entry => entry.Key, entry => entry.Value);
+        if (!snapshots.TryGetValue(issueNumber, out var existing))
+        {
+            throw new InvalidOperationException($"Cannot override workflow state for unknown issue #{issueNumber}.");
+        }
+
+        var updated = existing with
+        {
+            OverallStatus = status,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Note = note
+        };
+
+        snapshots[issueNumber] = updated;
         Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
         File.WriteAllText(
             StatePath,

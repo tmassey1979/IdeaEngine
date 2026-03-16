@@ -33,8 +33,11 @@ public sealed class SelfBuildLoop
 
     public SelfBuildJob SeedNext(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
     {
+        var workflows = workflowStateStore.ReadAll();
         var nextIssue = issues
             .Where(issue => issue.Labels.Contains("story"))
+            .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) ||
+                !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
             .OrderBy(issue => issue.Number)
             .First();
 
@@ -62,9 +65,10 @@ public sealed class SelfBuildLoop
         var workflow = workflowStateStore.Update(job.Issue, job.Payload.Title, job.Agent, execution);
         var followUps = PublishFollowUps(job, execution);
         var executionRecord = executionRecordStore.Append(job, execution, followUps);
+        var failureDisposition = ApplyFailurePolicy(job.Issue, workflow);
         var githubSync = TrySyncWorkflow(githubOwner, repo, workflow, syncValidatedWorkflows);
 
-        return new CycleResult("consume", job, execution, followUps, workflow, githubSync, executionRecord);
+        return new CycleResult("consume", job, execution, followUps, workflow, githubSync, executionRecord, failureDisposition);
     }
 
     public CycleResult CycleOnceFromGithub(
@@ -96,6 +100,24 @@ public sealed class SelfBuildLoop
         }
 
         return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
+    }
+
+    private FailureDisposition? ApplyFailurePolicy(int issueNumber, IssueWorkflowState workflow)
+    {
+        if (!string.Equals(workflow.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var disposition = FailurePolicy.Evaluate(executionRecordStore.Read(issueNumber));
+        if (!disposition.Quarantined)
+        {
+            return disposition;
+        }
+
+        workflowStateStore.OverrideOverallStatus(issueNumber, "quarantined", disposition.Reason!);
+        queueStore.RemoveAll(job => job.Issue == issueNumber);
+        return disposition;
     }
 
     private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)
@@ -181,5 +203,6 @@ public sealed record CycleResult(
     IReadOnlyList<SelfBuildJob> FollowUps,
     IssueWorkflowState? Workflow = null,
     GithubSyncResult? GithubSync = null,
-    ExecutionRecord? ExecutionRecord = null
+    ExecutionRecord? ExecutionRecord = null,
+    FailureDisposition? FailureDisposition = null
 );

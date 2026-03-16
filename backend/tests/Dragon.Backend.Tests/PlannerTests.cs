@@ -310,6 +310,64 @@ public sealed class PlannerTests
         Assert.Contains("npm", executed[0], StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void FailurePolicy_QuarantinesAfterThreeConsecutiveFailures()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var records = new[]
+        {
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-1", "failed", "boom", now.AddMinutes(-2), [], []),
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-2", "failed", "boom", now.AddMinutes(-1), [], []),
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-3", "failed", "boom", now, [], [])
+        };
+
+        var disposition = FailurePolicy.Evaluate(records);
+
+        Assert.True(disposition.Quarantined);
+        Assert.Contains("3 repeated failed developer executions", disposition.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CycleOnce_QuarantinesRepeatedlyFailingIssueAndSkipsReseedingIt()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"], "", "Core System Principles", "codex/sections/01-dragon-idea-engine-master-codex.md"),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(1, string.Empty, "forced failure"));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        var firstFailure = loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        var secondFailure = loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        loop.CycleOnce(stories);
+        var thirdFailure = loop.CycleOnce(stories);
+        var nextSeed = loop.CycleOnce(stories);
+
+        Assert.Equal("failed", firstFailure.Workflow!.OverallStatus);
+        Assert.Equal("failed", secondFailure.Workflow!.OverallStatus);
+        Assert.NotNull(thirdFailure.FailureDisposition);
+        Assert.True(thirdFailure.FailureDisposition!.Quarantined);
+
+        var statePath = Path.Combine(root, ".dragon", "state", "issues.json");
+        var state = File.ReadAllText(statePath);
+        Assert.Contains("quarantined", state, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("seed", nextSeed.Mode);
+        Assert.Equal(23, nextSeed.Job!.Issue);
+    }
+
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

@@ -68,4 +68,31 @@ public sealed class QueueStore
 
         return next;
     }
+
+    public int RemoveAll(Func<SelfBuildJob, bool> predicate)
+    {
+        var jobs = ReadAll().ToList();
+        var remaining = jobs.Where(job => !predicate(job)).ToList();
+        var removed = jobs.Count - remaining.Count;
+
+        if (removed == 0)
+        {
+            return 0;
+        }
+
+        if (remaining.Count == 0)
+        {
+            if (File.Exists(QueuePath))
+            {
+                File.Delete(QueuePath);
+            }
+        }
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(QueuePath)!);
+            File.WriteAllLines(QueuePath, remaining.Select(job => JsonSerializer.Serialize(job, serializerOptions)));
+        }
+
+        return removed;
+    }
 }

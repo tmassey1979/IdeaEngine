@@ -62,7 +62,13 @@ public sealed record IssueWorkflowState(
     string IssueTitle,
     string OverallStatus,
     IReadOnlyDictionary<string, WorkflowStageState> Stages,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    string? Note = null
+);
+
+public sealed record FailureDisposition(
+    bool Quarantined,
+    string? Reason
 );
 
 public sealed record GithubSyncResult(
