@@ -11,6 +11,42 @@ const {
   workspaceRoot
 } = require("../../../runner/dragon-agent-runner/src/index");
 
+const PLANNER_RULES = [
+  {
+    name: "architecture-doc",
+    match: ({ heading, title }) =>
+      /(architecture|core system principles|system architecture|registry architecture)/i.test(
+        `${heading} ${title}`
+      ),
+    targetPath: "docs/generated/architecture-notes.md",
+    sectionTitle: "Architecture Notes"
+  },
+  {
+    name: "sdk-doc",
+    match: ({ heading, title }) => /(sdk|agent interface|agent context|agent result|developer agent)/i.test(`${heading} ${title}`),
+    targetPath: "docs/generated/sdk-notes.md",
+    sectionTitle: "SDK Notes"
+  },
+  {
+    name: "operations-doc",
+    match: ({ heading, title }) =>
+      /(pipeline|workflow|loop|review|test|compliance|security|validation)/i.test(
+        `${heading} ${title}`
+      ),
+    targetPath: "docs/generated/operations-notes.md",
+    sectionTitle: "Operations Notes"
+  },
+  {
+    name: "registry-doc",
+    match: ({ heading, title }) =>
+      /(registry|capability|discovery|node|cluster|health monitoring)/i.test(
+        `${heading} ${title}`
+      ),
+    targetPath: "docs/generated/agent-registry.md",
+    sectionTitle: "Agent Registry"
+  }
+];
+
 function buildCapabilityCatalog(rootDir = workspaceRoot()) {
   return Array.from(discoverAgents(rootDir).values())
     .map((agent) => ({
@@ -59,7 +95,9 @@ function recommendAgentForIssue(issue, capabilityCatalog) {
 function createSelfBuildJob({ issue, agent, repo, project }) {
   const payload = {
     title: issue.title,
-    labels: issue.labels
+    labels: issue.labels,
+    heading: issue.heading || null,
+    sourceFile: issue.sourceFile || null
   };
 
   if (agent === "developer") {
@@ -84,6 +122,8 @@ function createSelfBuildJob({ issue, agent, repo, project }) {
 function planDeveloperOperations(issue) {
   const title = issue.title.toLowerCase();
   const body = String(issue.body || "");
+  const heading = String(issue.heading || "");
+  const rule = PLANNER_RULES.find((candidate) => candidate.match({ heading, title }));
 
   if (title.includes("core system principles")) {
     return [
@@ -129,6 +169,19 @@ function planDeveloperOperations(issue) {
     ];
   }
 
+  if (rule) {
+    return [
+      {
+        type: "append_text",
+        path: rule.targetPath,
+        content: renderPlannedSection({
+          sectionTitle: rule.sectionTitle,
+          issue
+        })
+      }
+    ];
+  }
+
   return [
     {
       type: "append_text",
@@ -141,6 +194,24 @@ function planDeveloperOperations(issue) {
       ].join("\n")
     }
   ];
+}
+
+function renderPlannedSection({ sectionTitle, issue }) {
+  const body = String(issue.body || "").trim();
+  const excerpt = body
+    ? body.split("\n").slice(0, 8).join("\n")
+    : "Planned automatically from backlog context.";
+
+  return [
+    "",
+    `## ${issue.title}`,
+    "",
+    `Source heading: ${issue.heading || "n/a"}`,
+    `Source file: ${issue.sourceFile || "n/a"}`,
+    "",
+    excerpt,
+    ""
+  ].join("\n");
 }
 
 function publishNextJob({
@@ -586,14 +657,39 @@ function listGithubIssues({ owner, repo, ghBin = resolveGhBin() }) {
     }
   );
 
+  const backlogIndex = loadBacklogIndex();
   const issues = JSON.parse(raw);
-  return issues.map((issue) => ({
-    number: issue.number,
-    title: issue.title,
-    state: issue.state,
-    body: issue.body || "",
-    labels: issue.labels.map((label) => label.name)
-  }));
+  return issues.map((issue) => {
+    const metadata = backlogIndex.get(issue.title) || {};
+    return {
+      number: issue.number,
+      title: issue.title,
+      state: issue.state,
+      body: issue.body || "",
+      heading: metadata.heading || null,
+      sourceFile: metadata.sourceFile || null,
+      labels: issue.labels.map((label) => label.name)
+    };
+  });
+}
+
+function loadBacklogIndex(rootDir = workspaceRoot()) {
+  const backlogPath = path.join(rootDir, "planning", "backlog.json");
+  if (!fs.existsSync(backlogPath)) {
+    return new Map();
+  }
+
+  const backlog = JSON.parse(fs.readFileSync(backlogPath, "utf8"));
+  const index = new Map();
+
+  for (const story of backlog.stories || []) {
+    index.set(story.title, {
+      heading: story.heading || null,
+      sourceFile: story.sourceFile || null
+    });
+  }
+
+  return index;
 }
 
 function runSelfBuildCycle({
@@ -628,6 +724,7 @@ module.exports = {
   dequeueNextJob,
   executeSelfBuildStep,
   listGithubIssues,
+  loadBacklogIndex,
   planDeveloperOperations,
   persistExecutionRecord,
   publishFollowUpJobs,

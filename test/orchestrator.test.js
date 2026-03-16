@@ -11,6 +11,7 @@ const {
   cycleOnce,
   dequeueNextJob,
   executeSelfBuildStep,
+  loadBacklogIndex,
   persistExecutionRecord,
   planDeveloperOperations,
   publishFollowUpJobs,
@@ -82,6 +83,27 @@ test("planDeveloperOperations adds a core principles update", () => {
   assert.match(operations[0].content, /Core System Principles/);
 });
 
+test("planDeveloperOperations uses rule-based generated docs for broader issues", () => {
+  const operations = planDeveloperOperations({
+    number: 213,
+    title: "[Story] AGENT CAPABILITY REGISTRY AND DISCOVERY: Registry Architecture",
+    heading: "Registry Architecture",
+    sourceFile: "codex/sections/12-agent-capability-registry-and-discovery.md",
+    body: "The registry coordinates agent capabilities."
+  });
+
+  assert.equal(operations[0].path, "docs/AGENT_REGISTRY.md");
+  assert.match(operations[0].content, /Agent Registry/);
+});
+
+test("loadBacklogIndex exposes story metadata by title", () => {
+  const index = loadBacklogIndex(workspaceRoot());
+  const metadata = index.get("[Story] Dragon Idea Engine Master Codex: Core System Principles");
+
+  assert.equal(metadata.heading, "Core System Principles");
+  assert.match(metadata.sourceFile, /01-dragon-idea-engine-master-codex/);
+});
+
 test("publishNextJob emits the next queued self-build job", () => {
   const tempRoot = makeTempDir("tmp-orchestrator-");
   const result = publishNextJob({
@@ -90,7 +112,15 @@ test("publishNextJob emits the next queued self-build job", () => {
     project: "DragonIdeaEngine",
     issues: [
       { number: 102, title: "Review docs", state: "OPEN", labels: ["story"] },
-      { number: 87, title: "Implement developer workflow", state: "OPEN", labels: ["story"], body: "" }
+      {
+        number: 87,
+        title: "Implement developer workflow",
+        state: "OPEN",
+        labels: ["story"],
+        body: "",
+        heading: "Developer Workflow",
+        sourceFile: "codex/sections/example.md"
+      }
     ]
   });
 
