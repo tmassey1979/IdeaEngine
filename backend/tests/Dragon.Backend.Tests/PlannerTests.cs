@@ -523,6 +523,28 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void FailurePolicy_QuarantinesLongStalledWorkflow()
+    {
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", now.AddHours(-2), "done"),
+                ["review"] = new("failed", "job-2", now.AddHours(-2), "blocked")
+            },
+            now
+        );
+
+        var disposition = FailurePolicy.Evaluate(workflow, now);
+
+        Assert.True(disposition.Quarantined);
+        Assert.Contains("prolonged stall in review", disposition.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CycleOnce_QuarantinesRepeatedlyFailingIssueAndSkipsReseedingIt()
     {
         var root = CreateTempRoot();
@@ -561,6 +583,42 @@ public sealed class PlannerTests
         Assert.Contains("quarantined", state, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("seed", nextSeed.Mode);
         Assert.Equal(23, nextSeed.Job!.Issue);
+    }
+
+    [Fact]
+    public void CycleOnce_QuarantinesLongStalledWorkflowBeforeSeedingNewWork()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var now = DateTimeOffset.UtcNow;
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", now.AddHours(-2)));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "failed", "blocked", now.AddHours(-2)));
+
+        var commands = new List<string>();
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        var stories = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"])
+        };
+
+        var result = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.Equal("quarantine", result.Mode);
+        Assert.NotNull(result.Workflow);
+        Assert.Equal("quarantined", result.Workflow!.OverallStatus);
+        Assert.NotNull(result.FailureDisposition);
+        Assert.True(result.FailureDisposition!.Quarantined);
+        Assert.Contains("prolonged stall", result.FailureDisposition.Reason, StringComparison.Ordinal);
+        Assert.NotNull(result.GithubSync);
+        Assert.True(result.GithubSync!.Updated);
+        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
 
     [Fact]

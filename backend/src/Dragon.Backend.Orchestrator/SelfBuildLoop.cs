@@ -54,6 +54,12 @@ public sealed class SelfBuildLoop
         string? githubOwner = null,
         bool syncValidatedWorkflows = false)
     {
+        var stalledWorkflow = SweepStalledWorkflow(repo, githubOwner, syncValidatedWorkflows);
+        if (stalledWorkflow is not null)
+        {
+            return stalledWorkflow;
+        }
+
         if (queueStore.ReadAll().Count == 0)
         {
             var seeded = SeedNext(issues, repo, project);
@@ -122,6 +128,25 @@ public sealed class SelfBuildLoop
         workflowStateStore.OverrideOverallStatus(issueNumber, "quarantined", disposition.Reason!);
         queueStore.RemoveAll(job => job.Issue == issueNumber);
         return disposition;
+    }
+
+    private CycleResult? SweepStalledWorkflow(string repo, string? githubOwner, bool syncValidatedWorkflows)
+    {
+        foreach (var workflow in workflowStateStore.ReadAll().Values.OrderBy(item => item.IssueNumber))
+        {
+            var disposition = FailurePolicy.Evaluate(workflow);
+            if (!disposition.Quarantined)
+            {
+                continue;
+            }
+
+            var updatedWorkflow = workflowStateStore.OverrideOverallStatus(workflow.IssueNumber, "quarantined", disposition.Reason!);
+            queueStore.RemoveAll(job => job.Issue == workflow.IssueNumber);
+            var githubSync = TrySyncWorkflow(githubOwner, repo, updatedWorkflow, syncValidatedWorkflows);
+            return new CycleResult("quarantine", null, null, [], updatedWorkflow, githubSync, null, disposition);
+        }
+
+        return null;
     }
 
     private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)
