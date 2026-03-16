@@ -35,10 +35,11 @@ public sealed class SelfBuildLoop
     {
         var workflows = workflowStateStore.ReadAll();
         var nextIssue = issues
-            .Where(issue => issue.Labels.Contains("story"))
+            .Where(issue => issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase))
             .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) ||
                 !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(issue => issue.Number)
+            .OrderByDescending(IsRecoveryIssue)
+            .ThenBy(issue => issue.Number)
             .First();
 
         var agent = RecommendAgent(nextIssue);
@@ -199,6 +200,11 @@ public sealed class SelfBuildLoop
 
     private static string RecommendAgent(GithubIssue issue)
     {
+        if (IsRecoveryIssue(issue))
+        {
+            return "developer";
+        }
+
         var title = issue.Title.ToLowerInvariant();
 
         if (title.Contains("review", StringComparison.Ordinal))
@@ -223,6 +229,10 @@ public sealed class SelfBuildLoop
 
         return "developer";
     }
+
+    private static bool IsRecoveryIssue(GithubIssue issue) =>
+        issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
+        issue.Title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed record CycleResult(

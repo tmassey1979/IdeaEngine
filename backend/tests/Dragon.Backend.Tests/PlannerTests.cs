@@ -72,6 +72,24 @@ public sealed class PlannerTests
         Assert.NotNull(job.Payload.Operations);
         Assert.Equal("docs/ARCHITECTURE.md", job.Payload.Operations![0].Path);
         Assert.Equal("dragon-orchestrator-dotnet", job.Metadata["source"]);
+        Assert.Equal("story", job.Metadata["workType"]);
+    }
+
+    [Fact]
+    public void CreateRecoveryJob_UsesRecoveryActionAndMetadata()
+    {
+        var issue = new GithubIssue(
+            999,
+            "[Recovery] Issue #22: Core",
+            "OPEN",
+            ["story", "recovery", "backlog"]
+        );
+
+        var job = SelfBuildJobFactory.Create(issue, "developer", "IdeaEngine", "DragonIdeaEngine");
+
+        Assert.Equal("developer", job.Agent);
+        Assert.Equal("recover_issue", job.Action);
+        Assert.Equal("recovery", job.Metadata["workType"]);
     }
 
     [Fact]
@@ -99,6 +117,24 @@ public sealed class PlannerTests
         Assert.Equal(1, queue.Dequeue()!.Issue);
         Assert.Equal(2, queue.Dequeue()!.Issue);
         Assert.Null(queue.Dequeue());
+    }
+
+    [Fact]
+    public void SeedNext_PrioritizesRecoveryIssuesOverOrdinaryStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"])
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(500, job.Issue);
+        Assert.Equal("recover_issue", job.Action);
+        Assert.Equal("recovery", job.Metadata["workType"]);
     }
 
     [Fact]

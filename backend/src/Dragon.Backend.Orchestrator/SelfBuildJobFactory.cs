@@ -6,6 +6,8 @@ public static class SelfBuildJobFactory
 {
     public static SelfBuildJob Create(GithubIssue issue, string agent, string repo, string project)
     {
+        var isRecovery = issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
+            issue.Title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase);
         IReadOnlyList<DeveloperOperation>? operations = null;
 
         if (string.Equals(agent, "developer", StringComparison.OrdinalIgnoreCase))
@@ -25,12 +27,13 @@ public static class SelfBuildJobFactory
         {
             ["requestedBy"] = "system",
             ["source"] = "dragon-orchestrator-dotnet",
-            ["issueNumber"] = issue.Number.ToString()
+            ["issueNumber"] = issue.Number.ToString(),
+            ["workType"] = isRecovery ? "recovery" : "story"
         };
 
         return new SelfBuildJob(
             agent,
-            "implement_issue",
+            isRecovery ? "recover_issue" : "implement_issue",
             repo,
             project,
             issue.Number,
