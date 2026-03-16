@@ -21,7 +21,8 @@ public sealed record GithubIssue(
     IReadOnlyList<string> Labels,
     string Body = "",
     string? Heading = null,
-    string? SourceFile = null
+    string? SourceFile = null,
+    int? SourceIssueNumber = null
 );
 
 public sealed record SelfBuildJobPayload(

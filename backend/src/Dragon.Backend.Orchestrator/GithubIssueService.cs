@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Dragon.Backend.Contracts;
 
 namespace Dragon.Backend.Orchestrator;
@@ -49,7 +50,8 @@ public sealed class GithubIssueService
                 labels,
                 entry.GetProperty("body").GetString() ?? string.Empty,
                 metadata?.Heading,
-                metadata?.SourceFile
+                metadata?.SourceFile,
+                InferSourceIssueNumber(title, entry.GetProperty("body").GetString() ?? string.Empty)
             ));
         }
 
@@ -263,6 +265,7 @@ public sealed class GithubIssueService
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
+                $"- source issue: #{workflow.IssueNumber}",
                 executionRecords.Count > 0
                     ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent failures: none recorded",
@@ -376,13 +379,30 @@ public sealed class GithubIssueService
             return null;
         }
 
-        var match = System.Text.RegularExpressions.Regex.Match(result, @"/issues/(?<number>\d+)");
+        var match = Regex.Match(result, @"/issues/(?<number>\d+)");
         if (!match.Success)
         {
             return null;
         }
 
         return int.Parse(match.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static int? InferSourceIssueNumber(string title, string body)
+    {
+        var titleMatch = Regex.Match(title, @"\[Recovery\]\s+Issue\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
+        if (titleMatch.Success)
+        {
+            return int.Parse(titleMatch.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var bodyMatch = Regex.Match(body, @"source issue:\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
+        if (bodyMatch.Success)
+        {
+            return int.Parse(bodyMatch.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return null;
     }
 
     private void EnsureLabel(string owner, string repo, string name, string color, string description, string rootDirectory)

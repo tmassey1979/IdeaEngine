@@ -82,7 +82,8 @@ public sealed class PlannerTests
             999,
             "[Recovery] Issue #22: Core",
             "OPEN",
-            ["story", "recovery", "backlog"]
+            ["story", "recovery", "backlog"],
+            SourceIssueNumber: 22
         );
 
         var job = SelfBuildJobFactory.Create(issue, "developer", "IdeaEngine", "DragonIdeaEngine");
@@ -90,6 +91,7 @@ public sealed class PlannerTests
         Assert.Equal("developer", job.Agent);
         Assert.Equal("recover_issue", job.Action);
         Assert.Equal("recovery", job.Metadata["workType"]);
+        Assert.Equal("22", job.Metadata["sourceIssueNumber"]);
     }
 
     [Fact]
@@ -127,7 +129,7 @@ public sealed class PlannerTests
         var issues = new[]
         {
             new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
-            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"])
+            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22)
         };
 
         var job = loop.SeedNext(issues);
@@ -135,6 +137,7 @@ public sealed class PlannerTests
         Assert.Equal(500, job.Issue);
         Assert.Equal("recover_issue", job.Action);
         Assert.Equal("recovery", job.Metadata["workType"]);
+        Assert.Equal("22", job.Metadata["sourceIssueNumber"]);
     }
 
     [Fact]
@@ -212,6 +215,31 @@ public sealed class PlannerTests
         Assert.Equal(23, issue.Number);
         Assert.Equal("System Architecture", issue.Heading);
         Assert.Contains("01-dragon-idea-engine-master-codex", issue.SourceFile, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GithubIssueService_InfersSourceIssueForRecoveryIssue()
+    {
+        const string json = """
+        [
+          {
+            "number": 500,
+            "title": "[Recovery] Issue #22: Core System Principles",
+            "body": "Recovery story for quarantined issue #22.\n\nContext:\n- source issue: #22",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(22, issue.SourceIssueNumber);
     }
 
     [Fact]

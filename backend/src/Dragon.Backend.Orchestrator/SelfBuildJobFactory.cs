@@ -30,6 +30,10 @@ public static class SelfBuildJobFactory
             ["issueNumber"] = issue.Number.ToString(),
             ["workType"] = isRecovery ? "recovery" : "story"
         };
+        if (issue.SourceIssueNumber is not null)
+        {
+            metadata["sourceIssueNumber"] = issue.SourceIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
 
         return new SelfBuildJob(
             agent,
