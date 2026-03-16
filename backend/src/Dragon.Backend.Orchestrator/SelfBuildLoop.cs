@@ -48,7 +48,7 @@ public sealed class SelfBuildLoop
             .Where(issue => !IsRecoveryIssue(issue) ||
                 issue.SourceIssueNumber is null ||
                 latestRecoveryIssuesByParent.TryGetValue(issue.SourceIssueNumber.Value, out var latestIssueNumber) && latestIssueNumber == issue.Number)
-            .OrderByDescending(IsRecoveryIssue)
+            .OrderByDescending(issue => ShouldPrioritizeRecoveryIssue(issue, workflows))
             .ThenBy(issue => issue.Number)
             .First();
 
@@ -311,6 +311,33 @@ public sealed class SelfBuildLoop
     private static bool IsRecoveryIssue(GithubIssue issue) =>
         issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
         issue.Title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ShouldPrioritizeRecoveryIssue(
+        GithubIssue issue,
+        IReadOnlyDictionary<int, IssueWorkflowState> workflows)
+    {
+        if (!IsRecoveryIssue(issue))
+        {
+            return false;
+        }
+
+        if (issue.SourceIssueNumber is null)
+        {
+            return true;
+        }
+
+        if (!workflows.TryGetValue(issue.SourceIssueNumber.Value, out var parentWorkflow))
+        {
+            return true;
+        }
+
+        if (parentWorkflow.ActiveRecoveryIssueNumbers?.Contains(issue.Number) == true)
+        {
+            return true;
+        }
+
+        return string.Equals(parentWorkflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 public sealed record CycleResult(

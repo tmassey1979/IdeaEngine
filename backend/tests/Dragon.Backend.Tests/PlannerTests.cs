@@ -160,6 +160,27 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_DoesNotPrioritizeRecoveryIssueAfterParentRecoveryHoldIsReleased()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-parent", "developer", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "in_progress", "Recovery child completed; parent returned to active flow.");
+
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"]),
+            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22)
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(23, job.Issue);
+        Assert.Equal("implement_issue", job.Action);
+    }
+
+    [Fact]
     public void CycleOnce_RemovesSupersededRecoveryJobsBeforeConsumingQueue()
     {
         var root = CreateTempRoot();
