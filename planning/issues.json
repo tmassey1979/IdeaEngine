@@ -1,0 +1,300 @@
+[
+  {
+    "index": 1,
+    "sourceFile": "codex/sections/01-dragon-idea-engine-master-codex.md",
+    "title": "Dragon Idea Engine — Master Codex",
+    "issueTitle": "Codex: Dragon Idea Engine — Master Codex",
+    "summary": "Dragon Idea Engine is an **autonomous software factory** designed to turn ideas into fully developed software projects using modular AI agents.\nThe system:\n```\nIdea → Architecture → Repo → Issues → Code → Review → Deploy → Feedback\n```\nAgents operate through a **plugin-based runtime** and communicate through an asynchronous message queue.\nEvent-driven agent systems commonly use a queue broker so independent workers can process tasks asynchronously and scale horizontally.",
+    "subheadings": [
+      "Purpose",
+      "Root Repo",
+      "Idea Agent",
+      "Architect Agent",
+      "Repository Manager Agent",
+      "Issue Generator Agent",
+      "Developer Agent",
+      "Review Agent",
+      "Test Agent",
+      "Refactor Agent",
+      "Documentation Agent",
+      "Feedback Agent",
+      "Ideas",
+      "Projects",
+      "Jobs",
+      "Agents",
+      "Credentials"
+    ],
+    "body": "# Codex: Dragon Idea Engine — Master Codex\n\nSource section: `codex/sections/01-dragon-idea-engine-master-codex.md`\n\n## Summary\n\nDragon Idea Engine is an **autonomous software factory** designed to turn ideas into fully developed software projects using modular AI agents.\nThe system:\n```\nIdea → Architecture → Repo → Issues → Code → Review → Deploy → Feedback\n```\nAgents operate through a **plugin-based runtime** and communicate through an asynchronous message queue.\nEvent-driven agent systems commonly use a queue broker so independent workers can process tasks asynchronously and scale horizontally.\n\n## Scope Checklist\n\n- [ ] Root Repo\n- [ ] Idea Agent\n- [ ] Architect Agent\n- [ ] Repository Manager Agent\n- [ ] Issue Generator Agent\n- [ ] Developer Agent\n- [ ] Review Agent\n- [ ] Test Agent\n- [ ] Refactor Agent\n- [ ] Documentation Agent\n- [ ] Feedback Agent\n- [ ] Ideas\n- [ ] Projects\n- [ ] Jobs\n- [ ] Agents\n- [ ] Credentials\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "01-dragon-idea-engine-master-codex.md"
+  },
+  {
+    "index": 2,
+    "sourceFile": "codex/sections/02-dragon-idea-engine-master-codex-addendum.md",
+    "title": "Dragon Idea Engine — Master Codex Addendum",
+    "issueTitle": "Codex: Dragon Idea Engine — Master Codex Addendum",
+    "summary": "Define the **standard contract for agent jobs** across the entire system.\nAll agents must consume and produce jobs using this schema.\nThis ensures:\n```\ncompatibility\ntraceability\nretry support\ndebugging\norchestration\n```",
+    "subheadings": [
+      "Purpose",
+      "Purpose"
+    ],
+    "body": "# Codex: Dragon Idea Engine — Master Codex Addendum\n\nSource section: `codex/sections/02-dragon-idea-engine-master-codex-addendum.md`\n\n## Summary\n\nDefine the **standard contract for agent jobs** across the entire system.\nAll agents must consume and produce jobs using this schema.\nThis ensures:\n```\ncompatibility\ntraceability\nretry support\ndebugging\norchestration\n```\n\n## Scope Checklist\n\n- [ ] Define implementation scope from the source codex section.\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "02-dragon-idea-engine-master-codex-addendum.md"
+  },
+  {
+    "index": 3,
+    "sourceFile": "codex/sections/03-dragon-idea-engine-infrastructure-architecture.md",
+    "title": "Dragon Idea Engine — Infrastructure Architecture",
+    "issueTitle": "Codex: Dragon Idea Engine — Infrastructure Architecture",
+    "summary": "This section defines the **deployment model and repository layout** for the Dragon Idea Engine platform.\nThe system is designed to operate in two phases:\n```\nPhase 1: Single-node Raspberry Pi Engine\nPhase 2: Distributed Raspberry Pi Cluster\n```\nThe **single-node system must always remain fully functional** without requiring cloud services.\n# Deployment Philosophy\nDragon Idea Engine prioritizes:\n```\nself-hosted\nportable\nlow-power infrastructure\nedge deployment\ndistributed scalability\n```\nPrimary target platform:\n```\nRaspberry Pi 5\n```\nRecommended configuration:\n```\n8GB RAM\nNVMe SSD via PCIe\nUbuntu Server\nDocker\n```\n# Phase 1 — Raspberry Pi Autonomous Engine\nPhase 1 runs **all components on a single device**.\nArchitecture:\n```\n                ┌───────────────────────┐\n                │ Dragon UI (React)     │\n                └─────────────┬─────────┘\n                              │\n                              ▼\n                      ┌───────────────┐\n                      │ Dragon API    │\n                      └───────┬───────┘\n                              │\n                              ▼\n                      ┌───────────────┐\n                      │ Orchestrator  │\n                      └───────┬───────┘\n                              │\n                              ▼\n                        RabbitMQ Queue\n                              │\n                              ▼\n                     Agent Runner Workers\n                              │\n                              ▼\n                        Agent Plugins\n```\nEverything runs locally.\n# Containers on the Pi\nThe Pi runs a Docker stack containing:\n```\ndragon-ui\ndragon-api\ndragon-orchestrator\ndragon-agent-runner\nrabbitmq\npostgres\n```\nOptional:\n```\nollama (local AI models)\nredis (cache)\n```\n# Local AI Support\nDragon Idea Engine should support both:\n```\ncloud AI providers\nlocal models\n```\nLocal inference options:\n```\nOllama\nLocal Llama models\nMistral\nCode Llama\n```\nThis allows:\n```\noffline operation\nlower cost\nprivacy\n```\n# Raspberry Pi Image\nThe project will eventually produce a **Dragon Idea Engine OS image**.\nImage includes:\n```\nUbuntu Server\nDocker\nRabbitMQ\nPostgres\nDragon Engine services\nAgent Runner\nReact UI\n```\nBoot experience:\n```\npower on\nengine starts\nUI accessible on LAN\n```\nExample:\n```\nhttp://dragon.local\n```\n# Storage Layout\nRecommended filesystem structure:\n```\n/dragon-engine\n    /config\n    /repos\n    /workspaces\n    /logs\n    /agents\n    /models\n```\nDetails:\n```\nrepos       → cached repositories\nworkspaces  → temporary agent workspaces\nlogs        → job and system logs\nagents      → plugin agents\nmodels      → local AI models\n```\n# Workspace Model\nDeveloper agents create temporary workspaces.\nExample:\n```\n/workspaces\n    dragon-crm\n        issue-42\n        issue-43\n```\nWorkflow:\n```\nclone repo\nimplement issue\npush PR\ndestroy workspace\n```\nThis ensures:\n```\nparallel agents\nclean builds\nsafe execution\n```\n# Phase 2 — Raspberry Pi Cluster\nPhase 2 introduces **horizontal scaling** using multiple Pi nodes.\nCluster model:\n```\n                ┌───────────────────┐\n                │ Control Node Pi   │\n                │ Dragon Engine     │\n                └──────────┬────────┘\n                           │\n                      RabbitMQ\n                           │\n        ┌───────────────┬───────────────┬───────────────┐\n        │ Worker Pi     │ Worker Pi     │ Worker Pi     │\n        │ Agent Runner  │ Agent Runner  │ Agent Runner  │\n        └───────────────┴───────────────┴───────────────┘\n```\n# Cluster Technology\nRecommended orchestrator:\n```\nDocker Swarm\n```\nReasons:\n```\nsimple setup\nlightweight\nnative Docker support\nworks well on ARM\n```\nAlternative options:\n```\nK3s (lightweight Kubernetes)\nNomad\n```\n# Cluster Responsibilities\n### Control Node\nRuns:\n```\ndragon-ui\ndragon-api\norchestrator\nrabbitmq\npostgres\n```\n### Worker Nodes\nRun:\n```\ndragon-agent-runner\nagent plugins\n```\nWorkers consume jobs from RabbitMQ.\n# Scaling Model\nExample cluster:\n```\n1 control node\n5 worker nodes\n```\nPossible concurrent agents:\n```\n50+ jobs\n```\nBecause:\n```\neach Pi runs multiple containers\n```\n# Job Scheduling\nRabbitMQ distributes jobs across workers.\nAgents become:\n```\nstateless workers\n```\nAdvantages:\n```\nfault tolerance\neasy scaling\nhigh throughput\n```\n# Repository Storage Strategy\nRepositories may be stored on:\n```\nlocal disk\nshared NFS\ndistributed storage\n```\nRecommended:\n```\ncontrol node repo cache\nworker temporary clones\n```\n# Network Requirements\nAll nodes must share a local network.\nExample:\n```\n1Gb Ethernet\n```\nRecommended topology:\n```\nGigabit switch\nwired network\n```\n# Cluster Expansion\nAdding nodes should be simple.\nExample:\n```\nflash Dragon Pi image\nconnect to network\njoin swarm\n```\nNew worker automatically begins consuming jobs.\n# Edge + Cloud Hybrid (Optional)\nFuture architecture may support hybrid operation.\nExample:\n```\nlocal cluster\n+\ncloud GPU agents\n```\nPossible uses:\n```\nheavy AI workloads\nlarge model inference\ncode analysis\n```\nBut the system must **never require cloud infrastructure** to function.\n# Repository Layout (Full Project)\nFinal recommended GitHub structure for the main repository:\n```\nDragonIdeaEngine\n│\n├─ docs\n│   MASTER_CODEX.md\n│   AGENT_JOB_SCHEMA.md\n│   AGENT_PLUGIN_SPEC.md\n│   AGENT_LIFECYCLE.md\n│   ARCHITECTURE.md\n│\n├─ runner\n│   dragon-agent-runner\n│\n├─ sdk\n│   dragon-agent-sdk\n│\n├─ agents\n│   architect-agent\n│   developer-agent\n│   review-agent\n│   test-agent\n│   refactor-agent\n│   documentation-agent\n│   feedback-agent\n│\n├─ services\n│   dragon-api\n│   dragon-orchestrator\n│\n├─ ui\n│   dragon-ui\n│\n├─ infrastructure\n│   docker\n│   swarm\n│   raspberrypi-image\n│\n├─ templates\n│   project-templates\n│\n└─ examples\n    sample-project\n```\n# Long Term Vision\nDragon Idea Engine becomes:\n```\na personal autonomous development lab\na distributed Pi software factory\nan extensible AI agent ecosystem\n```\nRunning on a small cluster of Raspberry Pis, it can:\n```\ngenerate new applications\nmaintain repositories\nprocess user feedback\nevolve software continuously\n```\nAll from a **self-hosted system sitting on a desk or rack**.",
+    "subheadings": [
+      "Next Codex Section I Recommend"
+    ],
+    "body": "# Codex: Dragon Idea Engine — Infrastructure Architecture\n\nSource section: `codex/sections/03-dragon-idea-engine-infrastructure-architecture.md`\n\n## Summary\n\nThis section defines the **deployment model and repository layout** for the Dragon Idea Engine platform.\nThe system is designed to operate in two phases:\n```\nPhase 1: Single-node Raspberry Pi Engine\nPhase 2: Distributed Raspberry Pi Cluster\n```\nThe **single-node system must always remain fully functional** without requiring cloud services.\n# Deployment Philosophy\nDragon Idea Engine prioritizes:\n```\nself-hosted\nportable\nlow-power infrastructure\nedge deployment\ndistributed scalability\n```\nPrimary target platform:\n```\nRaspberry Pi 5\n```\nRecommended configuration:\n```\n8GB RAM\nNVMe SSD via PCIe\nUbuntu Server\nDocker\n```\n# Phase 1 — Raspberry Pi Autonomous Engine\nPhase 1 runs **all components on a single device**.\nArchitecture:\n```\n                ┌───────────────────────┐\n                │ Dragon UI (React)     │\n                └─────────────┬─────────┘\n                              │\n                              ▼\n                      ┌───────────────┐\n                      │ Dragon API    │\n                      └───────┬───────┘\n                              │\n                              ▼\n                      ┌───────────────┐\n                      │ Orchestrator  │\n                      └───────┬───────┘\n                              │\n                              ▼\n                        RabbitMQ Queue\n                              │\n                              ▼\n                     Agent Runner Workers\n                              │\n                              ▼\n                        Agent Plugins\n```\nEverything runs locally.\n# Containers on the Pi\nThe Pi runs a Docker stack containing:\n```\ndragon-ui\ndragon-api\ndragon-orchestrator\ndragon-agent-runner\nrabbitmq\npostgres\n```\nOptional:\n```\nollama (local AI models)\nredis (cache)\n```\n# Local AI Support\nDragon Idea Engine should support both:\n```\ncloud AI providers\nlocal models\n```\nLocal inference options:\n```\nOllama\nLocal Llama models\nMistral\nCode Llama\n```\nThis allows:\n```\noffline operation\nlower cost\nprivacy\n```\n# Raspberry Pi Image\nThe project will eventually produce a **Dragon Idea Engine OS image**.\nImage includes:\n```\nUbuntu Server\nDocker\nRabbitMQ\nPostgres\nDragon Engine services\nAgent Runner\nReact UI\n```\nBoot experience:\n```\npower on\nengine starts\nUI accessible on LAN\n```\nExample:\n```\nhttp://dragon.local\n```\n# Storage Layout\nRecommended filesystem structure:\n```\n/dragon-engine\n    /config\n    /repos\n    /workspaces\n    /logs\n    /agents\n    /models\n```\nDetails:\n```\nrepos       → cached repositories\nworkspaces  → temporary agent workspaces\nlogs        → job and system logs\nagents      → plugin agents\nmodels      → local AI models\n```\n# Workspace Model\nDeveloper agents create temporary workspaces.\nExample:\n```\n/workspaces\n    dragon-crm\n        issue-42\n        issue-43\n```\nWorkflow:\n```\nclone repo\nimplement issue\npush PR\ndestroy workspace\n```\nThis ensures:\n```\nparallel agents\nclean builds\nsafe execution\n```\n# Phase 2 — Raspberry Pi Cluster\nPhase 2 introduces **horizontal scaling** using multiple Pi nodes.\nCluster model:\n```\n                ┌───────────────────┐\n                │ Control Node Pi   │\n                │ Dragon Engine     │\n                └──────────┬────────┘\n                           │\n                      RabbitMQ\n                           │\n        ┌───────────────┬───────────────┬───────────────┐\n        │ Worker Pi     │ Worker Pi     │ Worker Pi     │\n        │ Agent Runner  │ Agent Runner  │ Agent Runner  │\n        └───────────────┴───────────────┴───────────────┘\n```\n# Cluster Technology\nRecommended orchestrator:\n```\nDocker Swarm\n```\nReasons:\n```\nsimple setup\nlightweight\nnative Docker support\nworks well on ARM\n```\nAlternative options:\n```\nK3s (lightweight Kubernetes)\nNomad\n```\n# Cluster Responsibilities\n### Control Node\nRuns:\n```\ndragon-ui\ndragon-api\norchestrator\nrabbitmq\npostgres\n```\n### Worker Nodes\nRun:\n```\ndragon-agent-runner\nagent plugins\n```\nWorkers consume jobs from RabbitMQ.\n# Scaling Model\nExample cluster:\n```\n1 control node\n5 worker nodes\n```\nPossible concurrent agents:\n```\n50+ jobs\n```\nBecause:\n```\neach Pi runs multiple containers\n```\n# Job Scheduling\nRabbitMQ distributes jobs across workers.\nAgents become:\n```\nstateless workers\n```\nAdvantages:\n```\nfault tolerance\neasy scaling\nhigh throughput\n```\n# Repository Storage Strategy\nRepositories may be stored on:\n```\nlocal disk\nshared NFS\ndistributed storage\n```\nRecommended:\n```\ncontrol node repo cache\nworker temporary clones\n```\n# Network Requirements\nAll nodes must share a local network.\nExample:\n```\n1Gb Ethernet\n```\nRecommended topology:\n```\nGigabit switch\nwired network\n```\n# Cluster Expansion\nAdding nodes should be simple.\nExample:\n```\nflash Dragon Pi image\nconnect to network\njoin swarm\n```\nNew worker automatically begins consuming jobs.\n# Edge + Cloud Hybrid (Optional)\nFuture architecture may support hybrid operation.\nExample:\n```\nlocal cluster\n+\ncloud GPU agents\n```\nPossible uses:\n```\nheavy AI workloads\nlarge model inference\ncode analysis\n```\nBut the system must **never require cloud infrastructure** to function.\n# Repository Layout (Full Project)\nFinal recommended GitHub structure for the main repository:\n```\nDragonIdeaEngine\n│\n├─ docs\n│   MASTER_CODEX.md\n│   AGENT_JOB_SCHEMA.md\n│   AGENT_PLUGIN_SPEC.md\n│   AGENT_LIFECYCLE.md\n│   ARCHITECTURE.md\n│\n├─ runner\n│   dragon-agent-runner\n│\n├─ sdk\n│   dragon-agent-sdk\n│\n├─ agents\n│   architect-agent\n│   developer-agent\n│   review-agent\n│   test-agent\n│   refactor-agent\n│   documentation-agent\n│   feedback-agent\n│\n├─ services\n│   dragon-api\n│   dragon-orchestrator\n│\n├─ ui\n│   dragon-ui\n│\n├─ infrastructure\n│   docker\n│   swarm\n│   raspberrypi-image\n│\n├─ templates\n│   project-templates\n│\n└─ examples\n    sample-project\n```\n# Long Term Vision\nDragon Idea Engine becomes:\n```\na personal autonomous development lab\na distributed Pi software factory\nan extensible AI agent ecosystem\n```\nRunning on a small cluster of Raspberry Pis, it can:\n```\ngenerate new applications\nmaintain repositories\nprocess user feedback\nevolve software continuously\n```\nAll from a **self-hosted system sitting on a desk or rack**.\n\n## Scope Checklist\n\n- [ ] Next Codex Section I Recommend\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "03-dragon-idea-engine-infrastructure-architecture.md"
+  },
+  {
+    "index": 4,
+    "sourceFile": "codex/sections/04-idea-scoring-and-selection-system.md",
+    "title": "IDEA_SCORING_AND_SELECTION_SYSTEM",
+    "issueTitle": "Codex: IDEA_SCORING_AND_SELECTION_SYSTEM",
+    "summary": "Dragon Idea Engine receives ideas from multiple sources. Not all ideas should become projects.\nThe Idea Scoring System evaluates each idea and determines whether the system should:\n```\nbuild\ndefer\nreject\narchive\n```\nThis prevents uncontrolled repository growth and focuses development resources on high-value opportunities.",
+    "subheadings": [
+      "Purpose",
+      "Market Demand",
+      "Technical Feasibility",
+      "Development Cost",
+      "Differentiation",
+      "Monetization Potential",
+      "Strategic Value",
+      "Idea Queue",
+      "Idea Scores",
+      "Idea Voting",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: IDEA_SCORING_AND_SELECTION_SYSTEM\n\nSource section: `codex/sections/04-idea-scoring-and-selection-system.md`\n\n## Summary\n\nDragon Idea Engine receives ideas from multiple sources. Not all ideas should become projects.\nThe Idea Scoring System evaluates each idea and determines whether the system should:\n```\nbuild\ndefer\nreject\narchive\n```\nThis prevents uncontrolled repository growth and focuses development resources on high-value opportunities.\n\n## Scope Checklist\n\n- [ ] Market Demand\n- [ ] Technical Feasibility\n- [ ] Development Cost\n- [ ] Differentiation\n- [ ] Monetization Potential\n- [ ] Strategic Value\n- [ ] Idea Queue\n- [ ] Idea Scores\n- [ ] Idea Voting\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "04-idea-scoring-and-selection-system.md"
+  },
+  {
+    "index": 5,
+    "sourceFile": "codex/sections/05-risk-analysis-and-compliance-scoring.md",
+    "title": "RISK_ANALYSIS_AND_COMPLIANCE_SCORING",
+    "issueTitle": "Codex: RISK_ANALYSIS_AND_COMPLIANCE_SCORING",
+    "summary": "Before an idea can be approved for development, Dragon Idea Engine must evaluate **legal, regulatory, and ethical risks** associated with the project.\nThis ensures the system does not automatically generate projects that expose the operator to legal liability.\nThe Risk Analysis system reduces the likelihood of building projects that involve:\n```\nprivacy violations\nregulated industries\ncopyright infringement\ndata misuse\nplatform abuse\n```\nRisk analysis contributes a **negative weighting factor** in the idea scoring system.",
+    "subheadings": [
+      "Purpose",
+      "Privacy Risk",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: RISK_ANALYSIS_AND_COMPLIANCE_SCORING\n\nSource section: `codex/sections/05-risk-analysis-and-compliance-scoring.md`\n\n## Summary\n\nBefore an idea can be approved for development, Dragon Idea Engine must evaluate **legal, regulatory, and ethical risks** associated with the project.\nThis ensures the system does not automatically generate projects that expose the operator to legal liability.\nThe Risk Analysis system reduces the likelihood of building projects that involve:\n```\nprivacy violations\nregulated industries\ncopyright infringement\ndata misuse\nplatform abuse\n```\nRisk analysis contributes a **negative weighting factor** in the idea scoring system.\n\n## Scope Checklist\n\n- [ ] Privacy Risk\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "05-risk-analysis-and-compliance-scoring.md"
+  },
+  {
+    "index": 6,
+    "sourceFile": "codex/sections/06-ethics-analysis-agent.md",
+    "title": "ETHICS_ANALYSIS_AGENT",
+    "issueTitle": "Codex: ETHICS_ANALYSIS_AGENT",
+    "summary": "The **Ethics Analysis Agent** evaluates whether a proposed project could cause **harm, misuse, manipulation, or social risk**.\nLegal compliance alone is not sufficient. Many harmful systems are technically legal but ethically questionable.\nExamples include:\n```\nmass persuasion systems\nmanipulative addiction mechanics\nsurveillance tools\nexploitative gig-economy automation\ndeepfake generation tools\n```\nThe Ethics Agent ensures Dragon Idea Engine avoids building harmful technologies.",
+    "subheadings": [
+      "Purpose",
+      "Harm Potential",
+      "Manipulation Risk",
+      "Privacy Intrusion",
+      "Social Impact",
+      "Misuse Potential",
+      "Purpose",
+      "Purpose"
+    ],
+    "body": "# Codex: ETHICS_ANALYSIS_AGENT\n\nSource section: `codex/sections/06-ethics-analysis-agent.md`\n\n## Summary\n\nThe **Ethics Analysis Agent** evaluates whether a proposed project could cause **harm, misuse, manipulation, or social risk**.\nLegal compliance alone is not sufficient. Many harmful systems are technically legal but ethically questionable.\nExamples include:\n```\nmass persuasion systems\nmanipulative addiction mechanics\nsurveillance tools\nexploitative gig-economy automation\ndeepfake generation tools\n```\nThe Ethics Agent ensures Dragon Idea Engine avoids building harmful technologies.\n\n## Scope Checklist\n\n- [ ] Harm Potential\n- [ ] Manipulation Risk\n- [ ] Privacy Intrusion\n- [ ] Social Impact\n- [ ] Misuse Potential\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "06-ethics-analysis-agent.md"
+  },
+  {
+    "index": 7,
+    "sourceFile": "codex/sections/07-reusable-component-library.md",
+    "title": "REUSABLE_COMPONENT_LIBRARY",
+    "issueTitle": "Codex: REUSABLE_COMPONENT_LIBRARY",
+    "summary": "Dragon Idea Engine should avoid repeatedly generating the same infrastructure code across projects.\nInstead, it maintains a **Reusable Component Library** consisting of standardized modules and shared services.\nBenefits:\n```\nfaster project generation\nconsistent architecture\nreduced bugs\ncentralized security updates\nsmaller codebases\n```\nAll generated projects should reference reusable components whenever possible.",
+    "subheadings": [
+      "Purpose",
+      "One more codex section you will likely want next"
+    ],
+    "body": "# Codex: REUSABLE_COMPONENT_LIBRARY\n\nSource section: `codex/sections/07-reusable-component-library.md`\n\n## Summary\n\nDragon Idea Engine should avoid repeatedly generating the same infrastructure code across projects.\nInstead, it maintains a **Reusable Component Library** consisting of standardized modules and shared services.\nBenefits:\n```\nfaster project generation\nconsistent architecture\nreduced bugs\ncentralized security updates\nsmaller codebases\n```\nAll generated projects should reference reusable components whenever possible.\n\n## Scope Checklist\n\n- [ ] One more codex section you will likely want next\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "07-reusable-component-library.md"
+  },
+  {
+    "index": 8,
+    "sourceFile": "codex/sections/08-agent-memory-and-knowledge-system.md",
+    "title": "AGENT_MEMORY_AND_KNOWLEDGE_SYSTEM",
+    "issueTitle": "Codex: AGENT_MEMORY_AND_KNOWLEDGE_SYSTEM",
+    "summary": "The Agent Memory and Knowledge System allows Dragon Idea Engine to retain knowledge across project lifecycles. Instead of treating each project as an isolated event, the platform accumulates operational, architectural, and market knowledge.\nThis enables the system to:\n``` id=\"mem-1\"\nlearn from successful projects\navoid repeating failed designs\nreuse proven architectural patterns\nimprove idea scoring accuracy\nrecommend reliable components\n```\nThe goal is for the platform to become progressively more effective over time.",
+    "subheadings": [
+      "Purpose",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: AGENT_MEMORY_AND_KNOWLEDGE_SYSTEM\n\nSource section: `codex/sections/08-agent-memory-and-knowledge-system.md`\n\n## Summary\n\nThe Agent Memory and Knowledge System allows Dragon Idea Engine to retain knowledge across project lifecycles. Instead of treating each project as an isolated event, the platform accumulates operational, architectural, and market knowledge.\nThis enables the system to:\n``` id=\"mem-1\"\nlearn from successful projects\navoid repeating failed designs\nreuse proven architectural patterns\nimprove idea scoring accuracy\nrecommend reliable components\n```\nThe goal is for the platform to become progressively more effective over time.\n\n## Scope Checklist\n\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "08-agent-memory-and-knowledge-system.md"
+  },
+  {
+    "index": 9,
+    "sourceFile": "codex/sections/09-mandatory-open-source-policy.md",
+    "title": "MANDATORY_OPEN_SOURCE_POLICY",
+    "issueTitle": "Codex: MANDATORY_OPEN_SOURCE_POLICY",
+    "summary": "All code generated by Dragon Idea Engine, whether for internal testing, projects, or user-submitted ideas, **must be open source**. This ensures:\n``` id=\"os-1\"\ntransparency\ncommunity collaboration\nlegal clarity\nreusability\nsecurity auditability\n```\nNo project should remain closed source unless explicitly approved under exceptional circumstances with human oversight.",
+    "subheadings": [
+      "Purpose"
+    ],
+    "body": "# Codex: MANDATORY_OPEN_SOURCE_POLICY\n\nSource section: `codex/sections/09-mandatory-open-source-policy.md`\n\n## Summary\n\nAll code generated by Dragon Idea Engine, whether for internal testing, projects, or user-submitted ideas, **must be open source**. This ensures:\n``` id=\"os-1\"\ntransparency\ncommunity collaboration\nlegal clarity\nreusability\nsecurity auditability\n```\nNo project should remain closed source unless explicitly approved under exceptional circumstances with human oversight.\n\n## Scope Checklist\n\n- [ ] Define implementation scope from the source codex section.\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "09-mandatory-open-source-policy.md"
+  },
+  {
+    "index": 10,
+    "sourceFile": "codex/sections/10-platform-distribution-and-collaboration-model.md",
+    "title": "PLATFORM_DISTRIBUTION_AND_COLLABORATION_MODEL",
+    "issueTitle": "Codex: PLATFORM_DISTRIBUTION_AND_COLLABORATION_MODEL",
+    "summary": "## Status\n``` id=\"dist-0\"\nEXPERIMENTAL\n```\nThis section intentionally avoids defining licensing or ownership policies until the long-term governance model is finalized.\nThe current focus is on **technical architecture and ecosystem collaboration**, not legal structure.\n# Platform Distribution Vision\nDragon Idea Engine is designed to eventually operate as a **distributed innovation platform** where multiple users and systems can participate.\nPossible participation models may include:\n``` id=\"dist-1\"\nrunning local agent nodes\ncontributing ideas\ntesting generated projects\nimproving reusable components\nproviding research data\n```\nHowever, the exact **rights, ownership, and licensing structure** remains undecided.\n# Node Participation Concept\nThe platform may eventually support distributed compute participation.\nParticipants could run **Agent Nodes** on their own infrastructure.\nExample environments include:\n``` id=\"dist-2\"\nRaspberry Pi systems\nlocal servers\ncloud VMs\ndeveloper workstations\n```\nThese nodes may assist with:\n``` id=\"dist-3\"\nidea analysis\ncode generation\ntesting\nmedia generation\nresearch tasks\n```\nFinal participation rules will be defined later.\n# Idea Contribution Concept\nThe system may allow external users to submit ideas to the platform.\nIdeas could be:\n``` id=\"dist-4\"\npersonal project ideas\nstartup concepts\nautomation tools\nhardware prototypes\nresearch experiments\n```\nAccepted ideas may trigger automated development workflows.\nThe future platform may support:\n``` id=\"dist-5\"\npublic idea pools\nprivate idea submissions\ncollaborative development\n```\nNo ownership rules are currently defined.\n# Hardware Distribution Possibilities\nDragon Idea Engine may eventually be distributed as **preconfigured hardware systems**.\nPotential formats include:\n``` id=\"dist-6\"\nRaspberry Pi single-node kits\nRaspberry Pi cluster kits\nprebuilt server appliances\nvirtual machine images\ncontainer bundles\n```\nThese would allow users to run the platform locally with minimal setup.\nImplementation details will be determined later.\n# Ecosystem Goals\nThe long-term platform aims to encourage:\n``` id=\"dist-7\"\ncollaborative innovation\ndistributed compute participation\nshared reusable components\nrapid product experimentation\n```\nHowever, governance, licensing, and commercial structures will be addressed in a future codex revision.\n# Temporary Rule\nUntil governance decisions are finalized:\n``` id=\"dist-8\"\nfocus on architecture\nfocus on technical capabilities\navoid embedding licensing restrictions into generated systems\n```\nAgents should not assume any licensing model when generating projects.\n# Future Section Placeholder\nA future codex revision will define:\n``` id=\"dist-9\"\nplatform licensing\ncontribution requirements\nidea ownership\ncommercial rights\nrevenue models\n```\nThis section will eventually become:\n``` id=\"dist-10\"\nPLATFORM_GOVERNANCE_AND_LICENSE_MODEL\n```\n### Recommended Next Codex Section\nNow that you’ve defined:\n- idea scoring\n- risk analysis\n- ethics agent\n- reusable component library\n- knowledge system\n- distributed nodes\n…the **next extremely useful section** would be:\n**AGENT ORCHESTRATION ENGINE**\nThis defines **how agents actually coordinate tasks**, queue work, and collaborate through services like:\n-\n-\nRight now the codex defines *what agents exist*, but not **how they coordinate work**, which is the heart of the system.",
+    "subheadings": [
+      "Status"
+    ],
+    "body": "# Codex: PLATFORM_DISTRIBUTION_AND_COLLABORATION_MODEL\n\nSource section: `codex/sections/10-platform-distribution-and-collaboration-model.md`\n\n## Summary\n\n## Status\n``` id=\"dist-0\"\nEXPERIMENTAL\n```\nThis section intentionally avoids defining licensing or ownership policies until the long-term governance model is finalized.\nThe current focus is on **technical architecture and ecosystem collaboration**, not legal structure.\n# Platform Distribution Vision\nDragon Idea Engine is designed to eventually operate as a **distributed innovation platform** where multiple users and systems can participate.\nPossible participation models may include:\n``` id=\"dist-1\"\nrunning local agent nodes\ncontributing ideas\ntesting generated projects\nimproving reusable components\nproviding research data\n```\nHowever, the exact **rights, ownership, and licensing structure** remains undecided.\n# Node Participation Concept\nThe platform may eventually support distributed compute participation.\nParticipants could run **Agent Nodes** on their own infrastructure.\nExample environments include:\n``` id=\"dist-2\"\nRaspberry Pi systems\nlocal servers\ncloud VMs\ndeveloper workstations\n```\nThese nodes may assist with:\n``` id=\"dist-3\"\nidea analysis\ncode generation\ntesting\nmedia generation\nresearch tasks\n```\nFinal participation rules will be defined later.\n# Idea Contribution Concept\nThe system may allow external users to submit ideas to the platform.\nIdeas could be:\n``` id=\"dist-4\"\npersonal project ideas\nstartup concepts\nautomation tools\nhardware prototypes\nresearch experiments\n```\nAccepted ideas may trigger automated development workflows.\nThe future platform may support:\n``` id=\"dist-5\"\npublic idea pools\nprivate idea submissions\ncollaborative development\n```\nNo ownership rules are currently defined.\n# Hardware Distribution Possibilities\nDragon Idea Engine may eventually be distributed as **preconfigured hardware systems**.\nPotential formats include:\n``` id=\"dist-6\"\nRaspberry Pi single-node kits\nRaspberry Pi cluster kits\nprebuilt server appliances\nvirtual machine images\ncontainer bundles\n```\nThese would allow users to run the platform locally with minimal setup.\nImplementation details will be determined later.\n# Ecosystem Goals\nThe long-term platform aims to encourage:\n``` id=\"dist-7\"\ncollaborative innovation\ndistributed compute participation\nshared reusable components\nrapid product experimentation\n```\nHowever, governance, licensing, and commercial structures will be addressed in a future codex revision.\n# Temporary Rule\nUntil governance decisions are finalized:\n``` id=\"dist-8\"\nfocus on architecture\nfocus on technical capabilities\navoid embedding licensing restrictions into generated systems\n```\nAgents should not assume any licensing model when generating projects.\n# Future Section Placeholder\nA future codex revision will define:\n``` id=\"dist-9\"\nplatform licensing\ncontribution requirements\nidea ownership\ncommercial rights\nrevenue models\n```\nThis section will eventually become:\n``` id=\"dist-10\"\nPLATFORM_GOVERNANCE_AND_LICENSE_MODEL\n```\n### Recommended Next Codex Section\nNow that you’ve defined:\n- idea scoring\n- risk analysis\n- ethics agent\n- reusable component library\n- knowledge system\n- distributed nodes\n…the **next extremely useful section** would be:\n**AGENT ORCHESTRATION ENGINE**\nThis defines **how agents actually coordinate tasks**, queue work, and collaborate through services like:\n-\n-\nRight now the codex defines *what agents exist*, but not **how they coordinate work**, which is the heart of the system.\n\n## Scope Checklist\n\n- [ ] Status\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "10-platform-distribution-and-collaboration-model.md"
+  },
+  {
+    "index": 11,
+    "sourceFile": "codex/sections/11-agent-orchestration-engine.md",
+    "title": "AGENT_ORCHESTRATION_ENGINE",
+    "issueTitle": "Codex: AGENT_ORCHESTRATION_ENGINE",
+    "summary": "The Agent Orchestration Engine coordinates the execution of tasks across all agents within Dragon Idea Engine.\nIt ensures that:\n``` id=\"orch-1\"\nagents receive tasks in the correct order\ntasks are distributed efficiently\nfailures are handled gracefully\nworkloads are balanced across nodes\nagent collaboration is structured\n```\nWithout orchestration, agents would operate independently and produce inconsistent or conflicting outputs.",
+    "subheadings": [
+      "Purpose"
+    ],
+    "body": "# Codex: AGENT_ORCHESTRATION_ENGINE\n\nSource section: `codex/sections/11-agent-orchestration-engine.md`\n\n## Summary\n\nThe Agent Orchestration Engine coordinates the execution of tasks across all agents within Dragon Idea Engine.\nIt ensures that:\n``` id=\"orch-1\"\nagents receive tasks in the correct order\ntasks are distributed efficiently\nfailures are handled gracefully\nworkloads are balanced across nodes\nagent collaboration is structured\n```\nWithout orchestration, agents would operate independently and produce inconsistent or conflicting outputs.\n\n## Scope Checklist\n\n- [ ] Define implementation scope from the source codex section.\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "11-agent-orchestration-engine.md"
+  },
+  {
+    "index": 12,
+    "sourceFile": "codex/sections/12-agent-capability-registry-and-discovery.md",
+    "title": "AGENT_CAPABILITY_REGISTRY_AND_DISCOVERY",
+    "issueTitle": "Codex: AGENT_CAPABILITY_REGISTRY_AND_DISCOVERY",
+    "summary": "The Agent Capability Registry maintains a centralized catalog of all available agents, their capabilities, supported technologies, and operational status.\nThis system allows the platform to dynamically:\n``` id=\"acr-1\"\ndiscover agents\nroute tasks correctly\nbalance workloads\nenable specialization\nsupport distributed nodes\n```\nWithout this registry, the orchestration engine would not know which agents are capable of performing specific tasks.",
+    "subheadings": [
+      "Purpose"
+    ],
+    "body": "# Codex: AGENT_CAPABILITY_REGISTRY_AND_DISCOVERY\n\nSource section: `codex/sections/12-agent-capability-registry-and-discovery.md`\n\n## Summary\n\nThe Agent Capability Registry maintains a centralized catalog of all available agents, their capabilities, supported technologies, and operational status.\nThis system allows the platform to dynamically:\n``` id=\"acr-1\"\ndiscover agents\nroute tasks correctly\nbalance workloads\nenable specialization\nsupport distributed nodes\n```\nWithout this registry, the orchestration engine would not know which agents are capable of performing specific tasks.\n\n## Scope Checklist\n\n- [ ] Define implementation scope from the source codex section.\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "12-agent-capability-registry-and-discovery.md"
+  },
+  {
+    "index": 13,
+    "sourceFile": "codex/sections/13-project-generation-pipeline.md",
+    "title": "PROJECT_GENERATION_PIPELINE",
+    "issueTitle": "Codex: PROJECT_GENERATION_PIPELINE",
+    "summary": "The Project Generation Pipeline defines the automated process that transforms an approved idea into a fully structured project, including repositories, architecture, code, documentation, and deployment configuration.\nThis pipeline ensures that all projects generated by Dragon Idea Engine follow consistent standards and leverage reusable components wherever possible.",
+    "subheadings": [
+      "Purpose"
+    ],
+    "body": "# Codex: PROJECT_GENERATION_PIPELINE\n\nSource section: `codex/sections/13-project-generation-pipeline.md`\n\n## Summary\n\nThe Project Generation Pipeline defines the automated process that transforms an approved idea into a fully structured project, including repositories, architecture, code, documentation, and deployment configuration.\nThis pipeline ensures that all projects generated by Dragon Idea Engine follow consistent standards and leverage reusable components wherever possible.\n\n## Scope Checklist\n\n- [ ] Define implementation scope from the source codex section.\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "13-project-generation-pipeline.md"
+  },
+  {
+    "index": 14,
+    "sourceFile": "codex/sections/14-unity-development-agent-suite.md",
+    "title": "UNITY_DEVELOPMENT_AGENT_SUITE",
+    "issueTitle": "Codex: UNITY_DEVELOPMENT_AGENT_SUITE",
+    "summary": "The Unity Development Agent Suite enables Dragon Idea Engine to generate **interactive applications, simulations, games, and advanced visual interfaces** using the  engine.\nThese agents specialize in the unique architecture of Unity projects, including:\n``` id=\"unity-1\"\nscenes\nprefabs\ngame objects\nanimation systems\nshader pipelines\nphysics systems\nC# gameplay scripts\n```\nUnity development requires coordination between visual design agents and code agents.",
+    "subheadings": [
+      "Purpose",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: UNITY_DEVELOPMENT_AGENT_SUITE\n\nSource section: `codex/sections/14-unity-development-agent-suite.md`\n\n## Summary\n\nThe Unity Development Agent Suite enables Dragon Idea Engine to generate **interactive applications, simulations, games, and advanced visual interfaces** using the  engine.\nThese agents specialize in the unique architecture of Unity projects, including:\n``` id=\"unity-1\"\nscenes\nprefabs\ngame objects\nanimation systems\nshader pipelines\nphysics systems\nC# gameplay scripts\n```\nUnity development requires coordination between visual design agents and code agents.\n\n## Scope Checklist\n\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "14-unity-development-agent-suite.md"
+  },
+  {
+    "index": 15,
+    "sourceFile": "codex/sections/15-asset-and-media-generation-pipeline.md",
+    "title": "ASSET_AND_MEDIA_GENERATION_PIPELINE",
+    "issueTitle": "Codex: ASSET_AND_MEDIA_GENERATION_PIPELINE",
+    "summary": "The Asset and Media Generation Pipeline defines the standardized process used by Dragon Idea Engine to generate, validate, store, and reuse media assets required by generated projects.\nThis system supports:\n```text\nsoftware UI assets\nUnity 2D/3D assets\ndocumentation graphics\ntraining media\nhardware diagrams\nmarketing visuals\n```\nThe goal is to ensure all generated projects have **high-quality, reusable media assets** while minimizing duplication.",
+    "subheadings": [
+      "Purpose",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: ASSET_AND_MEDIA_GENERATION_PIPELINE\n\nSource section: `codex/sections/15-asset-and-media-generation-pipeline.md`\n\n## Summary\n\nThe Asset and Media Generation Pipeline defines the standardized process used by Dragon Idea Engine to generate, validate, store, and reuse media assets required by generated projects.\nThis system supports:\n```text\nsoftware UI assets\nUnity 2D/3D assets\ndocumentation graphics\ntraining media\nhardware diagrams\nmarketing visuals\n```\nThe goal is to ensure all generated projects have **high-quality, reusable media assets** while minimizing duplication.\n\n## Scope Checklist\n\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "15-asset-and-media-generation-pipeline.md"
+  },
+  {
+    "index": 16,
+    "sourceFile": "codex/sections/16-knowledge-and-learning-system.md",
+    "title": "KNOWLEDGE_AND_LEARNING_SYSTEM",
+    "issueTitle": "Codex: KNOWLEDGE_AND_LEARNING_SYSTEM",
+    "summary": "The Knowledge and Learning System allows Dragon Idea Engine to continuously improve by collecting, analyzing, and learning from:\n```text\ngenerated projects\nidea evaluations\ndevelopment outcomes\nperformance metrics\nfailures and corrections\n```\nThis system transforms the platform from a static automation tool into a **self-improving engineering intelligence**.",
+    "subheadings": [
+      "Purpose",
+      "Next Codex Section (Highly Recommended)"
+    ],
+    "body": "# Codex: KNOWLEDGE_AND_LEARNING_SYSTEM\n\nSource section: `codex/sections/16-knowledge-and-learning-system.md`\n\n## Summary\n\nThe Knowledge and Learning System allows Dragon Idea Engine to continuously improve by collecting, analyzing, and learning from:\n```text\ngenerated projects\nidea evaluations\ndevelopment outcomes\nperformance metrics\nfailures and corrections\n```\nThis system transforms the platform from a static automation tool into a **self-improving engineering intelligence**.\n\n## Scope Checklist\n\n- [ ] Next Codex Section (Highly Recommended)\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "16-knowledge-and-learning-system.md"
+  },
+  {
+    "index": 17,
+    "sourceFile": "codex/sections/17-distributed-agent-cluster-architecture.md",
+    "title": "DISTRIBUTED_AGENT_CLUSTER_ARCHITECTURE",
+    "issueTitle": "Codex: DISTRIBUTED_AGENT_CLUSTER_ARCHITECTURE",
+    "summary": "The Distributed Agent Cluster Architecture defines how Dragon Idea Engine runs across multiple nodes and coordinates agents performing tasks in parallel.\nThe architecture allows the system to scale from:\n```text id=\"q1w7vn\"\nsingle-node Raspberry Pi installation\nsmall Pi clusters\nlarger distributed compute environments\n```\nThis ensures that idea evaluation, project generation, asset creation, and learning systems can run simultaneously.",
+    "subheadings": [
+      "Purpose",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: DISTRIBUTED_AGENT_CLUSTER_ARCHITECTURE\n\nSource section: `codex/sections/17-distributed-agent-cluster-architecture.md`\n\n## Summary\n\nThe Distributed Agent Cluster Architecture defines how Dragon Idea Engine runs across multiple nodes and coordinates agents performing tasks in parallel.\nThe architecture allows the system to scale from:\n```text id=\"q1w7vn\"\nsingle-node Raspberry Pi installation\nsmall Pi clusters\nlarger distributed compute environments\n```\nThis ensures that idea evaluation, project generation, asset creation, and learning systems can run simultaneously.\n\n## Scope Checklist\n\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "17-distributed-agent-cluster-architecture.md"
+  },
+  {
+    "index": 18,
+    "sourceFile": "codex/sections/18-security-and-compliance-validation-system.md",
+    "title": "SECURITY_AND_COMPLIANCE_VALIDATION_SYSTEM",
+    "issueTitle": "Codex: SECURITY_AND_COMPLIANCE_VALIDATION_SYSTEM",
+    "summary": "The Security and Compliance Validation System ensures that every generated project is evaluated for security vulnerabilities, legal compliance, regulatory obligations, and ethical risks before deployment.\nThis system prevents the platform from generating software, tools, or hardware that could expose users to legal liability, security breaches, or ethical harm.\nThe system operates as an automated **governance layer** across the entire project generation pipeline.",
+    "subheadings": [
+      "Purpose",
+      "Recommended Next Codex Section"
+    ],
+    "body": "# Codex: SECURITY_AND_COMPLIANCE_VALIDATION_SYSTEM\n\nSource section: `codex/sections/18-security-and-compliance-validation-system.md`\n\n## Summary\n\nThe Security and Compliance Validation System ensures that every generated project is evaluated for security vulnerabilities, legal compliance, regulatory obligations, and ethical risks before deployment.\nThis system prevents the platform from generating software, tools, or hardware that could expose users to legal liability, security breaches, or ethical harm.\nThe system operates as an automated **governance layer** across the entire project generation pipeline.\n\n## Scope Checklist\n\n- [ ] Recommended Next Codex Section\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "18-security-and-compliance-validation-system.md"
+  },
+  {
+    "index": 19,
+    "sourceFile": "codex/sections/19-autonomous-idea-discovery-system.md",
+    "title": "AUTONOMOUS_IDEA_DISCOVERY_SYSTEM",
+    "issueTitle": "Codex: AUTONOMOUS_IDEA_DISCOVERY_SYSTEM",
+    "summary": "The Autonomous Idea Discovery System enables Dragon Idea Engine to proactively discover, generate, and evaluate new ideas without requiring direct user input.\nInstead of relying only on submitted ideas, the system continuously scans multiple information sources to detect:\n```text\nunsolved problems\nemerging technology trends\ninefficiencies in existing tools\nnew business opportunities\nscientific and engineering gaps\n```\nThese discoveries are then submitted into the Idea Evaluation Pipeline.",
+    "subheadings": [
+      "Purpose",
+      "AGENT_SELF_IMPROVEMENT_AND_EVOLUTION_SYSTEM"
+    ],
+    "body": "# Codex: AUTONOMOUS_IDEA_DISCOVERY_SYSTEM\n\nSource section: `codex/sections/19-autonomous-idea-discovery-system.md`\n\n## Summary\n\nThe Autonomous Idea Discovery System enables Dragon Idea Engine to proactively discover, generate, and evaluate new ideas without requiring direct user input.\nInstead of relying only on submitted ideas, the system continuously scans multiple information sources to detect:\n```text\nunsolved problems\nemerging technology trends\ninefficiencies in existing tools\nnew business opportunities\nscientific and engineering gaps\n```\nThese discoveries are then submitted into the Idea Evaluation Pipeline.\n\n## Scope Checklist\n\n- [ ] AGENT_SELF_IMPROVEMENT_AND_EVOLUTION_SYSTEM\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "19-autonomous-idea-discovery-system.md"
+  },
+  {
+    "index": 20,
+    "sourceFile": "codex/sections/20-agent-self-improvement-and-evolution-system.md",
+    "title": "AGENT_SELF_IMPROVEMENT_AND_EVOLUTION_SYSTEM",
+    "issueTitle": "Codex: AGENT_SELF_IMPROVEMENT_AND_EVOLUTION_SYSTEM",
+    "summary": "The Agent Self-Improvement and Evolution System allows Dragon Idea Engine to continuously refine the capabilities of its agents by analyzing performance data and automatically improving agent configurations, prompts, strategies, and task coordination.\nInstead of remaining static, the system evolves its own internal intelligence layer over time.\nThe goal is to ensure that agents responsible for idea generation, software development, asset creation, and analysis become progressively more effective.",
+    "subheadings": [
+      "Purpose",
+      "Next Codex Section (Very Important)"
+    ],
+    "body": "# Codex: AGENT_SELF_IMPROVEMENT_AND_EVOLUTION_SYSTEM\n\nSource section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`\n\n## Summary\n\nThe Agent Self-Improvement and Evolution System allows Dragon Idea Engine to continuously refine the capabilities of its agents by analyzing performance data and automatically improving agent configurations, prompts, strategies, and task coordination.\nInstead of remaining static, the system evolves its own internal intelligence layer over time.\nThe goal is to ensure that agents responsible for idea generation, software development, asset creation, and analysis become progressively more effective.\n\n## Scope Checklist\n\n- [ ] Next Codex Section (Very Important)\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "20-agent-self-improvement-and-evolution-system.md"
+  },
+  {
+    "index": 21,
+    "sourceFile": "codex/sections/21-human-collaboration-and-override-system.md",
+    "title": "HUMAN_COLLABORATION_AND_OVERRIDE_SYSTEM",
+    "issueTitle": "Codex: HUMAN_COLLABORATION_AND_OVERRIDE_SYSTEM",
+    "summary": "The Human Collaboration and Override System defines how human users interact with Dragon Idea Engine, provide guidance, approve critical decisions, and intervene when necessary.\nWhile the platform is designed for autonomous operation, human oversight ensures that:\n```text\nhigh-risk ideas receive review\nethical concerns are addressed\ncomplex design decisions benefit from human expertise\nsystem errors can be corrected\ncommunity collaboration is possible\n```\nThis system balances **automation with responsible human control**.",
+    "subheadings": [
+      "Purpose",
+      "Next Codex Section (Final Core Layer)"
+    ],
+    "body": "# Codex: HUMAN_COLLABORATION_AND_OVERRIDE_SYSTEM\n\nSource section: `codex/sections/21-human-collaboration-and-override-system.md`\n\n## Summary\n\nThe Human Collaboration and Override System defines how human users interact with Dragon Idea Engine, provide guidance, approve critical decisions, and intervene when necessary.\nWhile the platform is designed for autonomous operation, human oversight ensures that:\n```text\nhigh-risk ideas receive review\nethical concerns are addressed\ncomplex design decisions benefit from human expertise\nsystem errors can be corrected\ncommunity collaboration is possible\n```\nThis system balances **automation with responsible human control**.\n\n## Scope Checklist\n\n- [ ] Next Codex Section (Final Core Layer)\n\n## Acceptance Criteria\n\n- [ ] The implementation plan for this codex section is documented.\n- [ ] Dependencies or sequencing constraints are identified.\n- [ ] Follow-up engineering tasks are clear enough to execute.\n",
+    "fileName": "21-human-collaboration-and-override-system.md"
+  }
+]
