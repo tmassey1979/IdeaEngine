@@ -109,7 +109,12 @@ public sealed class GithubIssueService
         string rootDirectory)
     {
         var currentStage = InferCurrentStage(workflow);
+        var currentStageState = workflow.Stages.TryGetValue(currentStage, out var stageState) ? stageState : null;
         var latestExecution = executionRecords.OrderByDescending(record => record.RecordedAt).FirstOrDefault();
+        var currentStageTiming = FormatStageTiming(currentStageState?.ObservedAt, workflow.UpdatedAt);
+        var latestExecutionTiming = latestExecution is not null
+            ? $"{latestExecution.RecordedAt:O} ({FormatElapsed(workflow.UpdatedAt - latestExecution.RecordedAt)} ago)"
+            : null;
         var commentBody = string.Join(
             Environment.NewLine,
             [
@@ -117,9 +122,13 @@ public sealed class GithubIssueService
                 "Automated backend heartbeat:",
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- current stage: {currentStage}",
+                $"- current stage updated: {currentStageTiming}",
                 latestExecution is not null
                     ? $"- latest outcome: {latestExecution.JobAgent} {latestExecution.Status} ({latestExecution.Summary})"
                     : "- latest outcome: none recorded",
+                latestExecutionTiming is not null
+                    ? $"- latest execution recorded: {latestExecutionTiming}"
+                    : "- latest execution recorded: none",
                 $"- stages: {string.Join(", ", workflow.Stages.Select(stage => $"{stage.Key}={stage.Value.Status}"))}",
                 executionRecords.Count > 0
                     ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
@@ -133,6 +142,36 @@ public sealed class GithubIssueService
         AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
         return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
+    }
+
+    private static string FormatStageTiming(DateTimeOffset? observedAt, DateTimeOffset now)
+    {
+        if (observedAt is null)
+        {
+            return "unknown";
+        }
+
+        return $"{observedAt.Value:O} ({FormatElapsed(now - observedAt.Value)} ago)";
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        if (elapsed < TimeSpan.Zero)
+        {
+            elapsed = TimeSpan.Zero;
+        }
+
+        if (elapsed.TotalHours >= 1)
+        {
+            return $"{Math.Floor(elapsed.TotalHours)}h {elapsed.Minutes}m";
+        }
+
+        if (elapsed.TotalMinutes >= 1)
+        {
+            return $"{Math.Floor(elapsed.TotalMinutes)}m {elapsed.Seconds}s";
+        }
+
+        return $"{Math.Max(0, elapsed.Seconds)}s";
     }
 
     private static string InferCurrentStage(IssueWorkflowState workflow)

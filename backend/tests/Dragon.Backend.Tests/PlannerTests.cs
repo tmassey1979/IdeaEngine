@@ -265,19 +265,20 @@ public sealed class PlannerTests
     public void SyncInProgressWorkflow_CreatesHeartbeatComment()
     {
         var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
         var workflow = new IssueWorkflowState(
             22,
             "Core",
             "in_progress",
             new Dictionary<string, WorkflowStageState>
             {
-                ["developer"] = new("success", "job-1", DateTimeOffset.UtcNow, "done")
+                ["developer"] = new("success", "job-1", now.AddMinutes(-5), "done")
             },
-            DateTimeOffset.UtcNow
+            now
         );
         var records = new[]
         {
-            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-1", "success", "done", DateTimeOffset.UtcNow, [], ["review", "test"])
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-1", "success", "done", now.AddMinutes(-5), [], ["review", "test"])
         };
 
         var commands = new List<string>();
@@ -300,22 +301,25 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("current stage updated: unknown", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
     }
 
     [Fact]
     public void SyncInProgressWorkflow_UpdatesExistingHeartbeatComment()
     {
         var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
         var workflow = new IssueWorkflowState(
             22,
             "Core",
             "in_progress",
             new Dictionary<string, WorkflowStageState>
             {
-                ["developer"] = new("success", "job-1", DateTimeOffset.UtcNow, "done")
+                ["developer"] = new("success", "job-1", now.AddMinutes(-3), "done")
             },
-            DateTimeOffset.UtcNow
+            now
         );
 
         var commands = new List<string>();
@@ -335,6 +339,41 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("issues/comments/99", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--method PATCH", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest execution recorded: none", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncInProgressWorkflow_IncludesCurrentStageTimestampWhenAvailable()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", now.AddMinutes(-10), "done"),
+                ["review"] = new("failed", "job-2", now.AddMinutes(-2), "reviewing")
+            },
+            now
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("current stage updated: 2026-03-16T15:28:00.0000000+00:00 (2m 0s ago)", StringComparison.Ordinal));
     }
 
     [Fact]
