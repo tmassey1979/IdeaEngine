@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const {
@@ -188,7 +189,7 @@ test("credentials manager resolves project before global", () => {
 });
 
 test("workspace manager creates isolated issue workspaces", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-workspace-"));
+  const tempRoot = makeTempDir("tmp-workspace-");
   const workspace = createWorkspaceManager({ rootDir: tempRoot });
   const job = createJob({
     agent: "developer",
@@ -205,7 +206,7 @@ test("workspace manager creates isolated issue workspaces", () => {
 });
 
 test("job publisher writes queue entries", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-publisher-"));
+  const tempRoot = makeTempDir("tmp-publisher-");
   const publisher = createJobPublisher({ rootDir: tempRoot, queue: "dragon.jobs" });
   const publishResult = publisher.publish({
     agent: "review",
@@ -221,7 +222,7 @@ test("job publisher writes queue entries", () => {
 });
 
 test("agent context exposes codex runtime helpers", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-context-"));
+  const tempRoot = makeTempDir("tmp-context-");
   const agent = createAgent({
     name: "developer",
     description: "Developer",
@@ -254,7 +255,7 @@ test("agent context exposes codex runtime helpers", () => {
 });
 
 test("git client supports branch and commit helpers", () => {
-  const repoDir = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-git-"));
+  const repoDir = makeTempDir("tmp-git-");
   execGit(["init"], repoDir);
   execGit(["config", "user.name", "Dragon Test"], repoDir);
   execGit(["config", "user.email", "dragon@example.com"], repoDir);
@@ -281,4 +282,8 @@ function execGit(args, cwd) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   });
+}
+
+function makeTempDir(prefix) {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }

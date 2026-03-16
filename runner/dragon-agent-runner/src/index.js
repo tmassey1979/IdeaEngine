@@ -65,7 +65,10 @@ async function runAgent(agentId, options = {}) {
     args: options.args || [],
     flags: options.flags || {},
     rootDir,
-    config: options.config || {},
+    config: {
+      sourceRoot: options.catalogRoot || options.rootDir || workspaceRoot(),
+      ...(options.config || {})
+    },
     projectCredentials: options.projectCredentials || {},
     globalCredentials: options.globalCredentials || {}
   });
@@ -89,6 +92,25 @@ async function runJob(jobInput, options = {}) {
       job,
       execution
     });
+
+    if (result && result.success === false) {
+      return createObservedResult(
+        createJobResult({
+          job,
+          startedAt,
+          status: JOB_STATUS.FAILED,
+          result,
+          logs: buildExecutionLogs(job, execution, [
+            {
+              level: "warn",
+              message: `Agent "${job.agent}" reported an unsuccessful result.`
+            }
+          ]),
+          errors: [result.message || `Agent "${job.agent}" reported failure.`]
+        }),
+        execution
+      );
+    }
 
     return createObservedResult(
       createJobResult({

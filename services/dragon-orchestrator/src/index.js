@@ -478,6 +478,8 @@ function updateIssueWorkflowState({
   );
   if (stageStatuses.every((status) => status === "success")) {
     record.overall = "validated";
+  } else if (stageStatuses.some((status) => status === "failed")) {
+    record.overall = "failed";
   } else if (stageStatuses.some((status) => status === "deadletter")) {
     record.overall = "blocked";
   } else if (stageStatuses.some((status) => status === "retry")) {

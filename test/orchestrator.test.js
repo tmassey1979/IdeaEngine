@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const {
@@ -69,7 +70,7 @@ test("createSelfBuildJob builds a developer job from an issue", () => {
 });
 
 test("publishNextJob emits the next queued self-build job", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-orchestrator-"));
+  const tempRoot = makeTempDir("tmp-orchestrator-");
   const result = publishNextJob({
     rootDir: tempRoot,
     repo: "IdeaEngine",
@@ -89,7 +90,7 @@ test("publishNextJob emits the next queued self-build job", () => {
 });
 
 test("publishFollowUpJobs queues review and test after success", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-followups-"));
+  const tempRoot = makeTempDir("tmp-followups-");
   const followUps = publishFollowUpJobs({
     execution: {
       status: "success",
@@ -116,7 +117,7 @@ test("publishFollowUpJobs queues review and test after success", () => {
 });
 
 test("persistExecutionRecord stores execution state", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-record-"));
+  const tempRoot = makeTempDir("tmp-record-");
   const saved = persistExecutionRecord({
     rootDir: tempRoot,
     issue: { number: 22, title: "Core System Principles" },
@@ -132,7 +133,7 @@ test("persistExecutionRecord stores execution state", () => {
 });
 
 test("executeSelfBuildStep runs one build step and queues follow-ups", async () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-execute-"));
+  const tempRoot = makeTempDir("tmp-execute-");
   const result = await executeSelfBuildStep({
     owner: "tmassey1979",
     repo: "IdeaEngine",
@@ -158,7 +159,7 @@ test("executeSelfBuildStep runs one build step and queues follow-ups", async () 
 });
 
 test("dequeueNextJob removes the oldest queued job", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-dequeue-"));
+  const tempRoot = makeTempDir("tmp-dequeue-");
   publishNextJob({
     rootDir: tempRoot,
     repo: "IdeaEngine",
@@ -176,7 +177,7 @@ test("dequeueNextJob removes the oldest queued job", () => {
 });
 
 test("consumeQueuedJob executes queued work and updates workflow state", async () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-consume-"));
+  const tempRoot = makeTempDir("tmp-consume-");
   publishNextJob({
     rootDir: tempRoot,
     repo: "IdeaEngine",
@@ -198,7 +199,7 @@ test("consumeQueuedJob executes queued work and updates workflow state", async (
 });
 
 test("updateIssueWorkflowState marks issues validated when stages succeed", () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-state-"));
+  const tempRoot = makeTempDir("tmp-state-");
 
   updateIssueWorkflowState({
     rootDir: tempRoot,
@@ -227,6 +228,22 @@ test("updateIssueWorkflowState marks issues validated when stages succeed", () =
 
   assert.equal(workflow.issue.overall, "in_progress");
   assert.equal(finalWorkflow.issue.overall, "validated");
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("updateIssueWorkflowState marks issues failed when a stage fails", () => {
+  const tempRoot = makeTempDir("tmp-state-failed-");
+  const workflow = updateIssueWorkflowState({
+    rootDir: tempRoot,
+    issueNumber: 22,
+    issueTitle: "Core",
+    agent: "review",
+    execution: { status: "failed", jobId: "job-review", observedAt: new Date().toISOString() },
+    followUps: []
+  });
+
+  assert.equal(workflow.issue.overall, "failed");
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });
@@ -273,7 +290,7 @@ test("syncIssueWorkflowToGithub skips non-validated issues", () => {
 });
 
 test("cycleOnce consumes queued jobs before seeding new ones", async () => {
-  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-cycle-"));
+  const tempRoot = makeTempDir("tmp-cycle-");
   publishNextJob({
     rootDir: tempRoot,
     repo: "IdeaEngine",
@@ -295,3 +312,7 @@ test("cycleOnce consumes queued jobs before seeding new ones", async () => {
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });
+
+function makeTempDir(prefix) {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
