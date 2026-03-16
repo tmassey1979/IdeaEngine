@@ -11,8 +11,10 @@ return command switch
     "plan-from-backlog" => RunPlanFromBacklog(options),
     "queue" => RunQueue(options),
     "cycle-once" => RunCycleOnce(options),
+    "run-until-idle" => RunUntilIdle(options),
     "github-issues" => RunGithubIssues(options),
     "github-cycle-once" => RunGithubCycleOnce(options),
+    "github-run-until-idle" => RunGithubRunUntilIdle(options),
     "sync-workflow" => RunSyncWorkflow(options),
     _ => ShowHelp()
 };
@@ -93,6 +95,19 @@ static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
     return 0;
 }
 
+static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
+{
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var stories = BacklogStoryCatalog.LoadStories(root);
+    var loop = new SelfBuildLoop(root);
+    var result = loop.RunUntilIdle(
+        stories,
+        maxCycles: GetInt(options, "max-cycles", 100)
+    );
+    PrintJson(result);
+    return 0;
+}
+
 static int RunGithubIssues(IReadOnlyDictionary<string, string> options)
 {
     if (!TryGetRepoOptions(options, out var owner, out var repo))
@@ -116,6 +131,24 @@ static int RunGithubCycleOnce(IReadOnlyDictionary<string, string> options)
     var root = GetString(options, "root", Directory.GetCurrentDirectory());
     var loop = new SelfBuildLoop(root);
     PrintJson(loop.CycleOnceFromGithub(owner!, repo!, syncValidatedWorkflows: GetBoolean(options, "sync-github")));
+    return 0;
+}
+
+static int RunGithubRunUntilIdle(IReadOnlyDictionary<string, string> options)
+{
+    if (!TryGetRepoOptions(options, out var owner, out var repo))
+    {
+        return 1;
+    }
+
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var loop = new SelfBuildLoop(root);
+    PrintJson(loop.RunUntilIdleFromGithub(
+        owner!,
+        repo!,
+        syncValidatedWorkflows: GetBoolean(options, "sync-github"),
+        maxCycles: GetInt(options, "max-cycles", 100)
+    ));
     return 0;
 }
 
@@ -161,8 +194,10 @@ static int ShowHelp()
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>]
+          run-until-idle [--max-cycles 100] [--root <repo-root>]
           github-issues --owner <owner> --repo <repo> [--root <repo-root>]
           github-cycle-once --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>]
+          github-run-until-idle --owner <owner> --repo <repo> [--sync-github] [--max-cycles 100] [--root <repo-root>]
           sync-workflow --owner <owner> --repo <repo> --issue <number> [--root <repo-root>]
         """
     );

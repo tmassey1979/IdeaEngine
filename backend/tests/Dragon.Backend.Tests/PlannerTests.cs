@@ -337,6 +337,41 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunUntilIdle_DrainsLocalSelfBuildFlowToCompletion()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(
+                22,
+                "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                "OPEN",
+                ["story"],
+                "",
+                "Core System Principles",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        };
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        var result = loop.RunUntilIdle(stories, maxCycles: 10);
+
+        Assert.True(result.ReachedIdle);
+        Assert.False(result.ReachedMaxCycles);
+        Assert.Equal(4, result.Cycles.Count);
+        Assert.Equal(["seed", "consume", "consume", "consume"], result.Cycles.Select(cycle => cycle.Mode));
+
+        var statePath = Path.Combine(root, ".dragon", "state", "issues.json");
+        var state = File.ReadAllText(statePath);
+        Assert.Contains("validated", state, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(loop.ReadQueue());
+    }
+
+    [Fact]
     public void GithubIssueService_MapsOpenStoryIssuesAndBacklogMetadata()
     {
         const string json = """

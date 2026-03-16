@@ -33,24 +33,7 @@ public sealed class SelfBuildLoop
 
     public SelfBuildJob SeedNext(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
     {
-        var workflows = workflowStateStore.ReadAll();
-        var latestRecoveryIssuesByParent = issues
-            .Where(IsRecoveryIssue)
-            .Where(issue => issue.SourceIssueNumber is not null)
-            .GroupBy(issue => issue.SourceIssueNumber!.Value)
-            .ToDictionary(group => group.Key, group => group.MaxBy(issue => issue.Number)!.Number);
-        var nextIssue = issues
-            .Where(issue => issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase))
-            .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) || (
-                !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
-                !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
-            ))
-            .Where(issue => !IsRecoveryIssue(issue) ||
-                issue.SourceIssueNumber is null ||
-                latestRecoveryIssuesByParent.TryGetValue(issue.SourceIssueNumber.Value, out var latestIssueNumber) && latestIssueNumber == issue.Number)
-            .OrderByDescending(issue => ShouldPrioritizeRecoveryIssue(issue, workflows))
-            .ThenBy(issue => issue.Number)
-            .First();
+        var nextIssue = SelectNextIssue(issues);
 
         var agent = RecommendAgent(nextIssue);
         var job = SelfBuildJobFactory.Create(nextIssue, agent, repo, project);
@@ -110,6 +93,39 @@ public sealed class SelfBuildLoop
         return CycleOnce(issues, repo, project, owner, syncValidatedWorkflows);
     }
 
+    public RunUntilIdleResult RunUntilIdle(
+        IReadOnlyList<GithubIssue> issues,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine",
+        string? githubOwner = null,
+        bool syncValidatedWorkflows = false,
+        int maxCycles = 100)
+    {
+        var cycles = new List<CycleResult>();
+        for (var index = 0; index < maxCycles; index += 1)
+        {
+            if (queueStore.ReadAll().Count == 0 && !HasSchedulableWork(issues))
+            {
+                return new RunUntilIdleResult(cycles, true, false);
+            }
+
+            cycles.Add(CycleOnce(issues, repo, project, githubOwner, syncValidatedWorkflows));
+        }
+
+        return new RunUntilIdleResult(cycles, false, true);
+    }
+
+    public RunUntilIdleResult RunUntilIdleFromGithub(
+        string owner,
+        string repo,
+        string project = "DragonIdeaEngine",
+        bool syncValidatedWorkflows = false,
+        int maxCycles = 100)
+    {
+        var issues = LoadGithubIssues(owner, repo);
+        return RunUntilIdle(issues, repo, project, owner, syncValidatedWorkflows, maxCycles);
+    }
+
     public GithubSyncResult SyncValidatedWorkflow(string owner, string repo, int issueNumber)
     {
         var workflows = workflowStateStore.ReadAll();
@@ -129,6 +145,43 @@ public sealed class SelfBuildLoop
         }
 
         return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
+    }
+
+    private bool HasSchedulableWork(IReadOnlyList<GithubIssue> issues)
+    {
+        try
+        {
+            _ = SelectNextIssue(issues);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private GithubIssue SelectNextIssue(IReadOnlyList<GithubIssue> issues)
+    {
+        var workflows = workflowStateStore.ReadAll();
+        var latestRecoveryIssuesByParent = issues
+            .Where(IsRecoveryIssue)
+            .Where(issue => issue.SourceIssueNumber is not null)
+            .GroupBy(issue => issue.SourceIssueNumber!.Value)
+            .ToDictionary(group => group.Key, group => group.MaxBy(issue => issue.Number)!.Number);
+
+        return issues
+            .Where(issue => issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase))
+            .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) || (
+                !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase) &&
+                !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+            ))
+            .Where(issue => !IsRecoveryIssue(issue) ||
+                issue.SourceIssueNumber is null ||
+                latestRecoveryIssuesByParent.TryGetValue(issue.SourceIssueNumber.Value, out var latestIssueNumber) && latestIssueNumber == issue.Number)
+            .OrderByDescending(issue => ShouldPrioritizeRecoveryIssue(issue, workflows))
+            .ThenBy(issue => issue.Number)
+            .First();
     }
 
     private FailureDisposition? ApplyFailurePolicy(int issueNumber, IssueWorkflowState workflow)
@@ -205,8 +258,10 @@ public sealed class SelfBuildLoop
 
     private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)
     {
-        if (!string.Equals(job.Agent, "developer", StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(execution.Status, "success", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(execution.Status, "success", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Agent, "review", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Agent, "test", StringComparison.OrdinalIgnoreCase) ||
+            !IsImplementationAction(job.Action))
         {
             return [];
         }
@@ -312,6 +367,10 @@ public sealed class SelfBuildLoop
         issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
         issue.Title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsImplementationAction(string action) =>
+        string.Equals(action, "implement_issue", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(action, "recover_issue", StringComparison.OrdinalIgnoreCase);
+
     private static bool ShouldPrioritizeRecoveryIssue(
         GithubIssue issue,
         IReadOnlyDictionary<int, IssueWorkflowState> workflows)
@@ -349,4 +408,10 @@ public sealed record CycleResult(
     GithubSyncResult? GithubSync = null,
     ExecutionRecord? ExecutionRecord = null,
     FailureDisposition? FailureDisposition = null
+);
+
+public sealed record RunUntilIdleResult(
+    IReadOnlyList<CycleResult> Cycles,
+    bool ReachedIdle,
+    bool ReachedMaxCycles
 );
