@@ -17,4 +17,5 @@ Current self-build entrypoint:
 
 ```bash
 node services/dragon-orchestrator/src/cli.js run-once --owner tmassey1979 --repo IdeaEngine
+node services/dragon-orchestrator/src/cli.js execute-once --owner tmassey1979 --repo IdeaEngine
 ```

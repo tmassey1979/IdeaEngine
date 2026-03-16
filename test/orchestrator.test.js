@@ -6,6 +6,9 @@ const path = require("path");
 const {
   buildCapabilityCatalog,
   createSelfBuildJob,
+  executeSelfBuildStep,
+  persistExecutionRecord,
+  publishFollowUpJobs,
   publishNextJob,
   recommendAgentForIssue,
   selectNextIssue
@@ -75,6 +78,75 @@ test("publishNextJob emits the next queued self-build job", () => {
   assert.equal(result.issue.number, 87);
   assert.equal(result.agent, "developer");
   assert.equal(fs.existsSync(result.publishResult.path), true);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("publishFollowUpJobs queues review and test after success", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-followups-"));
+  const followUps = publishFollowUpJobs({
+    execution: {
+      status: "success",
+      agent: "developer",
+      jobId: "job-1"
+    },
+    issue: {
+      number: 88,
+      title: "Implement thing"
+    },
+    repo: "IdeaEngine",
+    project: "DragonIdeaEngine",
+    rootDir: tempRoot,
+    queue: "dragon.jobs"
+  });
+
+  assert.equal(followUps.length, 2);
+  assert.deepEqual(
+    followUps.map((item) => item.agent),
+    ["review", "test"]
+  );
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("persistExecutionRecord stores execution state", () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-record-"));
+  const saved = persistExecutionRecord({
+    rootDir: tempRoot,
+    issue: { number: 22, title: "Core System Principles" },
+    initialJob: { agent: "developer" },
+    execution: { status: "success", jobId: "job-22" },
+    followUps: [{ agent: "review" }]
+  });
+
+  assert.equal(fs.existsSync(saved.path), true);
+  assert.match(fs.readFileSync(saved.path, "utf8"), /job-22/);
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("executeSelfBuildStep runs one build step and queues follow-ups", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(workspaceRoot(), "tmp-execute-"));
+  const result = await executeSelfBuildStep({
+    owner: "tmassey1979",
+    repo: "IdeaEngine",
+    rootDir: tempRoot,
+    catalogRoot: workspaceRoot(),
+    issues: [
+      {
+        number: 22,
+        title: "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+        state: "OPEN",
+        labels: ["story"]
+      }
+    ]
+  });
+
+  assert.equal(result.executed, true);
+  assert.equal(result.selection.issue.number, 22);
+  assert.equal(result.execution.status, "success");
+  assert.equal(result.followUps.length, 2);
+  assert.equal(fs.existsSync(result.executionRecord.path), true);
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });

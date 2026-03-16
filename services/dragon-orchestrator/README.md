@@ -8,9 +8,11 @@ Current responsibilities:
 - choose the next open story in ascending issue order
 - map that story to an available agent capability
 - publish the resulting job into `.dragon/queues/dragon.jobs.ndjson`
+- execute a single self-build step and queue review/test follow-ups
 
 Example:
 
 ```bash
 node services/dragon-orchestrator/src/cli.js run-once --owner tmassey1979 --repo IdeaEngine
+node services/dragon-orchestrator/src/cli.js execute-once --owner tmassey1979 --repo IdeaEngine
 ```

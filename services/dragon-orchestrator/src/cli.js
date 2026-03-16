@@ -3,6 +3,7 @@
 const { parseArgv } = require("../../../runner/dragon-agent-runner/src/index");
 const {
   buildCapabilityCatalog,
+  executeSelfBuildStep,
   listGithubIssues,
   runSelfBuildCycle
 } = require("./index");
@@ -41,6 +42,17 @@ async function main() {
     return;
   }
 
+  if (command === "execute-once") {
+    const result = await executeSelfBuildStep({
+      owner: requiredFlag(flags, "owner"),
+      repo: requiredFlag(flags, "repo"),
+      project: flags.project || "DragonIdeaEngine",
+      queue: flags.queue || "dragon.jobs"
+    });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+
   throw new Error(`Unknown orchestrator command "${command}".`);
 }
 
@@ -60,6 +72,7 @@ function printHelp() {
       "",
       "Usage:",
       "  dragon-orchestrator run-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
+      "  dragon-orchestrator execute-once --owner <owner> --repo <repo> [--project <project>] [--queue <queue>]",
       "  dragon-orchestrator backlog --owner <owner> --repo <repo>",
       "  dragon-orchestrator capabilities"
     ].join("\n") + "\n"

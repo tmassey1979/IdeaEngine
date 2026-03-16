@@ -35,7 +35,7 @@ function discoverAgents(rootDir = workspaceRoot()) {
 }
 
 async function runAgent(agentId, options = {}) {
-  const agents = discoverAgents(options.rootDir);
+  const agents = discoverAgents(options.catalogRoot || options.rootDir || workspaceRoot());
   const agent = agents.get(agentId);
 
   if (!agent) {

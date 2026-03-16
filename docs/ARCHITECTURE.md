@@ -27,6 +27,7 @@ templates/
 - failed jobs follow the codex retry schedule and spill into a local dead-letter queue file when retries are exhausted.
 - agents receive workspace, git, credentials, job publishing, and logging utilities through the SDK context.
 - `dragon-orchestrator` can inspect the repo backlog, select the next open story, and publish a follow-up implementation job for the system to work on itself.
+- `dragon-orchestrator execute-once` can now run that selected job immediately, persist an execution record, and enqueue review/test follow-up jobs for the next loop iteration.
 
 ## Next Expected Layers
 
