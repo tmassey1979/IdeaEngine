@@ -434,6 +434,40 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncInProgressWorkflow_ShowsRequeuedRecoveryHoldWhenParentIsResumed()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow,
+            "Recovery child completed; parent requeued for active flow.",
+            null,
+            []
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("recovery hold: released and parent requeued for active flow", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void WorkflowStateStore_TracksActiveRecoveryChildren()
     {
         var root = CreateTempRoot();

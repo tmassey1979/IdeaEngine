@@ -48,6 +48,7 @@ They also carry `sourceIssueNumber` linkage so the loop can reason about the par
 That linkage is now persisted in workflow state too, which lets the loop skip reseeding parent issues with active recovery children and avoid auto-closing a validated parent while linked recovery work is still open.
 When the last linked recovery child validates, the parent returns to active flow and GitHub heartbeat sync now calls out that recovery hold release explicitly.
 The loop now also requeues that released parent once, so paused work resumes automatically instead of only becoming eligible again.
+GitHub heartbeat sync now distinguishes that requeue event too, so the issue history shows not just that hold was released, but that the system actually resumed the parent work.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.

@@ -125,6 +125,7 @@ public sealed class GithubIssueService
         var currentStageTiming = FormatStageTiming(currentStageState?.ObservedAt, workflow.UpdatedAt);
         var stallState = DetermineStallState(currentStageState?.ObservedAt, workflow.UpdatedAt);
         var releasedFromRecoveryHold = workflow.Note?.Contains("Recovery child completed", StringComparison.OrdinalIgnoreCase) == true;
+        var requeuedAfterRecoveryHold = workflow.Note?.Contains("parent requeued for active flow", StringComparison.OrdinalIgnoreCase) == true;
         var latestExecutionTiming = latestExecution is not null
             ? $"{latestExecution.RecordedAt:O} ({FormatElapsed(workflow.UpdatedAt - latestExecution.RecordedAt)} ago)"
             : null;
@@ -153,7 +154,9 @@ public sealed class GithubIssueService
                 (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
                     ? $"- active recovery children: {string.Join(", ", workflow.ActiveRecoveryIssueNumbers!.Select(value => $"#{value}"))}"
                     : "- active recovery children: none",
-                releasedFromRecoveryHold
+                requeuedAfterRecoveryHold
+                    ? "- recovery hold: released and parent requeued for active flow"
+                    : releasedFromRecoveryHold
                     ? "- recovery hold: released; parent returned to active flow"
                     : "- recovery hold: unchanged",
                 workflow.Note is not null ? $"- note: {workflow.Note}" : "- note: none"
