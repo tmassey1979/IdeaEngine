@@ -213,10 +213,11 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
-        Assert.Equal(2, commands.Count);
-        Assert.Contains("issue comment 23", commands[0], StringComparison.Ordinal);
-        Assert.Contains("issue close 23", commands[1], StringComparison.Ordinal);
-        Assert.Contains("changed paths", commands[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(commands, command => command.Contains("label create in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label quarantined", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue comment 23", StringComparison.Ordinal) && command.Contains("changed paths", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -253,10 +254,10 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
-        Assert.Equal(3, commands.Count);
         Assert.Contains("label create quarantined", commands[0], StringComparison.Ordinal);
-        Assert.Contains("issue comment 22", commands[1], StringComparison.Ordinal);
-        Assert.Contains("issue edit 22", commands[2], StringComparison.Ordinal);
+        Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label quarantined", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
     }
 
@@ -292,10 +293,12 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
-        Assert.Equal(2, commands.Count);
-        Assert.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", commands[0], StringComparison.Ordinal);
-        Assert.Contains("--method POST", commands[1], StringComparison.Ordinal);
-        Assert.Contains("dragon-backend-heartbeat", commands[1], StringComparison.Ordinal);
+        Assert.Contains(commands, command => command.Contains("label create in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label quarantined", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("add-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -326,10 +329,9 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
-        Assert.Equal(2, commands.Count);
-        Assert.Contains("issues/22/comments", commands[0], StringComparison.Ordinal);
-        Assert.Contains("issues/comments/99", commands[1], StringComparison.Ordinal);
-        Assert.Contains("--method PATCH", commands[1], StringComparison.Ordinal);
+        Assert.Contains(commands, command => command.Contains("issues/22/comments", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issues/comments/99", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("--method PATCH", StringComparison.Ordinal));
     }
 
     [Fact]

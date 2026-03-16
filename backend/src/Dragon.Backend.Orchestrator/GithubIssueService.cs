@@ -86,6 +86,9 @@ public sealed class GithubIssueService
             ]
         );
 
+        EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         commandRunner(
             $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
             rootDirectory
@@ -119,6 +122,9 @@ public sealed class GithubIssueService
             ]
         );
 
+        EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
+        AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
         return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
     }
@@ -146,14 +152,12 @@ public sealed class GithubIssueService
         );
 
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         commandRunner(
             $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
             rootDirectory
         );
-        commandRunner(
-            $"issue edit {workflow.IssueNumber} --repo {owner}/{repo} --add-label quarantined",
-            rootDirectory
-        );
+        AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with quarantine trace.");
     }
@@ -170,6 +174,29 @@ public sealed class GithubIssueService
         catch (InvalidOperationException)
         {
             // The label may already exist, which is fine for our sync path.
+        }
+    }
+
+    private void AddLabel(string owner, string repo, int issueNumber, string name, string rootDirectory)
+    {
+        commandRunner(
+            $"issue edit {issueNumber} --repo {owner}/{repo} --add-label {name}",
+            rootDirectory
+        );
+    }
+
+    private void RemoveLabel(string owner, string repo, int issueNumber, string name, string rootDirectory)
+    {
+        try
+        {
+            commandRunner(
+                $"issue edit {issueNumber} --repo {owner}/{repo} --remove-label {name}",
+                rootDirectory
+            );
+        }
+        catch (InvalidOperationException)
+        {
+            // It's fine if the label is not currently applied.
         }
     }
 

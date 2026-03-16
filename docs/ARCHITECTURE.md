@@ -22,7 +22,7 @@ templates/
 
 - The long-term backend/runtime target is C#.
 - The current JavaScript runner/orchestrator remains in place as a working prototype for behavior and backlog flow.
-- A new C# backend foundation now lives under `backend/` and currently covers shared self-build contracts, backlog indexing, bounded developer-operation planning, local queue persistence, workflow-state tracking, per-issue execution records, GitHub backlog discovery, stronger review/test execution, repeated-failure quarantine, quarantined-work GitHub signaling, in-progress heartbeat comments, and validated workflow sync with a guard that only updates GitHub after the workflow reaches `validated`.
+- A new C# backend foundation now lives under `backend/` and currently covers shared self-build contracts, backlog indexing, bounded developer-operation planning, local queue persistence, workflow-state tracking, per-issue execution records, GitHub backlog discovery, stronger review/test execution, repeated-failure quarantine, quarantined-work GitHub signaling, in-progress heartbeat comments, automatic workflow-label transitions, and validated workflow sync with a guard that only updates GitHub after the workflow reaches `validated`.
 - `dragon-agent-runner` loads agent plugins from the workspace.
 - agents expose `name`, `description`, `version`, and `execute(context)` through the shared SDK.
 - CLI mode runs one agent directly.
