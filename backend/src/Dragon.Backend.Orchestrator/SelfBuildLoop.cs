@@ -34,12 +34,20 @@ public sealed class SelfBuildLoop
     public SelfBuildJob SeedNext(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
     {
         var workflows = workflowStateStore.ReadAll();
+        var latestRecoveryIssuesByParent = issues
+            .Where(IsRecoveryIssue)
+            .Where(issue => issue.SourceIssueNumber is not null)
+            .GroupBy(issue => issue.SourceIssueNumber!.Value)
+            .ToDictionary(group => group.Key, group => group.MaxBy(issue => issue.Number)!.Number);
         var nextIssue = issues
             .Where(issue => issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase))
             .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) || (
                 !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
                 !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
             ))
+            .Where(issue => !IsRecoveryIssue(issue) ||
+                issue.SourceIssueNumber is null ||
+                latestRecoveryIssuesByParent.TryGetValue(issue.SourceIssueNumber.Value, out var latestIssueNumber) && latestIssueNumber == issue.Number)
             .OrderByDescending(IsRecoveryIssue)
             .ThenBy(issue => issue.Number)
             .First();
@@ -68,6 +76,8 @@ public sealed class SelfBuildLoop
         {
             return stalledWorkflow;
         }
+
+        RemoveSupersededRecoveryJobs(issues);
 
         if (queueStore.ReadAll().Count == 0)
         {
@@ -213,6 +223,31 @@ public sealed class SelfBuildLoop
         }
 
         return followUps;
+    }
+
+    private void RemoveSupersededRecoveryJobs(IReadOnlyList<GithubIssue> issues)
+    {
+        var latestRecoveryIssuesByParent = issues
+            .Where(IsRecoveryIssue)
+            .Where(issue => issue.SourceIssueNumber is not null)
+            .GroupBy(issue => issue.SourceIssueNumber!.Value)
+            .ToDictionary(group => group.Key, group => group.MaxBy(issue => issue.Number)!.Number);
+
+        queueStore.RemoveAll(job =>
+        {
+            if (!string.Equals(job.Metadata.GetValueOrDefault("workType"), "recovery", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!int.TryParse(job.Metadata.GetValueOrDefault("sourceIssueNumber"), out var sourceIssueNumber))
+            {
+                return false;
+            }
+
+            return latestRecoveryIssuesByParent.TryGetValue(sourceIssueNumber, out var latestRecoveryIssueNumber) &&
+                latestRecoveryIssueNumber != job.Issue;
+        });
     }
 
     private static SelfBuildJob CreateFollowUpJob(SelfBuildJob sourceJob, string agent, string action, string parentJobId)

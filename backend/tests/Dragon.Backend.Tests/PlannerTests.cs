@@ -141,6 +141,61 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_PrefersLatestUnresolvedRecoveryIssueForSameParent()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22),
+            new GithubIssue(501, "[Recovery] Issue #22: Core System Principles Follow-up", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22)
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(501, job.Issue);
+        Assert.Equal("recover_issue", job.Action);
+        Assert.Equal("22", job.Metadata["sourceIssueNumber"]);
+    }
+
+    [Fact]
+    public void CycleOnce_RemovesSupersededRecoveryJobsBeforeConsumingQueue()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(SelfBuildJobFactory.Create(
+            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22),
+            "developer",
+            "IdeaEngine",
+            "DragonIdeaEngine"
+        ));
+        queue.Enqueue(SelfBuildJobFactory.Create(
+            new GithubIssue(501, "[Recovery] Issue #22: Core System Principles Follow-up", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22),
+            "developer",
+            "IdeaEngine",
+            "DragonIdeaEngine"
+        ));
+
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(500, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22),
+            new GithubIssue(501, "[Recovery] Issue #22: Core System Principles Follow-up", "OPEN", ["story", "recovery", "backlog"], SourceIssueNumber: 22)
+        };
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        var result = loop.CycleOnce(issues);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.NotNull(result.Job);
+        Assert.Equal(501, result.Job!.Issue);
+        Assert.DoesNotContain(loop.ReadQueue(), job => job.Issue == 500);
+    }
+
+    [Fact]
     public void SeedNext_SkipsParentIssueWhenRecoveryChildIsActive()
     {
         var root = CreateTempRoot();
