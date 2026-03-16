@@ -74,6 +74,72 @@ public sealed class PlannerTests
         Assert.Equal("dragon-orchestrator-dotnet", job.Metadata["source"]);
     }
 
+    [Fact]
+    public void QueueStore_EnqueuesAndDequeuesJobsInOrder()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        var first = SelfBuildJobFactory.Create(
+            new GithubIssue(1, "First", "OPEN", ["story"]),
+            "developer",
+            "IdeaEngine",
+            "DragonIdeaEngine"
+        );
+        var second = SelfBuildJobFactory.Create(
+            new GithubIssue(2, "Second", "OPEN", ["story"]),
+            "developer",
+            "IdeaEngine",
+            "DragonIdeaEngine"
+        );
+
+        queue.Enqueue(first);
+        queue.Enqueue(second);
+
+        Assert.Equal(2, queue.ReadAll().Count);
+        Assert.Equal(1, queue.Dequeue()!.Issue);
+        Assert.Equal(2, queue.Dequeue()!.Issue);
+        Assert.Null(queue.Dequeue());
+    }
+
+    [Fact]
+    public void CycleOnce_SeedsThenExecutesDeveloperFlow()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{}");
+        var stories = new[]
+        {
+            new GithubIssue(
+                22,
+                "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                "OPEN",
+                ["story"],
+                "",
+                "Core System Principles",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        };
+
+        var loop = new SelfBuildLoop(root);
+        var seed = loop.CycleOnce(stories);
+        var consumeDeveloper = loop.CycleOnce(stories);
+        var consumeReview = loop.CycleOnce(stories);
+        var consumeTest = loop.CycleOnce(stories);
+
+        Assert.Equal("seed", seed.Mode);
+        Assert.Equal("consume", consumeDeveloper.Mode);
+        Assert.Equal("success", consumeDeveloper.Execution!.Status);
+        Assert.Equal(2, consumeDeveloper.FollowUps.Count);
+        Assert.Equal("consume", consumeReview.Mode);
+        Assert.Equal("consume", consumeTest.Mode);
+
+        var statePath = Path.Combine(root, ".dragon", "state", "issues.json");
+        Assert.True(File.Exists(statePath));
+        var state = File.ReadAllText(statePath);
+        Assert.Contains("validated", state, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Core System Principles", File.ReadAllText(Path.Combine(root, "docs", "ARCHITECTURE.md")), StringComparison.Ordinal);
+    }
+
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -90,5 +156,12 @@ public sealed class PlannerTests
         }
 
         throw new InvalidOperationException("Could not locate repo root from test output directory.");
+    }
+
+    private static string CreateTempRoot()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"dragon-backend-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(path);
+        return path;
     }
 }

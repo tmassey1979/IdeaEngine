@@ -9,6 +9,8 @@ return command switch
 {
     "plan" => RunPlan(options),
     "plan-from-backlog" => RunPlanFromBacklog(options),
+    "queue" => RunQueue(options),
+    "cycle-once" => RunCycleOnce(options),
     _ => ShowHelp()
 };
 
@@ -66,14 +68,37 @@ static int RunPlanFromBacklog(IReadOnlyDictionary<string, string> options)
 static int PrintPlan(GithubIssue issue)
 {
     var job = SelfBuildJobFactory.Create(issue, "developer", "IdeaEngine", "DragonIdeaEngine");
-    var json = JsonSerializer.Serialize(job, new JsonSerializerOptions
+    PrintJson(job);
+    return 0;
+}
+
+static int RunQueue(IReadOnlyDictionary<string, string> options)
+{
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var loop = new SelfBuildLoop(root);
+    PrintJson(loop.ReadQueue());
+    return 0;
+}
+
+static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
+{
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var stories = BacklogStoryCatalog.LoadStories(root);
+    var loop = new SelfBuildLoop(root);
+    var result = loop.CycleOnce(stories);
+    PrintJson(result);
+    return 0;
+}
+
+static void PrintJson<TValue>(TValue value)
+{
+    var json = JsonSerializer.Serialize(value, new JsonSerializerOptions
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     });
 
     Console.WriteLine(json);
-    return 0;
 }
 
 static int ShowHelp()
@@ -85,6 +110,8 @@ static int ShowHelp()
         Commands:
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
+          queue [--root <repo-root>]
+          cycle-once [--root <repo-root>]
         """
     );
 

@@ -41,3 +41,26 @@ public sealed record SelfBuildJob(
     SelfBuildJobPayload Payload,
     IReadOnlyDictionary<string, string> Metadata
 );
+
+public sealed record JobExecutionResult(
+    string JobId,
+    string Agent,
+    string Status,
+    string Summary,
+    DateTimeOffset ObservedAt
+);
+
+public sealed record WorkflowStageState(
+    string Status,
+    string? JobId,
+    DateTimeOffset? ObservedAt,
+    string? Summary
+);
+
+public sealed record IssueWorkflowState(
+    int IssueNumber,
+    string IssueTitle,
+    string OverallStatus,
+    IReadOnlyDictionary<string, WorkflowStageState> Stages,
+    DateTimeOffset UpdatedAt
+);

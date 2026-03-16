@@ -1,0 +1,71 @@
+using System.Text.Json;
+using Dragon.Backend.Contracts;
+
+namespace Dragon.Backend.Orchestrator;
+
+public sealed class QueueStore
+{
+    private readonly JsonSerializerOptions serializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
+    public QueueStore(string rootDirectory, string queueName = "dragon.jobs")
+    {
+        RootDirectory = rootDirectory;
+        QueueName = queueName;
+    }
+
+    public string RootDirectory { get; }
+
+    public string QueueName { get; }
+
+    public string QueuePath => Path.Combine(RootDirectory, ".dragon", "queues", $"{QueueName}.ndjson");
+
+    public void Enqueue(SelfBuildJob job)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(QueuePath)!);
+        File.AppendAllText(QueuePath, JsonSerializer.Serialize(job, serializerOptions) + Environment.NewLine);
+    }
+
+    public IReadOnlyList<SelfBuildJob> ReadAll()
+    {
+        if (!File.Exists(QueuePath))
+        {
+            return [];
+        }
+
+        return File.ReadAllLines(QueuePath)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(line => JsonSerializer.Deserialize<SelfBuildJob>(line, serializerOptions)!)
+            .ToArray();
+    }
+
+    public SelfBuildJob? Dequeue()
+    {
+        var jobs = ReadAll().ToList();
+        if (jobs.Count == 0)
+        {
+            return null;
+        }
+
+        var next = jobs[0];
+        jobs.RemoveAt(0);
+
+        if (jobs.Count == 0)
+        {
+            if (File.Exists(QueuePath))
+            {
+                File.Delete(QueuePath);
+            }
+        }
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(QueuePath)!);
+            File.WriteAllLines(QueuePath, jobs.Select(job => JsonSerializer.Serialize(job, serializerOptions)));
+        }
+
+        return next;
+    }
+}
