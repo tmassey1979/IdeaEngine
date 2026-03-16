@@ -730,6 +730,7 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue close 102", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("auto-close: deferred because no execution-backed changed paths were recorded", StringComparison.Ordinal));
     }
 
     [Fact]
