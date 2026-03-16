@@ -36,7 +36,7 @@ public sealed class ExecutionRecordStore
             execution.Status,
             execution.Summary,
             execution.ObservedAt,
-            ReadChangedPaths(job),
+            execution.ChangedPaths?.Count > 0 ? execution.ChangedPaths : ReadChangedPaths(job),
             followUps.Select(item => item.Agent).ToArray()
         );
 

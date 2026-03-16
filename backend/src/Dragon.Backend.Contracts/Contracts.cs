@@ -48,7 +48,8 @@ public sealed record JobExecutionResult(
     string Agent,
     string Status,
     string Summary,
-    DateTimeOffset ObservedAt
+    DateTimeOffset ObservedAt,
+    IReadOnlyList<string>? ChangedPaths = null
 );
 
 public sealed record WorkflowStageState(

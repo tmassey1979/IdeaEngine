@@ -279,8 +279,8 @@ public sealed class SelfBuildLoop
 
         var followUps = new[]
         {
-            CreateFollowUpJob(job, "review", "review_issue", execution.JobId),
-            CreateFollowUpJob(job, "test", "test_issue", execution.JobId)
+            CreateFollowUpJob(job, execution, "review", "review_issue", execution.JobId),
+            CreateFollowUpJob(job, execution, "test", "test_issue", execution.JobId)
         };
 
         foreach (var followUp in followUps)
@@ -316,7 +316,7 @@ public sealed class SelfBuildLoop
         });
     }
 
-    private static SelfBuildJob CreateFollowUpJob(SelfBuildJob sourceJob, string agent, string action, string parentJobId)
+    private static SelfBuildJob CreateFollowUpJob(SelfBuildJob sourceJob, JobExecutionResult execution, string agent, string action, string parentJobId)
     {
         return new SelfBuildJob(
             agent,
@@ -337,7 +337,7 @@ public sealed class SelfBuildLoop
                 ["source"] = "dragon-orchestrator-dotnet",
                 ["parentJobId"] = parentJobId,
                 ["parentIssue"] = sourceJob.Issue.ToString(),
-                ["changedPaths"] = string.Join("|", sourceJob.Payload.Operations?.Select(operation => operation.Path) ?? [])
+                ["changedPaths"] = string.Join("|", execution.ChangedPaths ?? [])
             }
         );
     }

@@ -375,6 +375,37 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_PublishesFollowUpsWithExecutionChangedPaths()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(
+                22,
+                "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                "OPEN",
+                ["story"],
+                "",
+                "Core System Principles",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        };
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        loop.CycleOnce(stories);
+        var result = loop.CycleOnce(stories);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.Equal(2, result.FollowUps.Count);
+        Assert.All(result.FollowUps, followUp => Assert.Equal("docs/ARCHITECTURE.md", followUp.Metadata["changedPaths"]));
+        Assert.Contains(result.ExecutionRecord!.ChangedPaths, path => path == "docs/ARCHITECTURE.md");
+    }
+
+    [Fact]
     public void RunUntilIdle_DrainsLocalSelfBuildFlowToCompletion()
     {
         var root = CreateTempRoot();

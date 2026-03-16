@@ -28,15 +28,15 @@ public sealed class LocalJobExecutor
 
         try
         {
-            var summary = job.Agent switch
+            var outcome = job.Agent switch
             {
                 "developer" => ExecuteDeveloper(rootDirectory, job),
-                "review" => ExecuteReview(rootDirectory, job),
-                "test" => ExecuteTest(rootDirectory, job),
-                _ => $"No local executor is registered for {job.Agent}; marked complete for bootstrap flow."
+                "review" => ExecutionOutcome.FromSummary(ExecuteReview(rootDirectory, job)),
+                "test" => ExecutionOutcome.FromSummary(ExecuteTest(rootDirectory, job)),
+                _ => ExecutionOutcome.FromSummary($"No local executor is registered for {job.Agent}; marked complete for bootstrap flow.")
             };
 
-            return new JobExecutionResult(jobId, job.Agent, "success", summary, DateTimeOffset.UtcNow);
+            return new JobExecutionResult(jobId, job.Agent, "success", outcome.Summary, DateTimeOffset.UtcNow, outcome.ChangedPaths);
         }
         catch (Exception exception)
         {
@@ -44,7 +44,7 @@ public sealed class LocalJobExecutor
         }
     }
 
-    private static string ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
+    private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
     {
         var operations = job.Payload.Operations ?? [];
         var touchedPaths = new List<string>();
@@ -78,9 +78,12 @@ public sealed class LocalJobExecutor
             touchedPaths.Add(operation.Path);
         }
 
-        return touchedPaths.Count > 0
-            ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
-            : "Developer job contained no operations.";
+        return new ExecutionOutcome(
+            touchedPaths.Count > 0
+                ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
+                : "Developer job contained no operations.",
+            touchedPaths
+        );
     }
 
     private string ExecuteReview(string rootDirectory, SelfBuildJob job)
@@ -248,5 +251,10 @@ public sealed class LocalJobExecutor
         process.WaitForExit();
 
         return new CommandResult(process.ExitCode, stdout, stderr);
+    }
+
+    private sealed record ExecutionOutcome(string Summary, IReadOnlyList<string> ChangedPaths)
+    {
+        public static ExecutionOutcome FromSummary(string summary) => new(summary, []);
     }
 }
