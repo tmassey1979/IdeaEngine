@@ -106,7 +106,7 @@ public sealed class PlannerTests
     {
         var root = CreateTempRoot();
         Directory.CreateDirectory(Path.Combine(root, "docs"));
-        File.WriteAllText(Path.Combine(root, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
         var stories = new[]
         {
             new GithubIssue(
@@ -120,7 +120,8 @@ public sealed class PlannerTests
             )
         };
 
-        var loop = new SelfBuildLoop(root);
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
         var seed = loop.CycleOnce(stories);
         var consumeDeveloper = loop.CycleOnce(stories);
         var consumeReview = loop.CycleOnce(stories);
@@ -206,7 +207,7 @@ public sealed class PlannerTests
     {
         var root = CreateTempRoot();
         Directory.CreateDirectory(Path.Combine(root, "docs"));
-        File.WriteAllText(Path.Combine(root, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
         var commands = new List<string>();
         var service = new GithubIssueService((arguments, _) =>
         {
@@ -226,7 +227,8 @@ public sealed class PlannerTests
             )
         };
 
-        var loop = new SelfBuildLoop(root, githubIssueService: service);
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, githubIssueService: service, jobExecutor: executor);
         loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
         loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
         loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
@@ -238,6 +240,56 @@ public sealed class PlannerTests
         Assert.Equal(2, commands.Count);
         Assert.Contains("issue comment 22", commands[0], StringComparison.Ordinal);
         Assert.Contains("issue close 22", commands[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReviewAndTestExecutors_UseChangedPathsAndRealCommands()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "docs", "ARCHITECTURE.md"), "# Architecture");
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "node -e \"process.exit(0)\"" } }""");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+
+        var executed = new List<string>();
+        var executor = new LocalJobExecutor((fileName, arguments, _) =>
+        {
+            executed.Add($"{fileName} {arguments}");
+            return new CommandResult(0, "ok", string.Empty);
+        });
+
+        var reviewResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "review",
+                "review_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], "Core", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string> { ["changedPaths"] = "docs/ARCHITECTURE.md" }
+            )
+        );
+        var testResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "test",
+                "test_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], "Core", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string>()
+            )
+        );
+
+        Assert.Equal("success", reviewResult.Status);
+        Assert.Equal("success", testResult.Status);
+        Assert.Single(executed);
+        Assert.Contains("npm", executed[0], StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FindRepoRoot()

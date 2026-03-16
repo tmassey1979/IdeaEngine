@@ -9,6 +9,7 @@ Current scope:
 - bounded developer-operation planning for C# orchestration
 - local queue storage and workflow state for the bootstrap loop
 - GitHub-backed story discovery and validated workflow sync through `gh`
+- review/test stages that now validate changed files and execute real project test commands
 - a small CLI that can print planned self-build jobs from backlog context and run one local self-build cycle
 
 Useful commands:

@@ -9,12 +9,16 @@ public sealed class SelfBuildLoop
     private readonly LocalJobExecutor jobExecutor;
     private readonly GithubIssueService githubIssueService;
 
-    public SelfBuildLoop(string rootDirectory, string queueName = "dragon.jobs", GithubIssueService? githubIssueService = null)
+    public SelfBuildLoop(
+        string rootDirectory,
+        string queueName = "dragon.jobs",
+        GithubIssueService? githubIssueService = null,
+        LocalJobExecutor? jobExecutor = null)
     {
         RootDirectory = rootDirectory;
         queueStore = new QueueStore(rootDirectory, queueName);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
-        jobExecutor = new LocalJobExecutor();
+        this.jobExecutor = jobExecutor ?? new LocalJobExecutor();
         this.githubIssueService = githubIssueService ?? new GithubIssueService();
     }
 
@@ -133,7 +137,8 @@ public sealed class SelfBuildLoop
                 ["requestedBy"] = "system",
                 ["source"] = "dragon-orchestrator-dotnet",
                 ["parentJobId"] = parentJobId,
-                ["parentIssue"] = sourceJob.Issue.ToString()
+                ["parentIssue"] = sourceJob.Issue.ToString(),
+                ["changedPaths"] = string.Join("|", sourceJob.Payload.Operations?.Select(operation => operation.Path) ?? [])
             }
         );
     }
