@@ -64,7 +64,9 @@ public sealed record IssueWorkflowState(
     string OverallStatus,
     IReadOnlyDictionary<string, WorkflowStageState> Stages,
     DateTimeOffset UpdatedAt,
-    string? Note = null
+    string? Note = null,
+    int? SourceIssueNumber = null,
+    IReadOnlyList<int>? ActiveRecoveryIssueNumbers = null
 );
 
 public sealed record FailureDisposition(

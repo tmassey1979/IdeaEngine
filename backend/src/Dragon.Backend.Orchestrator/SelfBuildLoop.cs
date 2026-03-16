@@ -36,8 +36,10 @@ public sealed class SelfBuildLoop
         var workflows = workflowStateStore.ReadAll();
         var nextIssue = issues
             .Where(issue => issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase))
-            .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) ||
-                !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+            .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) || (
+                !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
+                !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+            ))
             .OrderByDescending(IsRecoveryIssue)
             .ThenBy(issue => issue.Number)
             .First();
@@ -69,7 +71,7 @@ public sealed class SelfBuildLoop
 
         var job = queueStore.Dequeue()!;
         var execution = jobExecutor.Execute(RootDirectory, job);
-        var workflow = workflowStateStore.Update(job.Issue, job.Payload.Title, job.Agent, execution);
+        var workflow = workflowStateStore.Update(job, execution);
         var followUps = PublishFollowUps(job, execution);
         var executionRecord = executionRecordStore.Append(job, execution, followUps);
         var failureDisposition = ApplyFailurePolicy(job.Issue, workflow);

@@ -141,6 +141,41 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_SkipsParentIssueWhenRecoveryChildIsActive()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-parent", "developer", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "quarantined", "Parent is quarantined.");
+
+        var recoveryJob = new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Issue #22: Core", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "22",
+                ["workType"] = "recovery"
+            }
+        );
+        store.Update(recoveryJob, new JobExecutionResult("job-recovery", "developer", "success", "started", DateTimeOffset.UtcNow));
+
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"])
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(23, job.Issue);
+    }
+
+    [Fact]
     public void CycleOnce_SeedsThenExecutesDeveloperFlow()
     {
         var root = CreateTempRoot();
@@ -282,6 +317,76 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue comment 23", StringComparison.Ordinal) && command.Contains("changed paths", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncValidatedWorkflow_DoesNotCloseIssueWithActiveRecoveryChildren()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            23,
+            "System Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-2", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-3", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow,
+            null,
+            null,
+            [500]
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/23/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("active recovery children: #500", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void WorkflowStateStore_TracksActiveRecoveryChildren()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-parent", "developer", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "quarantined", "Parent is quarantined.");
+
+        var recoveryJob = new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Issue #22: Core", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "22",
+                ["workType"] = "recovery"
+            }
+        );
+
+        store.Update(recoveryJob, new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        var withChild = store.ReadAll();
+        Assert.Equal(22, withChild[500].SourceIssueNumber);
+        Assert.Contains(500, withChild[22].ActiveRecoveryIssueNumbers!);
+
+        store.Update(recoveryJob, new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(recoveryJob, new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+        var afterValidation = store.ReadAll();
+        Assert.DoesNotContain(500, afterValidation[22].ActiveRecoveryIssueNumbers ?? []);
     }
 
     [Fact]

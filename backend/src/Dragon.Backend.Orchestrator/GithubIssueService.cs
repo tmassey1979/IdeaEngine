@@ -65,6 +65,12 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        if (string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase) &&
+            (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false))
+        {
+            return SyncHeartbeatWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
+        }
+
         if (string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
         {
             return SyncQuarantinedWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
@@ -143,6 +149,9 @@ public sealed class GithubIssueService
                 executionRecords.Count > 0
                     ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent executions: none recorded",
+                (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+                    ? $"- active recovery children: {string.Join(", ", workflow.ActiveRecoveryIssueNumbers!.Select(value => $"#{value}"))}"
+                    : "- active recovery children: none",
                 workflow.Note is not null ? $"- note: {workflow.Note}" : "- note: none"
             ]
         );

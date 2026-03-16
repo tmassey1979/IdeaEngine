@@ -17,6 +17,7 @@ Current scope:
 - recovery-story creation for quarantined work so blocked issues spawn narrower follow-up backlog items
 - recovery-aware scheduling so follow-up recovery stories are seeded ahead of ordinary backlog stories
 - source-issue linkage for recovery work so recovery stories carry explicit parent context
+- workflow-state tracking for active recovery children so parent issues are held until linked recovery work is resolved
 - GitHub heartbeat comments that keep one live in-progress status thread per story
 - automatic GitHub label transitions for in-progress, quarantined, and completed states
 - stage-aware heartbeat content that shows the current stage, when it last changed, whether it appears stalled, and the latest stage outcome
@@ -44,6 +45,7 @@ The quarantine sync now keeps a dedicated remediation thread on the GitHub issue
 It also creates or reuses a `[Recovery]` GitHub story so stuck work comes with a trackable next step.
 Those recovery stories now seed ahead of ordinary stories and carry explicit `recover_issue` job metadata through the loop.
 They also carry `sourceIssueNumber` linkage so the loop can reason about the parent quarantined story explicitly.
+That linkage is now persisted in workflow state too, which lets the loop skip reseeding parent issues with active recovery children and avoid auto-closing a validated parent while linked recovery work is still open.
 
 While work is still active, the backend now upserts a single heartbeat comment on the GitHub issue instead of emitting a new comment every cycle.
 That heartbeat now includes the current stage, when that stage was last observed, whether it appears stalled, and the latest recorded stage outcome.

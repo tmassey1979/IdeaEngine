@@ -32,7 +32,22 @@ public sealed class WorkflowStateStore
         return snapshots.ToDictionary(item => item.IssueNumber);
     }
 
+    public IssueWorkflowState Update(SelfBuildJob job, JobExecutionResult execution)
+    {
+        var sourceIssueNumber = job.Metadata.TryGetValue("sourceIssueNumber", out var sourceIssueText) &&
+            int.TryParse(sourceIssueText, out var sourceIssueNumberValue)
+            ? sourceIssueNumberValue
+            : (int?)null;
+
+        return Update(job.Issue, job.Payload.Title, execution.Agent, execution, sourceIssueNumber);
+    }
+
     public IssueWorkflowState Update(int issueNumber, string issueTitle, string agent, JobExecutionResult execution)
+    {
+        return Update(issueNumber, issueTitle, agent, execution, null);
+    }
+
+    public IssueWorkflowState Update(int issueNumber, string issueTitle, string agent, JobExecutionResult execution, int? sourceIssueNumber)
     {
         var snapshots = ReadAll().ToDictionary(entry => entry.Key, entry => entry.Value);
         snapshots.TryGetValue(issueNumber, out var existing);
@@ -54,10 +69,13 @@ public sealed class WorkflowStateStore
             overallStatus,
             stages,
             DateTimeOffset.UtcNow,
-            existing?.Note
+            existing?.Note,
+            sourceIssueNumber ?? existing?.SourceIssueNumber,
+            existing?.ActiveRecoveryIssueNumbers ?? []
         );
 
         snapshots[issueNumber] = updated;
+        ReconcileRecoveryLinkage(snapshots, issueNumber);
 
         Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
         File.WriteAllText(
@@ -84,6 +102,7 @@ public sealed class WorkflowStateStore
         };
 
         snapshots[issueNumber] = updated;
+        ReconcileRecoveryLinkage(snapshots, issueNumber);
         Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
         File.WriteAllText(
             StatePath,
@@ -91,6 +110,37 @@ public sealed class WorkflowStateStore
         );
 
         return updated;
+    }
+
+    private static void ReconcileRecoveryLinkage(IDictionary<int, IssueWorkflowState> snapshots, int issueNumber)
+    {
+        if (!snapshots.TryGetValue(issueNumber, out var workflow) || workflow.SourceIssueNumber is null)
+        {
+            return;
+        }
+
+        if (!snapshots.TryGetValue(workflow.SourceIssueNumber.Value, out var parent))
+        {
+            return;
+        }
+
+        var activeRecoveryIssueNumbers = (parent.ActiveRecoveryIssueNumbers ?? [])
+            .ToHashSet();
+
+        if (string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
+        {
+            activeRecoveryIssueNumbers.Remove(issueNumber);
+        }
+        else
+        {
+            activeRecoveryIssueNumbers.Add(issueNumber);
+        }
+
+        snapshots[parent.IssueNumber] = parent with
+        {
+            ActiveRecoveryIssueNumbers = activeRecoveryIssueNumbers.OrderBy(value => value).ToArray(),
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
     }
 
     private static string DetermineOverallStatus(IReadOnlyDictionary<string, WorkflowStageState> stages)
