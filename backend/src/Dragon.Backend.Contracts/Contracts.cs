@@ -64,3 +64,9 @@ public sealed record IssueWorkflowState(
     IReadOnlyDictionary<string, WorkflowStageState> Stages,
     DateTimeOffset UpdatedAt
 );
+
+public sealed record GithubSyncResult(
+    bool Attempted,
+    bool Updated,
+    string Summary
+);

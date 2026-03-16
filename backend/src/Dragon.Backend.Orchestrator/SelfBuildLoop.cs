@@ -7,18 +7,23 @@ public sealed class SelfBuildLoop
     private readonly QueueStore queueStore;
     private readonly WorkflowStateStore workflowStateStore;
     private readonly LocalJobExecutor jobExecutor;
+    private readonly GithubIssueService githubIssueService;
 
-    public SelfBuildLoop(string rootDirectory, string queueName = "dragon.jobs")
+    public SelfBuildLoop(string rootDirectory, string queueName = "dragon.jobs", GithubIssueService? githubIssueService = null)
     {
         RootDirectory = rootDirectory;
         queueStore = new QueueStore(rootDirectory, queueName);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         jobExecutor = new LocalJobExecutor();
+        this.githubIssueService = githubIssueService ?? new GithubIssueService();
     }
 
     public string RootDirectory { get; }
 
     public IReadOnlyList<SelfBuildJob> ReadQueue() => queueStore.ReadAll();
+
+    public IReadOnlyList<GithubIssue> LoadGithubIssues(string owner, string repo) =>
+        githubIssueService.ListStoryIssues(owner, repo, RootDirectory);
 
     public SelfBuildJob SeedNext(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
     {
@@ -47,6 +52,23 @@ public sealed class SelfBuildLoop
         var followUps = PublishFollowUps(job, execution);
 
         return new CycleResult("consume", job, execution, followUps, workflow);
+    }
+
+    public CycleResult CycleOnceFromGithub(string owner, string repo, string project = "DragonIdeaEngine")
+    {
+        var issues = LoadGithubIssues(owner, repo);
+        return CycleOnce(issues, repo, project);
+    }
+
+    public GithubSyncResult SyncValidatedWorkflow(string owner, string repo, int issueNumber)
+    {
+        var workflows = workflowStateStore.ReadAll();
+        if (!workflows.TryGetValue(issueNumber, out var workflow))
+        {
+            return new GithubSyncResult(false, false, $"No workflow state found for issue #{issueNumber}.");
+        }
+
+        return githubIssueService.SyncWorkflow(owner, repo, workflow, RootDirectory);
     }
 
     private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)

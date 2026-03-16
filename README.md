@@ -21,6 +21,7 @@ Current C# backend entrypoint:
 dotnet test backend/Dragon.Backend.slnx
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
 ```
 
 Current self-build entrypoint:

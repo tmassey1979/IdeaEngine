@@ -11,6 +11,9 @@ return command switch
     "plan-from-backlog" => RunPlanFromBacklog(options),
     "queue" => RunQueue(options),
     "cycle-once" => RunCycleOnce(options),
+    "github-issues" => RunGithubIssues(options),
+    "github-cycle-once" => RunGithubCycleOnce(options),
+    "sync-workflow" => RunSyncWorkflow(options),
     _ => ShowHelp()
 };
 
@@ -90,6 +93,52 @@ static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
     return 0;
 }
 
+static int RunGithubIssues(IReadOnlyDictionary<string, string> options)
+{
+    if (!TryGetRepoOptions(options, out var owner, out var repo))
+    {
+        return 1;
+    }
+
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var loop = new SelfBuildLoop(root);
+    PrintJson(loop.LoadGithubIssues(owner!, repo!));
+    return 0;
+}
+
+static int RunGithubCycleOnce(IReadOnlyDictionary<string, string> options)
+{
+    if (!TryGetRepoOptions(options, out var owner, out var repo))
+    {
+        return 1;
+    }
+
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var loop = new SelfBuildLoop(root);
+    PrintJson(loop.CycleOnceFromGithub(owner!, repo!));
+    return 0;
+}
+
+static int RunSyncWorkflow(IReadOnlyDictionary<string, string> options)
+{
+    if (!TryGetRepoOptions(options, out var owner, out var repo))
+    {
+        return 1;
+    }
+
+    var issueNumber = GetInt(options, "issue", 0);
+    if (issueNumber <= 0)
+    {
+        Console.Error.WriteLine("Missing required option: --issue");
+        return 1;
+    }
+
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var loop = new SelfBuildLoop(root);
+    PrintJson(loop.SyncValidatedWorkflow(owner!, repo!, issueNumber));
+    return 0;
+}
+
 static void PrintJson<TValue>(TValue value)
 {
     var json = JsonSerializer.Serialize(value, new JsonSerializerOptions
@@ -112,6 +161,9 @@ static int ShowHelp()
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>]
+          github-issues --owner <owner> --repo <repo> [--root <repo-root>]
+          github-cycle-once --owner <owner> --repo <repo> [--root <repo-root>]
+          sync-workflow --owner <owner> --repo <repo> --issue <number> [--root <repo-root>]
         """
     );
 
@@ -151,3 +203,17 @@ static int GetInt(IReadOnlyDictionary<string, string> options, string key, int f
     options.TryGetValue(key, out var rawValue) && int.TryParse(rawValue, out var parsedValue)
         ? parsedValue
         : fallback;
+
+static bool TryGetRepoOptions(IReadOnlyDictionary<string, string> options, out string? owner, out string? repo)
+{
+    owner = GetNullable(options, "owner");
+    repo = GetNullable(options, "repo");
+
+    if (!string.IsNullOrWhiteSpace(owner) && !string.IsNullOrWhiteSpace(repo))
+    {
+        return true;
+    }
+
+    Console.Error.WriteLine("Missing required options: --owner and --repo");
+    return false;
+}

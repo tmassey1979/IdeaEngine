@@ -140,6 +140,67 @@ public sealed class PlannerTests
         Assert.Contains("Core System Principles", File.ReadAllText(Path.Combine(root, "docs", "ARCHITECTURE.md")), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void GithubIssueService_MapsOpenStoryIssuesAndBacklogMetadata()
+    {
+        const string json = """
+        [
+          {
+            "number": 23,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Implement the System Architecture portion.",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 5,
+            "title": "Ignore epic",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "epic" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(23, issue.Number);
+        Assert.Equal("System Architecture", issue.Heading);
+        Assert.Contains("01-dragon-idea-engine-master-codex", issue.SourceFile, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SyncValidatedWorkflow_ClosesValidatedIssue()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(23, "System Architecture", "developer", new JobExecutionResult("job-1", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(23, "System Architecture", "review", new JobExecutionResult("job-2", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(23, "System Architecture", "test", new JobExecutionResult("job-3", "test", "success", "done", DateTimeOffset.UtcNow));
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+
+        var loop = new SelfBuildLoop(root, githubIssueService: service);
+        var result = loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 23);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Equal(2, commands.Count);
+        Assert.Contains("issue comment 23", commands[0], StringComparison.Ordinal);
+        Assert.Contains("issue close 23", commands[1], StringComparison.Ordinal);
+    }
+
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
