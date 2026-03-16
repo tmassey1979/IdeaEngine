@@ -332,6 +332,11 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        if (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+        {
+            return workflow.ActiveRecoveryIssueNumbers!.Max();
+        }
+
         var title = BuildRecoveryIssueTitle(workflow);
         var existingIssue = FindOpenIssueByTitle(owner, repo, title, rootDirectory);
         if (existingIssue is not null)

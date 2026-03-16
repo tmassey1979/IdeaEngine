@@ -618,6 +618,42 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncQuarantinedWorkflow_ReusesActiveRecoveryChildInsteadOfCreatingAnother()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures.",
+            null,
+            [500, 501]
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery chain: current #22 -> children #500, #501", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: #501", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncInProgressWorkflow_ShowsRecoveryChainForRecoveryChild()
     {
         var root = CreateTempRoot();
