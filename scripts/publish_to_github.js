@@ -51,10 +51,6 @@ function git(...args) {
   }).trim();
 }
 
-async function getAuthenticatedUser(token) {
-  return githubRequest(token, "GET", "/user");
-}
-
 async function ensureRepo(token, owner, repo, isPrivate) {
   try {
     const existing = await githubRequest(token, "GET", `/repos/${owner}/${repo}`);
@@ -150,9 +146,7 @@ async function main() {
   const repo = requireEnv("GITHUB_REPO");
   const visibility = (process.env.GITHUB_VISIBILITY || "private").toLowerCase();
   const isPrivate = visibility !== "public";
-
-  const user = await getAuthenticatedUser(token);
-  const owner = process.env.GITHUB_OWNER || user.login;
+  const owner = process.env.GITHUB_OWNER || "tmassey1979";
   const drafts = await loadDraftIssues();
 
   const { created: repoCreated } = await ensureRepo(token, owner, repo, isPrivate);
