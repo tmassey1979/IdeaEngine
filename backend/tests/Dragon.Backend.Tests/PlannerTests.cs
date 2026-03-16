@@ -201,6 +201,45 @@ public sealed class PlannerTests
         Assert.Contains("issue close 23", commands[1], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CycleOnce_CanAutomaticallySyncValidatedGithubWorkflow()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{}");
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+        var stories = new[]
+        {
+            new GithubIssue(
+                22,
+                "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                "OPEN",
+                ["story"],
+                "",
+                "Core System Principles",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        };
+
+        var loop = new SelfBuildLoop(root, githubIssueService: service);
+        loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+        loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+        loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+        var result = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.NotNull(result.GithubSync);
+        Assert.True(result.GithubSync!.Attempted);
+        Assert.True(result.GithubSync.Updated);
+        Assert.Equal(2, commands.Count);
+        Assert.Contains("issue comment 22", commands[0], StringComparison.Ordinal);
+        Assert.Contains("issue close 22", commands[1], StringComparison.Ordinal);
+    }
+
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

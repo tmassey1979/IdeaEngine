@@ -19,5 +19,8 @@ dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- queue --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-cycle-once --owner tmassey1979 --repo IdeaEngine --sync-github --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tmassey1979 --repo IdeaEngine --issue 23 --root .
 ```
+
+`--sync-github` is guarded: it only comments on and closes an issue after the workflow reaches `validated`.

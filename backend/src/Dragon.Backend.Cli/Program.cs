@@ -115,7 +115,7 @@ static int RunGithubCycleOnce(IReadOnlyDictionary<string, string> options)
 
     var root = GetString(options, "root", Directory.GetCurrentDirectory());
     var loop = new SelfBuildLoop(root);
-    PrintJson(loop.CycleOnceFromGithub(owner!, repo!));
+    PrintJson(loop.CycleOnceFromGithub(owner!, repo!, syncValidatedWorkflows: GetBoolean(options, "sync-github")));
     return 0;
 }
 
@@ -162,7 +162,7 @@ static int ShowHelp()
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>]
           github-issues --owner <owner> --repo <repo> [--root <repo-root>]
-          github-cycle-once --owner <owner> --repo <repo> [--root <repo-root>]
+          github-cycle-once --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>]
           sync-workflow --owner <owner> --repo <repo> --issue <number> [--root <repo-root>]
         """
     );
@@ -203,6 +203,10 @@ static int GetInt(IReadOnlyDictionary<string, string> options, string key, int f
     options.TryGetValue(key, out var rawValue) && int.TryParse(rawValue, out var parsedValue)
         ? parsedValue
         : fallback;
+
+static bool GetBoolean(IReadOnlyDictionary<string, string> options, string key) =>
+    options.TryGetValue(key, out var rawValue) &&
+    (string.Equals(rawValue, "true", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(rawValue));
 
 static bool TryGetRepoOptions(IReadOnlyDictionary<string, string> options, out string? owner, out string? repo)
 {

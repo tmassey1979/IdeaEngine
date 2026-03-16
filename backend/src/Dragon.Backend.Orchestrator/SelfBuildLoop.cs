@@ -38,7 +38,12 @@ public sealed class SelfBuildLoop
         return job;
     }
 
-    public CycleResult CycleOnce(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
+    public CycleResult CycleOnce(
+        IReadOnlyList<GithubIssue> issues,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine",
+        string? githubOwner = null,
+        bool syncValidatedWorkflows = false)
     {
         if (queueStore.ReadAll().Count == 0)
         {
@@ -50,14 +55,19 @@ public sealed class SelfBuildLoop
         var execution = jobExecutor.Execute(RootDirectory, job);
         var workflow = workflowStateStore.Update(job.Issue, job.Payload.Title, job.Agent, execution);
         var followUps = PublishFollowUps(job, execution);
+        var githubSync = TrySyncWorkflow(githubOwner, repo, workflow, syncValidatedWorkflows);
 
-        return new CycleResult("consume", job, execution, followUps, workflow);
+        return new CycleResult("consume", job, execution, followUps, workflow, githubSync);
     }
 
-    public CycleResult CycleOnceFromGithub(string owner, string repo, string project = "DragonIdeaEngine")
+    public CycleResult CycleOnceFromGithub(
+        string owner,
+        string repo,
+        string project = "DragonIdeaEngine",
+        bool syncValidatedWorkflows = false)
     {
         var issues = LoadGithubIssues(owner, repo);
-        return CycleOnce(issues, repo, project);
+        return CycleOnce(issues, repo, project, owner, syncValidatedWorkflows);
     }
 
     public GithubSyncResult SyncValidatedWorkflow(string owner, string repo, int issueNumber)
@@ -69,6 +79,16 @@ public sealed class SelfBuildLoop
         }
 
         return githubIssueService.SyncWorkflow(owner, repo, workflow, RootDirectory);
+    }
+
+    private GithubSyncResult? TrySyncWorkflow(string? githubOwner, string repo, IssueWorkflowState workflow, bool syncValidatedWorkflows)
+    {
+        if (!syncValidatedWorkflows || string.IsNullOrWhiteSpace(githubOwner))
+        {
+            return null;
+        }
+
+        return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, RootDirectory);
     }
 
     private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)
@@ -151,5 +171,6 @@ public sealed record CycleResult(
     SelfBuildJob? Job,
     JobExecutionResult? Execution,
     IReadOnlyList<SelfBuildJob> FollowUps,
-    IssueWorkflowState? Workflow = null
+    IssueWorkflowState? Workflow = null,
+    GithubSyncResult? GithubSync = null
 );
