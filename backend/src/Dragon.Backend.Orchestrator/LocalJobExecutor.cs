@@ -86,17 +86,16 @@ public sealed class LocalJobExecutor
     private string ExecuteReview(string rootDirectory, SelfBuildJob job)
     {
         var workflowState = LoadWorkflowState(rootDirectory, job.Issue);
-        if (workflowState is null ||
-            !workflowState.Stages.TryGetValue("developer", out var developerStage) ||
-            !string.Equals(developerStage.Status, "success", StringComparison.OrdinalIgnoreCase))
+        var implementationStage = workflowState is null ? null : FindSuccessfulImplementationStage(workflowState);
+        if (implementationStage is null)
         {
-            throw new InvalidOperationException("Review failed because the developer stage has not completed successfully.");
+            throw new InvalidOperationException("Review failed because no implementation stage has completed successfully.");
         }
 
         var changedPaths = ReadChangedPaths(job);
         if (changedPaths.Count == 0)
         {
-            throw new InvalidOperationException("Review failed because no changed paths were supplied.");
+            return $"Review completed for implementation stage {implementationStage} with no changed paths supplied.";
         }
 
         foreach (var relativePath in changedPaths)
@@ -174,6 +173,21 @@ public sealed class LocalJobExecutor
         }
 
         return changedPathsRaw.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static string? FindSuccessfulImplementationStage(IssueWorkflowState workflowState)
+    {
+        var implementationStage = workflowState.Stages
+            .Where(stage => !string.Equals(stage.Key, "review", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(stage.Key, "test", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(stage.Value.Status, "success", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(stage => string.Equals(stage.Key, "developer", StringComparison.OrdinalIgnoreCase))
+            .ThenBy(stage => stage.Key, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+
+        return implementationStage.Equals(default(KeyValuePair<string, WorkflowStageState>))
+            ? null
+            : implementationStage.Key;
     }
 
     private static string? SelectPackageScript(string packageJsonPath)

@@ -1106,6 +1106,68 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReviewAndTestExecutors_AcceptSuccessfulArchitectStageWithoutChangedPaths()
+    {
+        var root = CreateTempRoot();
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "node -e \"process.exit(0)\"" } }""");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(102, "System Architecture", "architect", new JobExecutionResult("job-architect", "architect", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(102, "System Architecture", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+
+        var executed = new List<string>();
+        var executor = new LocalJobExecutor((fileName, arguments, _) =>
+        {
+            executed.Add($"{fileName} {arguments}");
+            return new CommandResult(0, "ok", string.Empty);
+        });
+
+        var reviewResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "review",
+                "review_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                102,
+                new SelfBuildJobPayload("System Architecture", ["story"], "System Architecture", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string>()
+            )
+        );
+        var testResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "test",
+                "test_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                102,
+                new SelfBuildJobPayload("System Architecture", ["story"], "System Architecture", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string>()
+            )
+        );
+
+        Assert.Equal("success", reviewResult.Status);
+        Assert.Contains("architect", reviewResult.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("success", testResult.Status);
+        Assert.Single(executed);
+    }
+
+    [Fact]
+    public void WorkflowStateStore_ValidatesSuccessfulArchitectReviewAndTestStages()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var now = DateTimeOffset.UtcNow;
+
+        store.Update(102, "System Architecture", "architect", new JobExecutionResult("job-architect", "architect", "success", "done", now));
+        store.Update(102, "System Architecture", "review", new JobExecutionResult("job-review", "review", "success", "done", now.AddSeconds(1)));
+        var workflow = store.Update(102, "System Architecture", "test", new JobExecutionResult("job-test", "test", "success", "done", now.AddSeconds(2)));
+
+        Assert.Equal("validated", workflow.OverallStatus);
+    }
+
+    [Fact]
     public void FailurePolicy_QuarantinesAfterThreeConsecutiveFailures()
     {
         var now = DateTimeOffset.UtcNow;

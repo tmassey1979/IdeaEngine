@@ -182,8 +182,16 @@ public sealed class WorkflowStateStore
             return "failed";
         }
 
-        var required = new[] { "developer", "review", "test" };
-        if (required.All(stage => stages.TryGetValue(stage, out var value) && string.Equals(value.Status, "success", StringComparison.OrdinalIgnoreCase)))
+        var hasSuccessfulImplementationStage = stages.Any(stage =>
+            !string.Equals(stage.Key, "review", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(stage.Key, "test", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(stage.Value.Status, "success", StringComparison.OrdinalIgnoreCase));
+        var reviewSucceeded = stages.TryGetValue("review", out var reviewValue) &&
+            string.Equals(reviewValue.Status, "success", StringComparison.OrdinalIgnoreCase);
+        var testSucceeded = stages.TryGetValue("test", out var testValue) &&
+            string.Equals(testValue.Status, "success", StringComparison.OrdinalIgnoreCase);
+
+        if (hasSuccessfulImplementationStage && reviewSucceeded && testSucceeded)
         {
             return "validated";
         }
