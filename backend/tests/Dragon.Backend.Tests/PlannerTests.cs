@@ -299,6 +299,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("api repos/tmassey1979/IdeaEngine/issues/22/comments", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -332,6 +334,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("issues/22/comments", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issues/comments/99", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("--method PATCH", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("current stage: review", StringComparison.Ordinal));
     }
 
     [Fact]

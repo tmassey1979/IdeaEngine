@@ -108,12 +108,18 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        var currentStage = InferCurrentStage(workflow);
+        var latestExecution = executionRecords.OrderByDescending(record => record.RecordedAt).FirstOrDefault();
         var commentBody = string.Join(
             Environment.NewLine,
             [
                 HeartbeatMarker,
                 "Automated backend heartbeat:",
                 $"- workflow status: {workflow.OverallStatus}",
+                $"- current stage: {currentStage}",
+                latestExecution is not null
+                    ? $"- latest outcome: {latestExecution.JobAgent} {latestExecution.Status} ({latestExecution.Summary})"
+                    : "- latest outcome: none recorded",
                 $"- stages: {string.Join(", ", workflow.Stages.Select(stage => $"{stage.Key}={stage.Value.Status}"))}",
                 executionRecords.Count > 0
                     ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
@@ -127,6 +133,44 @@ public sealed class GithubIssueService
         AddLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
         return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
+    }
+
+    private static string InferCurrentStage(IssueWorkflowState workflow)
+    {
+        if (workflow.Stages.TryGetValue("developer", out var developer) &&
+            string.Equals(developer.Status, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "developer";
+        }
+
+        if (!workflow.Stages.ContainsKey("developer"))
+        {
+            return "developer";
+        }
+
+        if (workflow.Stages.TryGetValue("review", out var review) &&
+            string.Equals(review.Status, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "review";
+        }
+
+        if (!workflow.Stages.ContainsKey("review"))
+        {
+            return "review";
+        }
+
+        if (workflow.Stages.TryGetValue("test", out var test) &&
+            string.Equals(test.Status, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "test";
+        }
+
+        if (!workflow.Stages.ContainsKey("test"))
+        {
+            return "test";
+        }
+
+        return "complete";
     }
 
     private GithubSyncResult SyncQuarantinedWorkflow(
