@@ -173,6 +173,41 @@ function workerStateInfo(snapshot) {
   };
 }
 
+function workerNote(snapshot) {
+  const state = snapshot.workerState ?? "snapshot";
+  const nextPollLabel = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "the next scheduled interval";
+
+  if (state === "waiting") {
+    return {
+      label: "Waiting",
+      state: "waiting",
+      text: `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.`,
+    };
+  }
+
+  if (state === "complete") {
+    return {
+      label: "Complete",
+      state: "complete",
+      text: "Worker finished its current run and is not waiting on another scheduled pass.",
+    };
+  }
+
+  if (state === "snapshot") {
+    return {
+      label: "Snapshot",
+      state: "snapshot",
+      text: "This view reflects a captured status export rather than an actively waiting worker.",
+    };
+  }
+
+  return {
+    label: "Unavailable",
+    state: "unavailable",
+    text: "Worker state details are unavailable because the current status payload could not be loaded.",
+  };
+}
+
 function latestPassOutcome(snapshot) {
   const latestPass = snapshot.latestPass;
   if (!latestPass) {
@@ -257,6 +292,9 @@ function renderStatusSnapshot(snapshot) {
   const compareNote = document.getElementById("status-compare-note");
   const compareLabel = document.querySelector(".status-compare-label");
   const compareNoteText = document.getElementById("status-compare-note-text");
+  const workerNoteNode = document.getElementById("status-worker-note");
+  const workerNoteLabel = document.querySelector(".status-worker-label");
+  const workerNoteText = document.getElementById("status-worker-note-text");
   const attentionSummary = document.getElementById("status-attention-summary");
   const failed = document.getElementById("status-rollup-failed");
   const quarantined = document.getElementById("status-rollup-quarantined");
@@ -304,6 +342,10 @@ function renderStatusSnapshot(snapshot) {
   compareLabel.textContent = comparisonLabel(snapshot);
   compareNoteText.textContent = comparisonNote(snapshot);
   compareNote.className = `status-compare-note ${snapshot.comparisonMode ?? "backend"}`;
+  const workerNoteState = workerNote(snapshot);
+  workerNoteLabel.textContent = workerNoteState.label;
+  workerNoteText.textContent = workerNoteState.text;
+  workerNoteNode.className = `status-worker-note ${workerNoteState.state}`;
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -386,6 +428,9 @@ async function bootStatusMock() {
     const compareNote = document.getElementById("status-compare-note");
     const compareLabel = document.querySelector(".status-compare-label");
     const compareNoteText = document.getElementById("status-compare-note-text");
+    const workerNoteNode = document.getElementById("status-worker-note");
+    const workerNoteLabel = document.querySelector(".status-worker-label");
+    const workerNoteText = document.getElementById("status-worker-note-text");
     const attentionSummary = document.getElementById("status-attention-summary");
     const failed = document.getElementById("status-rollup-failed");
     const quarantined = document.getElementById("status-rollup-quarantined");
@@ -429,6 +474,9 @@ async function bootStatusMock() {
     compareLabel.textContent = "Unavailable";
     compareNoteText.textContent = "Comparison values are unavailable because the current status payload could not be loaded.";
     compareNote.className = "status-compare-note unavailable";
+    workerNoteLabel.textContent = "Unavailable";
+    workerNoteText.textContent = "Worker state details are unavailable because the current status payload could not be loaded.";
+    workerNoteNode.className = "status-worker-note unavailable";
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";
