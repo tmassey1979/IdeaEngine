@@ -946,7 +946,7 @@ public sealed class GithubIssueService
             return false;
         }
 
-        if (Regex.IsMatch(path, "^[a-zA-Z][a-zA-Z0-9+.-]*:/"))
+        if (Regex.IsMatch(path, "^[a-zA-Z][a-zA-Z0-9+.-]*:"))
         {
             return false;
         }
