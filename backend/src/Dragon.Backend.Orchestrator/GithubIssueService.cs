@@ -820,7 +820,13 @@ public sealed class GithubIssueService
             return null;
         }
 
-        return int.Parse(match.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        return int.TryParse(
+            match.Groups["number"].Value,
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var issueNumber)
+            ? issueNumber
+            : null;
     }
 
     private static int? InferSourceIssueNumber(string title, string body)

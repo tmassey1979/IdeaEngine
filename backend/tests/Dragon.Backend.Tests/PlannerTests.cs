@@ -1809,6 +1809,50 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncQuarantinedWorkflow_ToleratesMalformedCreatedRecoveryIssueUrl()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures."
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal))
+            {
+                return "https://github.com/tmassey1979/IdeaEngine/issues/999999999999999999999";
+            }
+
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: not created", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncQuarantinedWorkflow_UpdatesExistingRemediationComment()
     {
         var root = CreateTempRoot();
