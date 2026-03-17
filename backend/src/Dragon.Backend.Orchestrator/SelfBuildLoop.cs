@@ -286,6 +286,7 @@ public sealed class SelfBuildLoop
         };
 
         EnqueueDeferredSummaryFollowUp(job, execution, followUps);
+        EnqueueOperatorSummaryFollowUp(job, execution, followUps);
 
         foreach (var requestedFollowUp in requestedFollowUps
             .OrderBy(GetRequestedFollowUpPriorityRank)
@@ -378,6 +379,49 @@ public sealed class SelfBuildLoop
             false,
             sourceJob.Metadata.GetValueOrDefault("deferredSummaryTargetArtifact"),
             sourceJob.Metadata.GetValueOrDefault("deferredSummaryTargetOutcome")));
+    }
+
+    private static void EnqueueOperatorSummaryFollowUp(
+        SelfBuildJob sourceJob,
+        JobExecutionResult execution,
+        List<SelfBuildJob> followUps)
+    {
+        var targetArtifact = sourceJob.Metadata.GetValueOrDefault("targetArtifact");
+        if (string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            return;
+        }
+
+        var changedPaths = (execution.ChangedPaths ?? [])
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (changedPaths.Length <= 1 ||
+            !changedPaths.Any(path => string.Equals(path, targetArtifact, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (followUps.Any(existing =>
+            string.Equals(existing.Agent, "feedback", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Metadata.GetValueOrDefault("targetArtifact"), targetArtifact, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        followUps.Add(CreateFollowUpJob(
+            sourceJob,
+            execution,
+            "feedback",
+            "summarize_issue",
+            execution.JobId,
+            "high",
+            "Summarize the broader operator impact after the targeted implementation.",
+            false,
+            targetArtifact,
+            "Summarize the broader operator impact of the targeted implementation."));
     }
 
     private static void DeferSummaryFollowUp(
