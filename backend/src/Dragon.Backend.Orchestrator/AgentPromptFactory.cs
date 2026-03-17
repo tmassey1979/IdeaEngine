@@ -82,6 +82,11 @@ public static class AgentPromptFactory
             builder.AppendLine($"Requested reason: {requestedReason}");
         }
 
+        if (job.Metadata.TryGetValue("targetOutcome", out var targetOutcome) && !string.IsNullOrWhiteSpace(targetOutcome))
+        {
+            builder.AppendLine($"Target outcome: {targetOutcome}");
+        }
+
         builder.AppendLine();
         builder.AppendLine("Return the best concise result for this agent role.");
         return builder.ToString();

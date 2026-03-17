@@ -49,7 +49,8 @@ public sealed class AgentModelExecutionTests
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["targetArtifact"] = "docs/generated/provider-notes.md",
-                ["requestedReason"] = "Summarize the exact artifact that changed."
+                ["requestedReason"] = "Summarize the exact artifact that changed.",
+                ["targetOutcome"] = "Produce an operator-facing summary of the updated provider notes."
             }
         );
 
@@ -58,6 +59,7 @@ public sealed class AgentModelExecutionTests
 
         Assert.Contains("Target artifact: docs/generated/provider-notes.md", userPrompt, StringComparison.Ordinal);
         Assert.Contains("Requested reason: Summarize the exact artifact that changed.", userPrompt, StringComparison.Ordinal);
+        Assert.Contains("Target outcome: Produce an operator-facing summary of the updated provider notes.", userPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -170,7 +172,8 @@ public sealed class AgentModelExecutionTests
                   "action": "summarize_issue",
                   "priority": "high",
                   "reason": "Operator summary should be generated immediately.",
-                  "targetArtifact": "docs/generated/provider-notes.md"
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider update."
                 }
               ]
             }
@@ -185,6 +188,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("feedback", result.RequestedFollowUps![0].Agent);
         Assert.Equal("high", result.RequestedFollowUps[0].Priority);
         Assert.Equal("docs/generated/provider-notes.md", result.RequestedFollowUps[0].TargetArtifact);
+        Assert.Equal("Produce an operator-facing summary of the provider update.", result.RequestedFollowUps[0].TargetOutcome);
         Assert.Contains("Operator summary", result.RequestedFollowUps[0].Reason!, StringComparison.Ordinal);
     }
 
@@ -209,7 +213,8 @@ public sealed class AgentModelExecutionTests
                   "action": "summarize_issue",
                   "priority": "high",
                   "reason": "Summarize the documentation change for operators.",
-                  "targetArtifact": "docs/generated/provider-notes.md"
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider notes."
                 }
               ]
             }
@@ -234,6 +239,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("high", feedbackFollowUp.Metadata["requestedPriority"]);
         Assert.Contains("documentation change", feedbackFollowUp.Metadata["requestedReason"], StringComparison.Ordinal);
         Assert.Equal("docs/generated/provider-notes.md", feedbackFollowUp.Metadata["targetArtifact"]);
+        Assert.Equal("Produce an operator-facing summary of the provider notes.", feedbackFollowUp.Metadata["targetOutcome"]);
     }
 
     [Fact]
@@ -380,7 +386,8 @@ public sealed class AgentModelExecutionTests
                   "priority": "high",
                   "reason": "Operators need a concise summary.",
                   "blocking": true,
-                  "targetArtifact": "docs/ARCHITECTURE.md"
+                  "targetArtifact": "docs/ARCHITECTURE.md",
+                  "targetOutcome": "Produce a concise operator-facing architecture summary."
                 }
               ]
             }
@@ -399,6 +406,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("high", parsed.FollowUps[0].Priority);
         Assert.True(parsed.FollowUps[0].Blocking);
         Assert.Equal("docs/ARCHITECTURE.md", parsed.FollowUps[0].TargetArtifact);
+        Assert.Equal("Produce a concise operator-facing architecture summary.", parsed.FollowUps[0].TargetOutcome);
         Assert.Contains("Operators need", parsed.FollowUps[0].Reason!, StringComparison.Ordinal);
     }
 

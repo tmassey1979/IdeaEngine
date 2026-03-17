@@ -311,7 +311,8 @@ public sealed class SelfBuildLoop
                 requestedFollowUp.Priority,
                 requestedFollowUp.Reason,
                 requestedFollowUp.Blocking,
-                requestedFollowUp.TargetArtifact));
+                requestedFollowUp.TargetArtifact,
+                requestedFollowUp.TargetOutcome));
         }
 
         foreach (var followUp in followUps)
@@ -371,7 +372,8 @@ public sealed class SelfBuildLoop
         string? requestedPriority = null,
         string? requestedReason = null,
         bool requestedBlocking = false,
-        string? targetArtifact = null)
+        string? targetArtifact = null,
+        string? targetOutcome = null)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -400,6 +402,11 @@ public sealed class SelfBuildLoop
         if (!string.IsNullOrWhiteSpace(targetArtifact))
         {
             metadata["targetArtifact"] = targetArtifact;
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetOutcome))
+        {
+            metadata["targetOutcome"] = targetOutcome;
         }
 
         return new SelfBuildJob(
