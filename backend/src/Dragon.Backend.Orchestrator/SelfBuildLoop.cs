@@ -419,7 +419,7 @@ public sealed class SelfBuildLoop
             summaryAgent,
             "summarize_issue",
             execution.JobId,
-            "high",
+            "low",
             "Summarize the broader operator impact after the targeted implementation.",
             false,
             targetArtifact,

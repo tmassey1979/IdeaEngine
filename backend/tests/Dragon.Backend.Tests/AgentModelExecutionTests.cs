@@ -858,6 +858,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("docs/generated/provider-notes.md", documentationFollowUp.Metadata["targetArtifact"]);
         Assert.Equal("Summarize the broader operator impact of the targeted implementation.", documentationFollowUp.Metadata["targetOutcome"]);
         Assert.Equal("docs/generated/provider-notes.md|docs/generated/provider-rollup.md", documentationFollowUp.Metadata["changedArtifactRollup"]);
+        Assert.Equal("low", documentationFollowUp.Metadata["requestedPriority"]);
     }
 
     [Fact]
@@ -932,6 +933,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal(
             "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs|backend/tests/Dragon.Backend.Tests/PromptFactoryTests.cs",
             feedbackFollowUp.Metadata["changedArtifactRollup"]);
+        Assert.Equal("low", feedbackFollowUp.Metadata["requestedPriority"]);
     }
 
     [Fact]
