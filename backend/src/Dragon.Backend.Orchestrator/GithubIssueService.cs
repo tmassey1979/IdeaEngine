@@ -93,10 +93,16 @@ public sealed class GithubIssueService
                         SourceFile = mergedSourceFile
                     };
                 })
+                .Where(IsSchedulableDiscoveredIssue)
                 .OrderBy(issue => issue.Number)
                 .ToArray();
         }
     }
+
+    private static bool IsSchedulableDiscoveredIssue(GithubIssue issue) =>
+        issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("superseded", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase);
 
     private static int CalculateIssueCompleteness(GithubIssue issue)
     {
@@ -167,21 +173,6 @@ public sealed class GithubIssueService
             .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-
-        if (!labels.Contains("story", StringComparer.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (labels.Contains("superseded", StringComparer.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase))
-        {
-            return false;
-        }
 
         if (!entry.TryGetProperty("number", out var numberProperty) || numberProperty.ValueKind != JsonValueKind.Number)
         {
