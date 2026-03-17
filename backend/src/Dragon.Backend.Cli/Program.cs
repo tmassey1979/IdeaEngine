@@ -7,6 +7,7 @@ var options = ParseOptions(args.Skip(1).ToArray());
 
 return command switch
 {
+    "provider-describe" => RunProviderDescribe(options),
     "plan" => RunPlan(options),
     "plan-from-backlog" => RunPlanFromBacklog(options),
     "queue" => RunQueue(options),
@@ -18,6 +19,28 @@ return command switch
     "sync-workflow" => RunSyncWorkflow(options),
     _ => ShowHelp()
 };
+
+static int RunProviderDescribe(IReadOnlyDictionary<string, string> options)
+{
+    var provider = GetString(options, "provider", "openai-responses");
+    if (!string.Equals(provider, "openai-responses", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine($"Unsupported provider: {provider}");
+        return 1;
+    }
+
+    try
+    {
+        var configuredProvider = new OpenAiResponsesProvider(OpenAiResponsesOptions.FromEnvironment(Environment.GetEnvironmentVariable));
+        PrintJson(configuredProvider.Describe());
+        return 0;
+    }
+    catch (InvalidOperationException exception)
+    {
+        Console.Error.WriteLine(exception.Message);
+        return 1;
+    }
+}
 
 static int RunPlan(IReadOnlyDictionary<string, string> options)
 {
@@ -190,6 +213,7 @@ static int ShowHelp()
         Dragon.Backend.Cli
 
         Commands:
+          provider-describe [--provider openai-responses]
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           queue [--root <repo-root>]

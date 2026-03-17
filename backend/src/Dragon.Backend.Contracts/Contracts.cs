@@ -93,3 +93,34 @@ public sealed record ExecutionRecord(
     IReadOnlyList<string> ChangedPaths,
     IReadOnlyList<string> FollowUpAgents
 );
+
+public sealed record AgentModelMessage(
+    string Role,
+    string Content
+);
+
+public sealed record AgentModelRequest(
+    string Agent,
+    string Purpose,
+    string Model,
+    string? Instructions,
+    IReadOnlyList<AgentModelMessage> Messages,
+    IReadOnlyDictionary<string, string>? Metadata = null,
+    bool Background = false
+);
+
+public sealed record AgentModelResponse(
+    string Provider,
+    string Model,
+    string ResponseId,
+    string OutputText,
+    string? FinishReason = null
+);
+
+public sealed record AgentModelProviderDescriptor(
+    string Name,
+    string Transport,
+    string DefaultModel,
+    string ApiKeyEnvironmentVariable,
+    string Notes
+);

@@ -5,6 +5,7 @@ This folder is the C# backend foundation for Dragon Idea Engine.
 Current scope:
 
 - shared contracts for backlog-driven self-build jobs
+- API-first provider contracts for model-backed agent execution
 - backlog metadata loading from `planning/backlog.json`
 - bounded developer-operation planning for C# orchestration
 - local queue storage and workflow state for the bootstrap loop
@@ -22,11 +23,13 @@ Current scope:
 - automatic GitHub label transitions for in-progress, quarantined, and completed states
 - stage-aware heartbeat content that shows the current stage, when it last changed, whether it appears stalled, and the latest stage outcome
 - a small CLI that can print planned self-build jobs from backlog context and run one local self-build cycle
+- an OpenAI Responses API provider scaffold behind a provider abstraction for unattended agent execution
 
 Useful commands:
 
 ```bash
 dotnet test backend/Dragon.Backend.slnx
+dotnet run --project backend/src/Dragon.Backend.Cli -- provider-describe
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- run-until-idle --max-cycles 20 --root .
@@ -36,6 +39,12 @@ GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Back
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-until-idle --owner tmassey1979 --repo IdeaEngine --sync-github --max-cycles 20 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tmassey1979 --repo IdeaEngine --issue 23 --root .
 ```
+
+Provider direction:
+
+- `IAgentModelProvider` is the backend abstraction boundary
+- `OpenAiResponsesProvider` is the initial production-oriented provider target
+- additional providers should be added later without changing role-based agent behavior
 
 `--sync-github` is guarded: it only comments on and closes an issue after the workflow reaches `validated`, and the sync comment now includes recent execution IDs and changed-path trace data.
 `run-until-idle` is bounded by `--max-cycles` and keeps cycling until the local queue is empty and there is no more schedulable backlog work in the current issue set.
