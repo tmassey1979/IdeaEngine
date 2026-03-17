@@ -139,7 +139,8 @@ public sealed class AgentModelExecutionTests
                   "agent": "feedback",
                   "action": "summarize_issue",
                   "priority": "high",
-                  "reason": "Operator summary should be generated immediately."
+                  "reason": "Operator summary should be generated immediately.",
+                  "targetArtifact": "docs/generated/provider-notes.md"
                 }
               ]
             }
@@ -153,6 +154,7 @@ public sealed class AgentModelExecutionTests
         Assert.Single(result.RequestedFollowUps!);
         Assert.Equal("feedback", result.RequestedFollowUps![0].Agent);
         Assert.Equal("high", result.RequestedFollowUps[0].Priority);
+        Assert.Equal("docs/generated/provider-notes.md", result.RequestedFollowUps[0].TargetArtifact);
         Assert.Contains("Operator summary", result.RequestedFollowUps[0].Reason!, StringComparison.Ordinal);
     }
 
@@ -176,7 +178,8 @@ public sealed class AgentModelExecutionTests
                   "agent": "feedback",
                   "action": "summarize_issue",
                   "priority": "high",
-                  "reason": "Summarize the documentation change for operators."
+                  "reason": "Summarize the documentation change for operators.",
+                  "targetArtifact": "docs/generated/provider-notes.md"
                 }
               ]
             }
@@ -200,6 +203,7 @@ public sealed class AgentModelExecutionTests
         var feedbackFollowUp = Assert.Single(result.FollowUps, job => job.Agent == "feedback");
         Assert.Equal("high", feedbackFollowUp.Metadata["requestedPriority"]);
         Assert.Contains("documentation change", feedbackFollowUp.Metadata["requestedReason"], StringComparison.Ordinal);
+        Assert.Equal("docs/generated/provider-notes.md", feedbackFollowUp.Metadata["targetArtifact"]);
     }
 
     [Fact]
@@ -345,7 +349,8 @@ public sealed class AgentModelExecutionTests
                   "action": "summarize_issue",
                   "priority": "high",
                   "reason": "Operators need a concise summary.",
-                  "blocking": true
+                  "blocking": true,
+                  "targetArtifact": "docs/ARCHITECTURE.md"
                 }
               ]
             }
@@ -363,6 +368,7 @@ public sealed class AgentModelExecutionTests
         Assert.Single(parsed.FollowUps!);
         Assert.Equal("high", parsed.FollowUps[0].Priority);
         Assert.True(parsed.FollowUps[0].Blocking);
+        Assert.Equal("docs/ARCHITECTURE.md", parsed.FollowUps[0].TargetArtifact);
         Assert.Contains("Operators need", parsed.FollowUps[0].Reason!, StringComparison.Ordinal);
     }
 

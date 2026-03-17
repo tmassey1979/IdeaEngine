@@ -310,7 +310,8 @@ public sealed class SelfBuildLoop
                 execution.JobId,
                 requestedFollowUp.Priority,
                 requestedFollowUp.Reason,
-                requestedFollowUp.Blocking));
+                requestedFollowUp.Blocking,
+                requestedFollowUp.TargetArtifact));
         }
 
         foreach (var followUp in followUps)
@@ -369,7 +370,8 @@ public sealed class SelfBuildLoop
         string parentJobId,
         string? requestedPriority = null,
         string? requestedReason = null,
-        bool requestedBlocking = false)
+        bool requestedBlocking = false,
+        string? targetArtifact = null)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -393,6 +395,11 @@ public sealed class SelfBuildLoop
         if (requestedBlocking)
         {
             metadata["requestedBlocking"] = "true";
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            metadata["targetArtifact"] = targetArtifact;
         }
 
         return new SelfBuildJob(

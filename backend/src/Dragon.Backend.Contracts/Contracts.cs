@@ -131,7 +131,8 @@ public sealed record RequestedFollowUp(
     string Action,
     string? Priority = null,
     string? Reason = null,
-    bool Blocking = false
+    bool Blocking = false,
+    string? TargetArtifact = null
 );
 
 public sealed record AgentModelProviderDescriptor(
