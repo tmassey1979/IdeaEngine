@@ -9,6 +9,7 @@
   "pollIntervalSeconds": 30,
   "idleStreak": 2,
   "idleTarget": 2,
+  "idlePassesRemaining": 0,
   "passBudgetRemaining": 4,
   "currentPassNumber": 4,
   "maxPasses": 8,

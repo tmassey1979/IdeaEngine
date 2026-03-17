@@ -222,12 +222,16 @@ function workerNote(snapshot) {
       ? ` Current pass: ${currentPassNumber}.`
       : "";
   const idleTarget = snapshot.idleTarget ?? 0;
+  const idlePassesRemaining = snapshot.idlePassesRemaining;
   const passBudgetRemaining = snapshot.passBudgetRemaining;
   const idleProgressLabel = idleTarget > 0
     ? ` Current idle progress: ${snapshot.idleStreak ?? 0} / ${idleTarget}.`
     : snapshot.idleStreak
       ? ` Current idle streak: ${snapshot.idleStreak}.`
       : "";
+  const idleRemainingLabelText = typeof idlePassesRemaining === "number"
+    ? ` Idle passes remaining: ${idlePassesRemaining}.`
+    : "";
   const passBudgetLabel = typeof passBudgetRemaining === "number"
     ? ` Remaining pass budget: ${passBudgetRemaining}.`
     : "";
@@ -237,8 +241,8 @@ function workerNote(snapshot) {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${passBudgetLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${passBudgetLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`,
     };
   }
 
@@ -246,7 +250,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}`,
     };
   }
 
@@ -295,6 +299,14 @@ function idleStreakLabel(snapshot) {
   return String(idleStreak);
 }
 
+function idleRemainingLabel(snapshot) {
+  if (typeof snapshot.idlePassesRemaining !== "number") {
+    return "n/a";
+  }
+
+  return String(snapshot.idlePassesRemaining);
+}
+
 function passBudgetLabel(snapshot) {
   if (typeof snapshot.passBudgetRemaining !== "number") {
     return "n/a";
@@ -319,7 +331,7 @@ function passProgressLabel(snapshot) {
 }
 
 function workerProgressLabel(snapshot) {
-  return `pass ${passProgressLabel(snapshot)} · idle ${idleStreakLabel(snapshot)} · budget ${passBudgetLabel(snapshot)}`;
+  return `pass ${passProgressLabel(snapshot)} · idle ${idleStreakLabel(snapshot)} · remaining ${idleRemainingLabel(snapshot)} · budget ${passBudgetLabel(snapshot)}`;
 }
 
 function workerProgressState(snapshot) {
