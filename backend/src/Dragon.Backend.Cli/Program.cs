@@ -153,6 +153,7 @@ static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
         "run-until-idle",
         SelfBuildLoop.BuildLatestPassSummary(1, result),
         "complete",
+        workerCompletionReason: result.ReachedIdle ? "idle_run_completed" : "max_cycles_reached",
         currentPassNumber: 1,
         maxPasses: 1);
     PrintJson(result);
@@ -197,13 +198,15 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
         idleTarget: Math.Max(1, idlePassesBeforeStop),
         maxPasses: maxPasses,
         currentPassBudgetRemaining: passNumber => Math.Max(0, maxPasses - passNumber),
-        workerStateResolver: (passNumber, result) =>
+        workerStatusResolver: (passNumber, result) =>
         {
+            var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
-            var willContinue = passNumber < maxPasses && consecutiveIdlePasses < Math.Max(1, idlePassesBeforeStop);
+            var willContinue = passNumber < maxPasses && consecutiveIdlePasses < requiredIdlePasses;
             return (
                 willContinue ? "waiting" : "complete",
-                willContinue ? DateTimeOffset.UtcNow.Add(pollInterval) : null
+                willContinue ? DateTimeOffset.UtcNow.Add(pollInterval) : null,
+                willContinue ? null : (consecutiveIdlePasses >= requiredIdlePasses ? "idle_target_reached" : "max_passes_reached")
             );
         });
     var result = loop.RunWatching(
@@ -268,6 +271,7 @@ static int RunGithubRunUntilIdle(IReadOnlyDictionary<string, string> options)
         "github-run-until-idle",
         SelfBuildLoop.BuildLatestPassSummary(1, result),
         "complete",
+        workerCompletionReason: result.ReachedIdle ? "idle_run_completed" : "max_cycles_reached",
         currentPassNumber: 1,
         maxPasses: 1);
     PrintJson(result);
@@ -322,13 +326,15 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         idleTarget: Math.Max(1, idlePassesBeforeStop),
         maxPasses: maxPasses,
         currentPassBudgetRemaining: passNumber => Math.Max(0, maxPasses - passNumber),
-        workerStateResolver: (passNumber, result) =>
+        workerStatusResolver: (passNumber, result) =>
         {
+            var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
-            var willContinue = passNumber < maxPasses && consecutiveIdlePasses < Math.Max(1, idlePassesBeforeStop);
+            var willContinue = passNumber < maxPasses && consecutiveIdlePasses < requiredIdlePasses;
             return (
                 willContinue ? "waiting" : "complete",
-                willContinue ? DateTimeOffset.UtcNow.Add(pollInterval) : null
+                willContinue ? DateTimeOffset.UtcNow.Add(pollInterval) : null,
+                willContinue ? null : (consecutiveIdlePasses >= requiredIdlePasses ? "idle_target_reached" : "max_passes_reached")
             );
         });
     var result = loop.RunWatchingFromGithub(
@@ -372,10 +378,11 @@ static void ExportStatusIfRequested(
     string source,
     LatestPassSummary? latestPass = null,
     string workerState = "complete",
+    string? workerCompletionReason = null,
     int? currentPassNumber = null,
     int? maxPasses = null)
 {
-    var exporter = CreateStatusExporter(loop, root, options, source, workerState, initialLatestPass: latestPass, maxPasses: maxPasses, initialPassNumber: currentPassNumber);
+    var exporter = CreateStatusExporter(loop, root, options, source, workerState, initialLatestPass: latestPass, maxPasses: maxPasses, initialPassNumber: currentPassNumber, initialWorkerCompletionReason: workerCompletionReason);
     if (exporter is null)
     {
         return;
@@ -395,9 +402,10 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     int idleTarget = 0,
     int? maxPasses = null,
     Func<int, int>? currentPassBudgetRemaining = null,
-    Func<int, RunUntilIdleResult, (string WorkerState, DateTimeOffset? NextPollAt)>? workerStateResolver = null,
+    Func<int, RunUntilIdleResult, (string WorkerState, DateTimeOffset? NextPollAt, string? WorkerCompletionReason)>? workerStatusResolver = null,
     LatestPassSummary? initialLatestPass = null,
-    int? initialPassNumber = null)
+    int? initialPassNumber = null,
+    string? initialWorkerCompletionReason = null)
 {
     var outputPath = GetNullable(options, "status-out");
     if (string.IsNullOrWhiteSpace(outputPath))
@@ -409,12 +417,13 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     return (passNumber, result) =>
     {
         var latestPass = initialLatestPass ?? SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
-        var workerState = workerStateResolver?.Invoke(passNumber, result) ?? (defaultWorkerState, (DateTimeOffset?)null);
+        var workerStatus = workerStatusResolver?.Invoke(passNumber, result) ?? (defaultWorkerState, (DateTimeOffset?)null, initialWorkerCompletionReason);
         var snapshot = loop.ReadStatus(
             source,
             source,
-            workerState.WorkerState,
-            workerState.NextPollAt,
+            workerStatus.WorkerState,
+            workerStatus.WorkerCompletionReason,
+            workerStatus.NextPollAt,
             initialPollIntervalSeconds,
             currentIdleStreak?.Invoke() ?? 0,
             idleTarget,
