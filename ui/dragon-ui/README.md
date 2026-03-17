@@ -15,6 +15,10 @@ Each refresh also rotates the prior snapshot into
 comparison point in the UI export path and gives future dashboard slices a
 stable “previous snapshot” file to reference.
 
+The mock UI now uses that previous snapshot as a client-side fallback for trend
+comparison when the freshly exported snapshot does not yet carry a backend
+comparison baseline.
+
 To refresh that payload from the repo root, run:
 
 ```bash

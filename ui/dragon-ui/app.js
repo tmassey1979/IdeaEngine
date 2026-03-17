@@ -7,6 +7,15 @@ async function loadStatusSnapshot() {
   return response.json();
 }
 
+async function loadPreviousStatusSnapshot() {
+  const response = await fetch("sample-status.previous.json");
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json();
+}
+
 function formatTimestamp(value) {
   if (!value) {
     return "No execution recorded yet";
@@ -29,6 +38,34 @@ function formatDelta(value) {
   }
 
   return String(value ?? 0);
+}
+
+function withFallbackTrend(currentSnapshot, previousSnapshot) {
+  if (!previousSnapshot) {
+    return currentSnapshot;
+  }
+
+  if ((currentSnapshot.queueDirection && currentSnapshot.queueDirection !== "unknown") || currentSnapshot.queueComparedAt) {
+    return currentSnapshot;
+  }
+
+  const queueDelta = (currentSnapshot.queuedJobs ?? 0) - (previousSnapshot.queuedJobs ?? 0);
+  const queueDirection = queueDelta > 0 ? "up" : queueDelta < 0 ? "down" : "flat";
+  const currentRollup = currentSnapshot.rollup ?? {};
+  const previousRollup = previousSnapshot.rollup ?? {};
+
+  return {
+    ...currentSnapshot,
+    queueDirection,
+    queueDelta,
+    queueComparedAt: previousSnapshot.generatedAt ?? null,
+    rollupDelta: {
+      failedIssues: (currentRollup.failedIssues ?? 0) - (previousRollup.failedIssues ?? 0),
+      quarantinedIssues: (currentRollup.quarantinedIssues ?? 0) - (previousRollup.quarantinedIssues ?? 0),
+      inProgressIssues: (currentRollup.inProgressIssues ?? 0) - (previousRollup.inProgressIssues ?? 0),
+      validatedIssues: (currentRollup.validatedIssues ?? 0) - (previousRollup.validatedIssues ?? 0),
+    },
+  };
 }
 
 function badgeClassForStatus(status) {
@@ -142,7 +179,10 @@ function renderStatusSnapshot(snapshot) {
 
 async function bootStatusMock() {
   try {
-    const snapshot = await loadStatusSnapshot();
+    const snapshot = withFallbackTrend(
+      await loadStatusSnapshot(),
+      await loadPreviousStatusSnapshot()
+    );
     renderStatusSnapshot(snapshot);
   } catch (error) {
     const chip = document.getElementById("status-chip");
