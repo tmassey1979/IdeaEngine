@@ -409,6 +409,12 @@ public sealed class SelfBuildLoop
             metadata["targetOutcome"] = targetOutcome;
         }
 
+        var preferredAgent = InferPreferredAgent(targetArtifact);
+        if (!string.IsNullOrWhiteSpace(preferredAgent))
+        {
+            metadata["preferredAgent"] = preferredAgent;
+        }
+
         return new SelfBuildJob(
             agent,
             action,
@@ -424,6 +430,29 @@ public sealed class SelfBuildLoop
             ),
             metadata
         );
+    }
+
+    private static string? InferPreferredAgent(string? targetArtifact)
+    {
+        if (string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            return null;
+        }
+
+        if (targetArtifact.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) ||
+            targetArtifact.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            return "documentation";
+        }
+
+        if (targetArtifact.StartsWith("backend/", StringComparison.OrdinalIgnoreCase) ||
+            targetArtifact.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
+            targetArtifact.EndsWith(".js", StringComparison.OrdinalIgnoreCase))
+        {
+            return "refactor";
+        }
+
+        return null;
     }
 
     private static string RecommendAgent(GithubIssue issue)

@@ -324,6 +324,7 @@ public sealed class AgentModelExecutionTests
         Assert.Contains("documentation change", feedbackFollowUp.Metadata["requestedReason"], StringComparison.Ordinal);
         Assert.Equal("docs/generated/provider-notes.md", feedbackFollowUp.Metadata["targetArtifact"]);
         Assert.Equal("Produce an operator-facing summary of the provider notes.", feedbackFollowUp.Metadata["targetOutcome"]);
+        Assert.Equal("documentation", feedbackFollowUp.Metadata["preferredAgent"]);
     }
 
     [Fact]
@@ -489,6 +490,47 @@ public sealed class AgentModelExecutionTests
 
         Assert.NotNull(next);
         Assert.Equal("refactor", next!.Agent);
+    }
+
+    [Fact]
+    public void QueueStore_UsesPreferredAgentMetadata_ForRoleAlignment()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            435,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Feedback Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes.",
+                ["preferredAgent"] = "documentation"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            435,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Documentation Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes.",
+                ["preferredAgent"] = "feedback"
+            }));
+
+        var next = queue.Dequeue();
+
+        Assert.NotNull(next);
+        Assert.Equal("feedback", next!.Agent);
+        Assert.Equal("documentation", next.Metadata["preferredAgent"]);
     }
 
     [Fact]

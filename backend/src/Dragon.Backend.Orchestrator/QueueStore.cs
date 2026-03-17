@@ -122,17 +122,21 @@ public sealed class QueueStore
         return 2;
     }
 
-    private static int GetRoleAlignmentRank(SelfBuildJob job) => job.Agent.ToLowerInvariant() switch
+    private static int GetRoleAlignmentRank(SelfBuildJob job)
     {
-        var agent when IsDocumentationArtifact(job) && string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) => 0,
-        var agent when IsDocumentationArtifact(job) && string.Equals(agent, "feedback", StringComparison.OrdinalIgnoreCase) => 1,
-        var agent when IsCodeArtifact(job) && string.Equals(agent, "refactor", StringComparison.OrdinalIgnoreCase) => 0,
-        var agent when IsCodeArtifact(job) && string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) => 1,
-        "documentation" => 0,
-        "refactor" => 1,
-        "feedback" => 2,
-        _ => 3
-    };
+        var alignmentAgent = job.Metadata.GetValueOrDefault("preferredAgent") ?? job.Agent;
+        return alignmentAgent.ToLowerInvariant() switch
+        {
+            var agent when IsDocumentationArtifact(job) && string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) => 0,
+            var agent when IsDocumentationArtifact(job) && string.Equals(agent, "feedback", StringComparison.OrdinalIgnoreCase) => 1,
+            var agent when IsCodeArtifact(job) && string.Equals(agent, "refactor", StringComparison.OrdinalIgnoreCase) => 0,
+            var agent when IsCodeArtifact(job) && string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) => 1,
+            "documentation" => 0,
+            "refactor" => 1,
+            "feedback" => 2,
+            _ => 3
+        };
+    }
 
     private static bool IsDocumentationArtifact(SelfBuildJob job)
     {
