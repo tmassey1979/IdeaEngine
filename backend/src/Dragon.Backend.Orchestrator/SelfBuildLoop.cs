@@ -45,6 +45,7 @@ public sealed class SelfBuildLoop
         int? pollIntervalSeconds = null,
         int idleStreak = 0,
         int idleTarget = 0,
+        int? idlePassesRemaining = null,
         int? passBudgetRemaining = null,
         LatestPassSummary? latestPass = null,
         int? currentPassNumber = null,
@@ -90,6 +91,7 @@ public sealed class SelfBuildLoop
             pollIntervalSeconds,
             idleStreak,
             idleTarget,
+            idlePassesRemaining,
             passBudgetRemaining,
             currentPassNumber,
             maxPasses,
@@ -118,12 +120,13 @@ public sealed class SelfBuildLoop
         int? pollIntervalSeconds = null,
         int idleStreak = 0,
         int idleTarget = 0,
+        int? idlePassesRemaining = null,
         int? passBudgetRemaining = null,
         LatestPassSummary? latestPass = null,
         int? currentPassNumber = null,
         int? maxPasses = null)
     {
-        var snapshot = ReadStatus(lastCommand, workerMode, workerState, workerCompletionReason, nextPollAt, pollIntervalSeconds, idleStreak, idleTarget, passBudgetRemaining, latestPass, currentPassNumber, maxPasses);
+        var snapshot = ReadStatus(lastCommand, workerMode, workerState, workerCompletionReason, nextPollAt, pollIntervalSeconds, idleStreak, idleTarget, idlePassesRemaining, passBudgetRemaining, latestPass, currentPassNumber, maxPasses);
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -1398,6 +1401,7 @@ public sealed record StatusSnapshot(
     int? PollIntervalSeconds,
     int IdleStreak,
     int IdleTarget,
+    int? IdlePassesRemaining,
     int? PassBudgetRemaining,
     int? CurrentPassNumber,
     int? MaxPasses,
