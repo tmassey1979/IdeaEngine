@@ -121,6 +121,35 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void BuildPrompt_StrengthensFeedbackInstructions_ForBroadRollupSummaryJobs()
+    {
+        var job = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            448,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Feedback Agent",
+                ["story"],
+                "Feedback Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                ["targetOutcome"] = "Summarize the broader operator impact of the targeted implementation.",
+                ["changedArtifactRollup"] = "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs|backend/tests/Dragon.Backend.Tests/PromptFactoryTests.cs"
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+
+        Assert.Contains("explain the broader impact across the changed artifact rollup", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void BuildPrompt_StrengthensDocumentationInstructions_ForTargetedFollowUpJobs()
     {
         var job = new SelfBuildJob(
@@ -146,6 +175,35 @@ public sealed class AgentModelExecutionTests
         var request = AgentPromptFactory.Build(job);
 
         Assert.Contains("treat that scoped artifact and outcome as the primary documentation surface", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildPrompt_StrengthensDocumentationInstructions_ForBroadRollupSummaryJobs()
+    {
+        var job = new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            449,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+                ["story"],
+                "Documentation Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Summarize the broader operator impact of the targeted implementation.",
+                ["changedArtifactRollup"] = "docs/generated/provider-notes.md|docs/generated/provider-rollup.md"
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+
+        Assert.Contains("explain the broader documentation impact across the changed artifact rollup", request.Instructions!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

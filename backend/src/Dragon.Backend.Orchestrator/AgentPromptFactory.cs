@@ -40,21 +40,32 @@ public static class AgentPromptFactory
             "refactor" => "You are the refactor agent. Improve structure and clarity without changing intended behavior. Return JSON only with fields: summary, recommendation, artifacts.",
             _ => $"You are the {job.Agent} agent. Complete the assigned work. Return JSON only with fields: summary, recommendation, artifacts."
         };
+        var hasTargeting = HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome");
+        var hasBroadRollup = HasBroadChangedArtifactRollup(job);
 
-        if (string.Equals(job.Agent, "feedback", StringComparison.OrdinalIgnoreCase) &&
-            (HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome")))
+        if (string.Equals(job.Agent, "feedback", StringComparison.OrdinalIgnoreCase) && hasTargeting)
         {
-            return $"{baseInstruction} When a target artifact or target outcome is provided, center the summary on that scoped work before broader observations.";
+            var instruction = $"{baseInstruction} When a target artifact or target outcome is provided, center the summary on that scoped work before broader observations.";
+            if (hasBroadRollup)
+            {
+                instruction += " When a changed artifact rollup is present, explain the broader impact across the changed artifact rollup without losing the primary target focus.";
+            }
+
+            return instruction;
         }
 
-        if (string.Equals(job.Agent, "documentation", StringComparison.OrdinalIgnoreCase) &&
-            (HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome")))
+        if (string.Equals(job.Agent, "documentation", StringComparison.OrdinalIgnoreCase) && hasTargeting)
         {
-            return $"{baseInstruction} When a target artifact or target outcome is provided, treat that scoped artifact and outcome as the primary documentation surface before broader updates.";
+            var instruction = $"{baseInstruction} When a target artifact or target outcome is provided, treat that scoped artifact and outcome as the primary documentation surface before broader updates.";
+            if (hasBroadRollup)
+            {
+                instruction += " When a changed artifact rollup is present, explain the broader documentation impact across the changed artifact rollup while keeping the primary target artifact central.";
+            }
+
+            return instruction;
         }
 
-        if (string.Equals(job.Agent, "refactor", StringComparison.OrdinalIgnoreCase) &&
-            (HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome")))
+        if (string.Equals(job.Agent, "refactor", StringComparison.OrdinalIgnoreCase) && hasTargeting)
         {
             return $"{baseInstruction} When a target artifact or target outcome is provided, treat that scoped artifact and outcome as the primary refactor surface before broader cleanups.";
         }
@@ -64,6 +75,11 @@ public static class AgentPromptFactory
 
     private static bool HasMetadataValue(SelfBuildJob job, string key) =>
         job.Metadata.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value);
+
+    private static bool HasBroadChangedArtifactRollup(SelfBuildJob job) =>
+        job.Metadata.TryGetValue("changedArtifactRollup", out var value) &&
+        !string.IsNullOrWhiteSpace(value) &&
+        value.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length > 1;
 
     private static string BuildUserPrompt(SelfBuildJob job)
     {
