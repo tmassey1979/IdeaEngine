@@ -91,6 +91,7 @@ public sealed class GithubIssueService
             .Where(label => label.ValueKind == JsonValueKind.Object && label.TryGetProperty("name", out _))
             .Select(label => label.GetProperty("name").GetString())
             .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         if (!labels.Contains("story", StringComparer.OrdinalIgnoreCase))
