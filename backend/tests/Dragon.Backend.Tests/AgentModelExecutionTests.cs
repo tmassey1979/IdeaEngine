@@ -63,6 +63,34 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void BuildPrompt_StrengthensFeedbackInstructions_ForTargetedFollowUpJobs()
+    {
+        var job = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            428,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Feedback Agent",
+                ["story"],
+                "Feedback Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the updated provider notes."
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+
+        Assert.Contains("center the summary on that scoped work before broader observations", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Execute_UsesModelProviderForArchitectJobs()
     {
         var issue = new GithubIssue(

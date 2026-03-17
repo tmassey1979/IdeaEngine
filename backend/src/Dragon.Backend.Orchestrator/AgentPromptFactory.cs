@@ -7,7 +7,7 @@ public static class AgentPromptFactory
 {
     public static AgentModelRequest Build(SelfBuildJob job, string model = "gpt-5")
     {
-        var instructions = BuildInstructions(job.Agent);
+        var instructions = BuildInstructions(job);
         var metadata = new Dictionary<string, string>(job.Metadata, StringComparer.Ordinal)
         {
             ["issueNumber"] = job.Issue.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -28,16 +28,30 @@ public static class AgentPromptFactory
         );
     }
 
-    private static string BuildInstructions(string agent) => agent.ToLowerInvariant() switch
+    private static string BuildInstructions(SelfBuildJob job)
     {
-        "architect" => "You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. Return JSON only with fields: summary, recommendation, artifacts.",
-        "documentation" => "You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations. Return JSON only with fields: summary, recommendation, artifacts.",
-        "feedback" => "You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language. Return JSON only with fields: summary, recommendation, artifacts.",
-        "idea" => "You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices. Return JSON only with fields: summary, recommendation, artifacts.",
-        "repository-manager" => "You are the repository manager agent. Focus on repository hygiene, branch strategy, and delivery mechanics. Return JSON only with fields: summary, recommendation, artifacts.",
-        "refactor" => "You are the refactor agent. Improve structure and clarity without changing intended behavior. Return JSON only with fields: summary, recommendation, artifacts.",
-        _ => $"You are the {agent} agent. Complete the assigned work. Return JSON only with fields: summary, recommendation, artifacts."
-    };
+        var baseInstruction = job.Agent.ToLowerInvariant() switch
+        {
+            "architect" => "You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. Return JSON only with fields: summary, recommendation, artifacts.",
+            "documentation" => "You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations. Return JSON only with fields: summary, recommendation, artifacts.",
+            "feedback" => "You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language. Return JSON only with fields: summary, recommendation, artifacts.",
+            "idea" => "You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices. Return JSON only with fields: summary, recommendation, artifacts.",
+            "repository-manager" => "You are the repository manager agent. Focus on repository hygiene, branch strategy, and delivery mechanics. Return JSON only with fields: summary, recommendation, artifacts.",
+            "refactor" => "You are the refactor agent. Improve structure and clarity without changing intended behavior. Return JSON only with fields: summary, recommendation, artifacts.",
+            _ => $"You are the {job.Agent} agent. Complete the assigned work. Return JSON only with fields: summary, recommendation, artifacts."
+        };
+
+        if (string.Equals(job.Agent, "feedback", StringComparison.OrdinalIgnoreCase) &&
+            (HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome")))
+        {
+            return $"{baseInstruction} When a target artifact or target outcome is provided, center the summary on that scoped work before broader observations.";
+        }
+
+        return baseInstruction;
+    }
+
+    private static bool HasMetadataValue(SelfBuildJob job, string key) =>
+        job.Metadata.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value);
 
     private static string BuildUserPrompt(SelfBuildJob job)
     {
