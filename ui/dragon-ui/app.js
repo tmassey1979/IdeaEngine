@@ -40,6 +40,18 @@ function formatDelta(value) {
   return String(value ?? 0);
 }
 
+function deltaClass(value) {
+  if (value > 0) {
+    return "positive";
+  }
+
+  if (value < 0) {
+    return "negative";
+  }
+
+  return "";
+}
+
 function withFallbackTrend(currentSnapshot, previousSnapshot) {
   if (!previousSnapshot) {
     return {
@@ -165,6 +177,10 @@ function renderStatusSnapshot(snapshot) {
   quarantinedDelta.textContent = formatDelta(snapshot.rollupDelta?.quarantinedIssues ?? 0);
   inProgressDelta.textContent = formatDelta(snapshot.rollupDelta?.inProgressIssues ?? 0);
   validatedDelta.textContent = formatDelta(snapshot.rollupDelta?.validatedIssues ?? 0);
+  failedDelta.className = deltaClass(snapshot.rollupDelta?.failedIssues ?? 0);
+  quarantinedDelta.className = deltaClass(snapshot.rollupDelta?.quarantinedIssues ?? 0);
+  inProgressDelta.className = deltaClass(snapshot.rollupDelta?.inProgressIssues ?? 0);
+  validatedDelta.className = deltaClass(snapshot.rollupDelta?.validatedIssues ?? 0);
   latestIssue.textContent = snapshot.latestActivity
     ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
     : "No recent execution";
@@ -238,6 +254,10 @@ async function bootStatusMock() {
     quarantinedDelta.textContent = "0";
     inProgressDelta.textContent = "0";
     validatedDelta.textContent = "0";
+    failedDelta.className = "";
+    quarantinedDelta.className = "";
+    inProgressDelta.className = "";
+    validatedDelta.className = "";
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";

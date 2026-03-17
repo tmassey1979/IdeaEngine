@@ -336,6 +336,14 @@ button {
   font-size: 0.82rem;
 }
 
+.status-rollup-card small.positive {
+  color: #f4d8bf;
+}
+
+.status-rollup-card small.negative {
+  color: #d8f4e6;
+}
+
 .status-banner-line {
   display: grid;
   gap: 4px;
