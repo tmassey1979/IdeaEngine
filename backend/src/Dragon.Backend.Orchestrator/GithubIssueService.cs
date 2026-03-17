@@ -276,7 +276,11 @@ public sealed class GithubIssueService
     }
 
     private static bool ShouldAutoCloseValidatedWorkflow(IReadOnlyList<ExecutionRecord> executionRecords) =>
-        executionRecords.SelectMany(record => record.ChangedPaths).Distinct(StringComparer.Ordinal).Any();
+        executionRecords
+            .SelectMany(record => record.ChangedPaths)
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.Ordinal)
+            .Any();
 
     private GithubSyncResult SyncHeartbeatWorkflow(
         string owner,

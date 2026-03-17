@@ -1688,6 +1688,48 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_UsesHeartbeatWhenChangedPathsAreBlank()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            103,
+            "System Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-dev", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-review", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-test", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(103, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, ["", "   "], ["review"]),
+            new ExecutionRecord(103, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
+            new ExecutionRecord(103, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/103/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 103", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 103 --repo tmassey1979/IdeaEngine --add-label waiting-follow-up", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("auto-close: deferred because no execution-backed changed paths were recorded; waiting on follow-up", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_DoesNotCloseIssueWithActiveRecoveryChildren()
     {
         var root = CreateTempRoot();
