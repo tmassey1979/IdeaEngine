@@ -416,6 +416,44 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void QueueStore_PrefersRoleAlignedTargetedFollowUps_WhenTargetingIsEqual()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            433,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Feedback Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes."
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            433,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Documentation Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes."
+            }));
+
+        var next = queue.Dequeue();
+
+        Assert.NotNull(next);
+        Assert.Equal("documentation", next!.Agent);
+    }
+
+    [Fact]
     public void CycleOnce_PrioritizesValidationAndHighPriorityFollowUps_AheadOfQueuedBacklogWork()
     {
         var root = CreateTempRoot();

@@ -54,6 +54,7 @@ public sealed class QueueStore
             .Select((job, index) => new { job, index })
             .OrderBy(item => GetQueuePriorityRank(item.job))
             .ThenBy(item => GetTargetingRank(item.job))
+            .ThenBy(item => GetRoleAlignmentRank(item.job))
             .ThenBy(item => item.index)
             .First()
             .index;
@@ -120,6 +121,14 @@ public sealed class QueueStore
 
         return 2;
     }
+
+    private static int GetRoleAlignmentRank(SelfBuildJob job) => job.Agent.ToLowerInvariant() switch
+    {
+        "documentation" => 0,
+        "refactor" => 1,
+        "feedback" => 2,
+        _ => 3
+    };
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)
     {
