@@ -283,6 +283,7 @@ public sealed class GithubIssueService
             .SelectMany(record => record.ChangedPaths)
             .Select(path => path.Trim().Replace('\\', '/'))
             .Select(path => path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path)
+            .Select(path => Regex.Replace(path, "/{2,}", "/"))
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
