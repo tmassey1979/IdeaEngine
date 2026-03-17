@@ -956,6 +956,42 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_PreservesRecoverySourceIssueAcrossDuplicateIssuesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 810,
+            "title": "[Recovery] Core System Principles",
+            "body": "Recovery story without explicit source.",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          },
+          {
+            "number": 810,
+            "title": "[Recovery] Issue #22: Core System Principles",
+            "body": "Recovery story for quarantined issue #22.\n\nContext:\n- source issue: #22",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(810, issue.Number);
+        Assert.Equal(22, issue.SourceIssueNumber);
+    }
+
+    [Fact]
     public void GithubIssueService_UsesDeterministicTieBreakForEquallyCompleteDuplicates()
     {
         const string json = """
