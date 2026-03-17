@@ -249,6 +249,31 @@ function latestPassOutcome(snapshot) {
   return "Pass completed with remaining work";
 }
 
+function latestPassMix(snapshot) {
+  const latestPass = snapshot.latestPass;
+  if (!latestPass) {
+    return "No pass mix";
+  }
+
+  if (latestPass.seededCycles === 0 && latestPass.consumedCycles === 0) {
+    return "Idle";
+  }
+
+  if (latestPass.seededCycles > 0 && latestPass.consumedCycles === 0) {
+    return "Seed-heavy";
+  }
+
+  if (latestPass.consumedCycles > 0 && latestPass.seededCycles === 0) {
+    return "Consume-heavy";
+  }
+
+  if (latestPass.seededCycles === latestPass.consumedCycles) {
+    return "Balanced";
+  }
+
+  return latestPass.seededCycles > latestPass.consumedCycles ? "Seed-leaning" : "Consume-leaning";
+}
+
 function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
@@ -337,6 +362,7 @@ function renderStatusSnapshot(snapshot) {
   const latestPassNumber = document.getElementById("status-latest-pass-number");
   const latestPassCycles = document.getElementById("status-latest-pass-cycles");
   const latestPassWork = document.getElementById("status-latest-pass-work");
+  const latestPassMixNode = document.getElementById("status-latest-pass-mix");
   const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
   const loopMode = document.getElementById("status-loop-mode");
   const loopSummary = document.getElementById("status-loop-summary");
@@ -400,6 +426,7 @@ function renderStatusSnapshot(snapshot) {
   latestPassWork.textContent = snapshot.latestPass
     ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 seed, 0 consume";
+  latestPassMixNode.textContent = latestPassMix(snapshot);
   latestPassOutcomeNode.textContent = latestPassOutcome(snapshot);
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
@@ -479,6 +506,7 @@ async function bootStatusMock() {
     const latestPassNumber = document.getElementById("status-latest-pass-number");
     const latestPassCycles = document.getElementById("status-latest-pass-cycles");
     const latestPassWork = document.getElementById("status-latest-pass-work");
+    const latestPassMixNode = document.getElementById("status-latest-pass-mix");
     const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
     const loopMode = document.getElementById("status-loop-mode");
     const loopSummary = document.getElementById("status-loop-summary");
@@ -531,6 +559,7 @@ async function bootStatusMock() {
     latestPassNumber.textContent = "Unavailable";
     latestPassCycles.textContent = "Unavailable";
     latestPassWork.textContent = "Unavailable";
+    latestPassMixNode.textContent = "Unavailable";
     latestPassOutcomeNode.textContent = "Could not load pass summary";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
