@@ -290,6 +290,7 @@ public sealed class GithubIssueService
             .Select(path => path.Replace("/./", "/", StringComparison.Ordinal))
             .Select(NormalizeRelativePathSegments)
             .Select(StripQueryAndFragment)
+            .Select(UnwrapMarkdownPathReference)
             .Select(path => path.EndsWith("/.", StringComparison.Ordinal) ? path[..^2] : path)
             .Select(path => path.EndsWith("/", StringComparison.Ordinal) ? path[..^1] : path)
             .Where(IsRepoRelativeChangedPath)
@@ -945,6 +946,21 @@ public sealed class GithubIssueService
             fragmentIndex;
 
         return cutIndex >= 0 ? path[..cutIndex] : path;
+    }
+
+    private static string UnwrapMarkdownPathReference(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path.Length < 2)
+        {
+            return path;
+        }
+
+        if ((path[0], path[^1]) is ('`', '`') or ('[', ']') or ('(', ')') or ('"', '"') or ('\'', '\''))
+        {
+            return path[1..^1].Trim();
+        }
+
+        return path;
     }
 
     private static bool IsRepoRelativeChangedPath(string path)
