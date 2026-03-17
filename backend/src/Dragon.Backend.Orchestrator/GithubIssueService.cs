@@ -291,6 +291,7 @@ public sealed class GithubIssueService
             .Select(NormalizeRelativePathSegments)
             .Select(StripQueryAndFragment)
             .Select(UnwrapMarkdownPathReference)
+            .Select(DecodePercentEncoding)
             .Select(path => path.EndsWith("/.", StringComparison.Ordinal) ? path[..^2] : path)
             .Select(path => path.EndsWith("/", StringComparison.Ordinal) ? path[..^1] : path)
             .Where(IsRepoRelativeChangedPath)
@@ -972,6 +973,23 @@ public sealed class GithubIssueService
         }
 
         return path;
+    }
+
+    private static string DecodePercentEncoding(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !path.Contains('%', StringComparison.Ordinal))
+        {
+            return path;
+        }
+
+        try
+        {
+            return Uri.UnescapeDataString(path);
+        }
+        catch (UriFormatException)
+        {
+            return path;
+        }
     }
 
     private static bool IsRepoRelativeChangedPath(string path)
