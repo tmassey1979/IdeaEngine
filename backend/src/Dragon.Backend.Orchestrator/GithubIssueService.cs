@@ -977,25 +977,34 @@ public sealed class GithubIssueService
             var normalizedLinkTarget = titleMatch.Success
                 ? titleMatch.Groups["path"].Value.Trim()
                 : strippedLinkTarget;
-
-            return normalizedLinkTarget.Length >= 2 &&
-                normalizedLinkTarget[0] == '<' &&
-                normalizedLinkTarget[^1] == '>'
-                ? normalizedLinkTarget[1..^1].Trim()
-                : normalizedLinkTarget;
+            return UnwrapSimplePathWrapper(normalizedLinkTarget);
         }
 
-        if ((path[0], path[^1]) is ('`', '`') or ('[', ']') or ('(', ')') or ('"', '"') or ('\'', '\''))
+        return UnwrapSimplePathWrapper(path);
+    }
+
+    private static string UnwrapSimplePathWrapper(string path)
+    {
+        var current = path;
+
+        while (!string.IsNullOrWhiteSpace(current) && current.Length >= 2)
         {
-            return path[1..^1].Trim();
+            var unwrapped =
+                (current[0], current[^1]) is ('`', '`') or ('[', ']') or ('(', ')') or ('"', '"') or ('\'', '\'')
+                    ? current[1..^1].Trim()
+                    : current[0] == '<' && current[^1] == '>'
+                    ? current[1..^1].Trim()
+                    : current;
+
+            if (ReferenceEquals(unwrapped, current) || string.Equals(unwrapped, current, StringComparison.Ordinal))
+            {
+                return current;
+            }
+
+            current = unwrapped;
         }
 
-        if (path[0] == '<' && path[^1] == '>')
-        {
-            return path[1..^1].Trim();
-        }
-
-        return path;
+        return current;
     }
 
     private static string DecodePercentEncoding(string path)
