@@ -293,6 +293,7 @@ public sealed class GithubIssueService
             .Select(StripQueryAndFragment)
             .Select(UnwrapMarkdownPathReference)
             .Select(DecodePercentEncoding)
+            .Select(StripQueryAndFragment)
             .Select(path => path.EndsWith("/.", StringComparison.Ordinal) ? path[..^2] : path)
             .Select(path => path.EndsWith("/", StringComparison.Ordinal) ? path[..^1] : path)
             .Where(IsRepoRelativeChangedPath)
@@ -971,10 +972,11 @@ public sealed class GithubIssueService
         if (markdownLinkMatch.Success)
         {
             var linkTarget = markdownLinkMatch.Groups["path"].Value.Trim();
-            var titleMatch = Regex.Match(linkTarget, "^(?<path>.+?)\\s+(?:\"[^\"]*\"|'[^']*'|\\([^)]*\\))$");
+            var strippedLinkTarget = StripQueryAndFragment(linkTarget);
+            var titleMatch = Regex.Match(strippedLinkTarget, "^(?<path>.+?)\\s+(?:\"[^\"]*\"|'[^']*'|\\([^)]*\\))$");
             var normalizedLinkTarget = titleMatch.Success
                 ? titleMatch.Groups["path"].Value.Trim()
-                : linkTarget;
+                : strippedLinkTarget;
 
             return normalizedLinkTarget.Length >= 2 &&
                 normalizedLinkTarget[0] == '<' &&
