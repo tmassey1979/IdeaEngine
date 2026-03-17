@@ -47,6 +47,12 @@ public static class AgentPromptFactory
             return $"{baseInstruction} When a target artifact or target outcome is provided, center the summary on that scoped work before broader observations.";
         }
 
+        if (string.Equals(job.Agent, "documentation", StringComparison.OrdinalIgnoreCase) &&
+            (HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome")))
+        {
+            return $"{baseInstruction} When a target artifact or target outcome is provided, treat that scoped artifact and outcome as the primary documentation surface before broader updates.";
+        }
+
         return baseInstruction;
     }
 

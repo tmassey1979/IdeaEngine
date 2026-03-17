@@ -91,6 +91,34 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void BuildPrompt_StrengthensDocumentationInstructions_ForTargetedFollowUpJobs()
+    {
+        var job = new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            429,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+                ["story"],
+                "Documentation Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Update the provider notes with a clearer operator explanation."
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+
+        Assert.Contains("treat that scoped artifact and outcome as the primary documentation surface", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Execute_UsesModelProviderForArchitectJobs()
     {
         var issue = new GithubIssue(
