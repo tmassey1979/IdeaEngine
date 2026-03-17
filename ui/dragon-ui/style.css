@@ -812,6 +812,42 @@ button {
   border-color: rgba(212, 20, 20, 0.24);
 }
 
+.cycle-mix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+}
+
+.cycle-mix.idle {
+  color: #d8f4e6;
+  background: rgba(79, 181, 127, 0.12);
+  border-color: rgba(79, 181, 127, 0.25);
+}
+
+.cycle-mix.active {
+  color: #f4d8bf;
+  background: rgba(214, 139, 42, 0.14);
+  border-color: rgba(214, 139, 42, 0.24);
+}
+
+.cycle-mix.capped,
+.cycle-mix.unavailable {
+  color: #f2c0c0;
+  background: rgba(212, 20, 20, 0.14);
+  border-color: rgba(212, 20, 20, 0.24);
+}
+
+.cycle-mix.unknown {
+  color: #d2d6da;
+  background: rgba(122, 135, 146, 0.12);
+  border-color: rgba(122, 135, 146, 0.24);
+}
+
 .status-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 16px;

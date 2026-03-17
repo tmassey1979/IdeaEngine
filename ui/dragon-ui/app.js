@@ -306,6 +306,28 @@ function latestPassMixState(label) {
   }
 }
 
+function latestPassCycleState(snapshot) {
+  const latestPass = snapshot.latestPass;
+  if (!latestPass) {
+    return { label: "0 cycles", state: "unknown" };
+  }
+
+  const label = `${latestPass.cycleCount} cycle${latestPass.cycleCount === 1 ? "" : "s"}`;
+  if (latestPass.cycleCount === 0) {
+    return { label, state: "idle" };
+  }
+
+  if (latestPass.reachedMaxCycles) {
+    return { label, state: "capped" };
+  }
+
+  if (latestPass.reachedIdle) {
+    return { label, state: "idle" };
+  }
+
+  return { label, state: "active" };
+}
+
 function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
@@ -452,9 +474,9 @@ function renderStatusSnapshot(snapshot) {
   latestActivityGroup.className = "status-activity";
   latestPassGroup.className = "status-activity";
   latestPassNumber.textContent = snapshot.latestPass ? `Pass ${snapshot.latestPass.passNumber}` : "No pass recorded";
-  latestPassCycles.textContent = snapshot.latestPass
-    ? `${snapshot.latestPass.cycleCount} cycles, ${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
-    : "0 cycles";
+  const latestPassCycle = latestPassCycleState(snapshot);
+  latestPassCycles.textContent = latestPassCycle.label;
+  latestPassCycles.className = `cycle-mix ${latestPassCycle.state}`;
   latestPassWork.textContent = snapshot.latestPass
     ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 seed, 0 consume";
@@ -594,6 +616,7 @@ async function bootStatusMock() {
     latestPassGroup.className = "status-activity";
     latestPassNumber.textContent = "Unavailable";
     latestPassCycles.textContent = "Unavailable";
+    latestPassCycles.className = "cycle-mix unavailable";
     latestPassWork.textContent = "Unavailable";
     latestPassMixNode.textContent = "Unavailable";
     latestPassMixNode.className = "pass-mix unavailable";
