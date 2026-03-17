@@ -301,6 +301,8 @@ public sealed class PlannerTests
         Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal("draining", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
+        Assert.Equal("unknown", rootElement.GetProperty("queueDirection").GetString());
+        Assert.Equal(0, rootElement.GetProperty("queueDelta").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -634,11 +636,47 @@ public sealed class PlannerTests
         Assert.Equal(22, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("test", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal("idle", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
+        Assert.Equal("unknown", rootElement.GetProperty("queueDirection").GetString());
+        Assert.Equal(0, rootElement.GetProperty("queueDelta").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
         Assert.Equal(22, issueElement.GetProperty("issueNumber").GetInt32());
         Assert.Equal("validated", issueElement.GetProperty("overallStatus").GetString());
+    }
+
+    [Fact]
+    public void StatusSnapshotTrend_ComparesQueuedJobsAgainstPreviousSnapshot()
+    {
+        var previous = new StatusSnapshot(
+            DateTimeOffset.UtcNow.AddMinutes(-5),
+            "status",
+            "healthy",
+            "previous",
+            new StatusRollup(0, 0, 1, 0),
+            null,
+            new RecentLoopSignalSnapshot("draining", "previous"),
+            "unknown",
+            0,
+            3,
+            []);
+        var current = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "healthy",
+            "current",
+            new StatusRollup(0, 0, 1, 0),
+            null,
+            new RecentLoopSignalSnapshot("draining", "current"),
+            "unknown",
+            0,
+            1,
+            []);
+
+        var annotated = StatusSnapshotTrend.Apply(current, previous);
+
+        Assert.Equal("down", annotated.QueueDirection);
+        Assert.Equal(-2, annotated.QueueDelta);
     }
 
     [Fact]

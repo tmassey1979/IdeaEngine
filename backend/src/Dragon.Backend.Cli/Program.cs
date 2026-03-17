@@ -233,6 +233,19 @@ static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDi
 
 static void WriteStatusSnapshot(string outputPath, StatusSnapshot snapshot)
 {
+    StatusSnapshot? previousSnapshot = null;
+    if (File.Exists(outputPath))
+    {
+        previousSnapshot = JsonSerializer.Deserialize<StatusSnapshot>(
+            File.ReadAllText(outputPath),
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+    }
+
+    snapshot = StatusSnapshotTrend.Apply(snapshot, previousSnapshot);
+
     var directory = Path.GetDirectoryName(outputPath);
     if (!string.IsNullOrWhiteSpace(directory))
     {

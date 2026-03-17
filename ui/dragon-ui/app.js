@@ -77,6 +77,7 @@ function renderStatusSnapshot(snapshot) {
   const health = document.getElementById("status-health");
   const source = document.getElementById("status-source");
   const generatedAt = document.getElementById("status-generated-at");
+  const queueDirection = document.getElementById("status-queue-direction");
   const attentionSummary = document.getElementById("status-attention-summary");
   const failed = document.getElementById("status-rollup-failed");
   const quarantined = document.getElementById("status-rollup-quarantined");
@@ -87,10 +88,12 @@ function renderStatusSnapshot(snapshot) {
   const latestSummary = document.getElementById("status-latest-summary");
   const loopMode = document.getElementById("status-loop-mode");
   const loopSummary = document.getElementById("status-loop-summary");
+  const queueDelta = document.getElementById("status-queue-delta");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
+  queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -103,6 +106,7 @@ function renderStatusSnapshot(snapshot) {
   latestSummary.textContent = snapshot.latestActivity?.summary ?? "No recent execution summary";
   loopMode.textContent = snapshot.recentLoopSignal?.mode ?? "unknown";
   loopSummary.textContent = snapshot.recentLoopSignal?.summary ?? "No recent loop summary";
+  queueDelta.textContent = String(snapshot.queueDelta ?? 0);
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -128,6 +132,7 @@ async function bootStatusMock() {
     const health = document.getElementById("status-health");
     const source = document.getElementById("status-source");
     const generatedAt = document.getElementById("status-generated-at");
+    const queueDirection = document.getElementById("status-queue-direction");
     const attentionSummary = document.getElementById("status-attention-summary");
     const failed = document.getElementById("status-rollup-failed");
     const quarantined = document.getElementById("status-rollup-quarantined");
@@ -138,10 +143,12 @@ async function bootStatusMock() {
     const latestSummary = document.getElementById("status-latest-summary");
     const loopMode = document.getElementById("status-loop-mode");
     const loopSummary = document.getElementById("status-loop-summary");
+    const queueDelta = document.getElementById("status-queue-delta");
     chip.textContent = "Sample snapshot unavailable";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
+    queueDirection.textContent = "unavailable";
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";
@@ -152,6 +159,7 @@ async function bootStatusMock() {
     latestSummary.textContent = "Could not load status summary";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
+    queueDelta.textContent = "0";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>

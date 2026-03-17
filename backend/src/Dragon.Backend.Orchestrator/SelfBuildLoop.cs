@@ -75,6 +75,8 @@ public sealed class SelfBuildLoop
             rollup,
             latestActivity,
             recentLoopSignal,
+            "unknown",
+            0,
             queuedJobs.Count,
             issues
         );
@@ -1174,6 +1176,8 @@ public sealed record StatusSnapshot(
     StatusRollup Rollup,
     LatestActivitySnapshot? LatestActivity,
     RecentLoopSignalSnapshot RecentLoopSignal,
+    string QueueDirection,
+    int QueueDelta,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );
@@ -1197,6 +1201,35 @@ public sealed record RecentLoopSignalSnapshot(
     string Mode,
     string Summary
 );
+
+public static class StatusSnapshotTrend
+{
+    public static StatusSnapshot Apply(StatusSnapshot current, StatusSnapshot? previous)
+    {
+        if (previous is null)
+        {
+            return current with
+            {
+                QueueDirection = "unknown",
+                QueueDelta = 0
+            };
+        }
+
+        var delta = current.QueuedJobs - previous.QueuedJobs;
+        var direction = delta switch
+        {
+            > 0 => "up",
+            < 0 => "down",
+            _ => "flat"
+        };
+
+        return current with
+        {
+            QueueDirection = direction,
+            QueueDelta = delta
+        };
+    }
+}
 
 public sealed record IssueStatusSnapshot(
     int IssueNumber,
