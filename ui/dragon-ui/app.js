@@ -32,6 +32,38 @@ function formatTimestamp(value) {
   });
 }
 
+function freshnessInfo(value) {
+  if (!value) {
+    return { label: "unknown", state: "unknown" };
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return { label: value, state: "unknown" };
+  }
+
+  const ageMs = Date.now() - parsed.getTime();
+  if (ageMs < 0) {
+    return { label: "future", state: "unknown" };
+  }
+
+  const ageMinutes = Math.floor(ageMs / 60000);
+  if (ageMinutes < 2) {
+    return { label: "just now", state: "fresh" };
+  }
+
+  if (ageMinutes < 15) {
+    return { label: `${ageMinutes}m old`, state: "fresh" };
+  }
+
+  if (ageMinutes < 60) {
+    return { label: `${ageMinutes}m old`, state: "aging" };
+  }
+
+  const ageHours = Math.floor(ageMinutes / 60);
+  return { label: `${ageHours}h old`, state: "stale" };
+}
+
 function formatDelta(value) {
   if (value > 0) {
     return `+${value}`;
@@ -170,6 +202,7 @@ function renderStatusSnapshot(snapshot) {
   const health = document.getElementById("status-health");
   const source = document.getElementById("status-source");
   const generatedAt = document.getElementById("status-generated-at");
+  const freshness = document.getElementById("status-freshness");
   const queueDirection = document.getElementById("status-queue-direction");
   const queueComparedAt = document.getElementById("status-queue-compared-at");
   const comparisonMode = document.getElementById("status-comparison-mode");
@@ -197,6 +230,9 @@ function renderStatusSnapshot(snapshot) {
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
+  const freshnessState = freshnessInfo(snapshot.generatedAt);
+  freshness.textContent = freshnessState.label;
+  freshness.className = `snapshot-freshness ${freshnessState.state}`;
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueDirection.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
@@ -267,6 +303,7 @@ async function bootStatusMock() {
     const health = document.getElementById("status-health");
     const source = document.getElementById("status-source");
     const generatedAt = document.getElementById("status-generated-at");
+    const freshness = document.getElementById("status-freshness");
     const queueDirection = document.getElementById("status-queue-direction");
     const queueComparedAt = document.getElementById("status-queue-compared-at");
     const comparisonMode = document.getElementById("status-comparison-mode");
@@ -294,6 +331,8 @@ async function bootStatusMock() {
     health.textContent = "unavailable";
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
+    freshness.textContent = "unavailable";
+    freshness.className = "snapshot-freshness unavailable";
     queueDirection.textContent = "unavailable";
     queueDirection.className = "queue-trend unavailable";
     queueComparedAt.textContent = "Unavailable";
