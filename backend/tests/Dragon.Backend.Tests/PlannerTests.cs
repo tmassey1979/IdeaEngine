@@ -822,6 +822,8 @@ public sealed class PlannerTests
             0,
             0,
             null,
+            null,
+            null,
             "healthy",
             "previous",
             new StatusRollup(0, 0, 1, 0),
@@ -844,6 +846,8 @@ public sealed class PlannerTests
             1,
             2,
             4,
+            2,
+            6,
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
@@ -871,6 +875,8 @@ public sealed class PlannerTests
         Assert.Equal(1, annotated.IdleStreak);
         Assert.Equal(2, annotated.IdleTarget);
         Assert.Equal(4, annotated.PassBudgetRemaining);
+        Assert.Equal(2, annotated.CurrentPassNumber);
+        Assert.Equal(6, annotated.MaxPasses);
     }
 
     [Fact]
@@ -920,7 +926,7 @@ public sealed class PlannerTests
         var outputPath = Path.Combine(root, "ui", "dragon-ui", "sample-status.json");
         var loop = new SelfBuildLoop(root);
 
-        var snapshot = loop.WriteStatus(outputPath, "run-watch", "watch", "waiting", DateTimeOffset.UtcNow.AddSeconds(30), 15, 2, 3, 5);
+        var snapshot = loop.WriteStatus(outputPath, "run-watch", "watch", "waiting", DateTimeOffset.UtcNow.AddSeconds(30), 15, 2, 3, 5, null, 4, 9);
 
         Assert.Equal("run-watch", snapshot.LastCommand);
         Assert.Equal("watch", snapshot.WorkerMode);
@@ -929,12 +935,16 @@ public sealed class PlannerTests
         Assert.Equal(2, snapshot.IdleStreak);
         Assert.Equal(3, snapshot.IdleTarget);
         Assert.Equal(5, snapshot.PassBudgetRemaining);
+        Assert.Equal(4, snapshot.CurrentPassNumber);
+        Assert.Equal(9, snapshot.MaxPasses);
 
         using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
         Assert.Equal(15, document.RootElement.GetProperty("pollIntervalSeconds").GetInt32());
         Assert.Equal(2, document.RootElement.GetProperty("idleStreak").GetInt32());
         Assert.Equal(3, document.RootElement.GetProperty("idleTarget").GetInt32());
         Assert.Equal(5, document.RootElement.GetProperty("passBudgetRemaining").GetInt32());
+        Assert.Equal(4, document.RootElement.GetProperty("currentPassNumber").GetInt32());
+        Assert.Equal(9, document.RootElement.GetProperty("maxPasses").GetInt32());
     }
 
     [Fact]

@@ -152,7 +152,9 @@ static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
         options,
         "run-until-idle",
         SelfBuildLoop.BuildLatestPassSummary(1, result),
-        "complete");
+        "complete",
+        currentPassNumber: 1,
+        maxPasses: 1);
     PrintJson(result);
     return 0;
 }
@@ -162,10 +164,11 @@ static int RunPolling(IReadOnlyDictionary<string, string> options)
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var stories = BacklogStoryCatalog.LoadStories(root);
     var loop = new SelfBuildLoop(root);
-    var statusExporter = CreateStatusExporter(loop, root, options, "run-polling", "complete");
+    var maxPasses = GetInt(options, "max-passes", 10);
+    var statusExporter = CreateStatusExporter(loop, root, options, "run-polling", "complete", maxPasses: maxPasses);
     var result = loop.RunPolling(
         stories,
-        maxPasses: GetInt(options, "max-passes", 10),
+        maxPasses: maxPasses,
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
         maxCyclesPerPass: GetInt(options, "max-cycles", 100),
         passCompleted: statusExporter
@@ -192,6 +195,7 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
         initialPollIntervalSeconds: (int)pollInterval.TotalSeconds,
         currentIdleStreak: () => consecutiveIdlePasses,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
+        maxPasses: maxPasses,
         currentPassBudgetRemaining: passNumber => Math.Max(0, maxPasses - passNumber),
         workerStateResolver: (passNumber, result) =>
         {
@@ -263,7 +267,9 @@ static int RunGithubRunUntilIdle(IReadOnlyDictionary<string, string> options)
         options,
         "github-run-until-idle",
         SelfBuildLoop.BuildLatestPassSummary(1, result),
-        "complete");
+        "complete",
+        currentPassNumber: 1,
+        maxPasses: 1);
     PrintJson(result);
     return 0;
 }
@@ -277,12 +283,13 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
 
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
-    var statusExporter = CreateStatusExporter(loop, root, options, "github-run-polling", "complete");
+    var maxPasses = GetInt(options, "max-passes", 10);
+    var statusExporter = CreateStatusExporter(loop, root, options, "github-run-polling", "complete", maxPasses: maxPasses);
     var result = loop.RunPollingFromGithub(
         owner!,
         repo!,
         syncValidatedWorkflows: GetBoolean(options, "sync-github"),
-        maxPasses: GetInt(options, "max-passes", 10),
+        maxPasses: maxPasses,
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
         maxCyclesPerPass: GetInt(options, "max-cycles", 100),
         passCompleted: statusExporter
@@ -313,6 +320,7 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         initialPollIntervalSeconds: (int)pollInterval.TotalSeconds,
         currentIdleStreak: () => consecutiveIdlePasses,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
+        maxPasses: maxPasses,
         currentPassBudgetRemaining: passNumber => Math.Max(0, maxPasses - passNumber),
         workerStateResolver: (passNumber, result) =>
         {
@@ -363,9 +371,11 @@ static void ExportStatusIfRequested(
     IReadOnlyDictionary<string, string> options,
     string source,
     LatestPassSummary? latestPass = null,
-    string workerState = "complete")
+    string workerState = "complete",
+    int? currentPassNumber = null,
+    int? maxPasses = null)
 {
-    var exporter = CreateStatusExporter(loop, root, options, source, workerState, initialLatestPass: latestPass);
+    var exporter = CreateStatusExporter(loop, root, options, source, workerState, initialLatestPass: latestPass, maxPasses: maxPasses, initialPassNumber: currentPassNumber);
     if (exporter is null)
     {
         return;
@@ -383,9 +393,11 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     int? initialPollIntervalSeconds = null,
     Func<int>? currentIdleStreak = null,
     int idleTarget = 0,
+    int? maxPasses = null,
     Func<int, int>? currentPassBudgetRemaining = null,
     Func<int, RunUntilIdleResult, (string WorkerState, DateTimeOffset? NextPollAt)>? workerStateResolver = null,
-    LatestPassSummary? initialLatestPass = null)
+    LatestPassSummary? initialLatestPass = null,
+    int? initialPassNumber = null)
 {
     var outputPath = GetNullable(options, "status-out");
     if (string.IsNullOrWhiteSpace(outputPath))
@@ -407,7 +419,9 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
             currentIdleStreak?.Invoke() ?? 0,
             idleTarget,
             currentPassBudgetRemaining?.Invoke(passNumber),
-            latestPass) with
+            latestPass,
+            initialPassNumber ?? passNumber,
+            maxPasses) with
         {
             Source = source
         };
