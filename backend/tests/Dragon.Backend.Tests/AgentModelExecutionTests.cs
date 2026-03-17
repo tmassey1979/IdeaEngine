@@ -63,6 +63,36 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void BuildPrompt_IncludesChangedArtifactRollup_ForOperatorSummaryJobs()
+    {
+        var job = new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            447,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+                ["story"],
+                "Documentation Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Summarize the broader operator impact of the targeted implementation.",
+                ["changedArtifactRollup"] = "docs/generated/provider-notes.md|docs/generated/provider-rollup.md"
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+        var userPrompt = Assert.Single(request.Messages, message => message.Role == "user").Content;
+
+        Assert.Contains("Changed artifact rollup: docs/generated/provider-notes.md, docs/generated/provider-rollup.md", userPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BuildPrompt_StrengthensFeedbackInstructions_ForTargetedFollowUpJobs()
     {
         var job = new SelfBuildJob(
@@ -769,6 +799,7 @@ public sealed class AgentModelExecutionTests
         var documentationFollowUp = Assert.Single(implementResult.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
         Assert.Equal("docs/generated/provider-notes.md", documentationFollowUp.Metadata["targetArtifact"]);
         Assert.Equal("Summarize the broader operator impact of the targeted implementation.", documentationFollowUp.Metadata["targetOutcome"]);
+        Assert.Equal("docs/generated/provider-notes.md|docs/generated/provider-rollup.md", documentationFollowUp.Metadata["changedArtifactRollup"]);
     }
 
     [Fact]
@@ -840,6 +871,9 @@ public sealed class AgentModelExecutionTests
         var feedbackFollowUp = Assert.Single(implementResult.FollowUps, job => job.Agent == "feedback" && job.Action == "summarize_issue");
         Assert.Equal("backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs", feedbackFollowUp.Metadata["targetArtifact"]);
         Assert.Equal("Summarize the broader operator impact of the targeted implementation.", feedbackFollowUp.Metadata["targetOutcome"]);
+        Assert.Equal(
+            "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs|backend/tests/Dragon.Backend.Tests/PromptFactoryTests.cs",
+            feedbackFollowUp.Metadata["changedArtifactRollup"]);
     }
 
     [Fact]

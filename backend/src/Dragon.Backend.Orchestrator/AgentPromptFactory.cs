@@ -113,6 +113,12 @@ public static class AgentPromptFactory
             builder.AppendLine($"Target outcome: {targetOutcome}");
         }
 
+        if (job.Metadata.TryGetValue("changedArtifactRollup", out var changedArtifactRollup) && !string.IsNullOrWhiteSpace(changedArtifactRollup))
+        {
+            var rollup = string.Join(", ", changedArtifactRollup.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            builder.AppendLine($"Changed artifact rollup: {rollup}");
+        }
+
         builder.AppendLine();
         builder.AppendLine("Return the best concise result for this agent role.");
         return builder.ToString();

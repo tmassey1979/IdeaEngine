@@ -404,6 +404,7 @@ public sealed class SelfBuildLoop
         }
 
         var summaryAgent = InferOperatorSummaryAgent(targetArtifact);
+        var changedArtifactRollup = string.Join("|", changedPaths);
         if (followUps.Any(existing =>
             string.Equals(existing.Agent, summaryAgent, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(existing.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
@@ -422,7 +423,8 @@ public sealed class SelfBuildLoop
             "Summarize the broader operator impact after the targeted implementation.",
             false,
             targetArtifact,
-            "Summarize the broader operator impact of the targeted implementation."));
+            "Summarize the broader operator impact of the targeted implementation.",
+            ("changedArtifactRollup", changedArtifactRollup)));
     }
 
     private static string InferOperatorSummaryAgent(string targetArtifact)
@@ -560,7 +562,8 @@ public sealed class SelfBuildLoop
         string? requestedReason = null,
         bool requestedBlocking = false,
         string? targetArtifact = null,
-        string? targetOutcome = null)
+        string? targetOutcome = null,
+        params (string Key, string Value)[] additionalMetadata)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -600,6 +603,14 @@ public sealed class SelfBuildLoop
         if (!string.IsNullOrWhiteSpace(preferredAgent))
         {
             metadata["preferredAgent"] = preferredAgent;
+        }
+
+        foreach (var (key, value) in additionalMetadata)
+        {
+            if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
+            {
+                metadata[key] = value;
+            }
         }
 
         return new SelfBuildJob(
