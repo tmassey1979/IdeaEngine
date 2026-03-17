@@ -179,6 +179,13 @@ function workerNote(snapshot) {
   const cadenceLabel = snapshot.pollIntervalSeconds
     ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
     : null;
+  const currentPassNumber = snapshot.currentPassNumber ?? snapshot.latestPass?.passNumber ?? 0;
+  const maxPasses = snapshot.maxPasses;
+  const passProgressLabelText = typeof maxPasses === "number" && maxPasses > 0
+    ? ` Current pass progress: ${currentPassNumber} / ${maxPasses}.`
+    : currentPassNumber > 0
+      ? ` Current pass: ${currentPassNumber}.`
+      : "";
   const idleTarget = snapshot.idleTarget ?? 0;
   const passBudgetRemaining = snapshot.passBudgetRemaining;
   const idleProgressLabel = idleTarget > 0
@@ -195,8 +202,8 @@ function workerNote(snapshot) {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}${passBudgetLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}${passBudgetLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${passBudgetLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${passBudgetLabel}`,
     };
   }
 
@@ -204,7 +211,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: "Worker finished its current run and is not waiting on another scheduled pass.",
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${passProgressLabelText}`,
     };
   }
 
@@ -261,8 +268,23 @@ function passBudgetLabel(snapshot) {
   return String(snapshot.passBudgetRemaining);
 }
 
+function passProgressLabel(snapshot) {
+  const currentPassNumber = snapshot.currentPassNumber ?? snapshot.latestPass?.passNumber ?? 0;
+  const maxPasses = snapshot.maxPasses;
+
+  if (typeof maxPasses === "number" && maxPasses > 0) {
+    return `${currentPassNumber} / ${maxPasses}`;
+  }
+
+  if (currentPassNumber > 0) {
+    return String(currentPassNumber);
+  }
+
+  return "n/a";
+}
+
 function workerProgressLabel(snapshot) {
-  return `idle ${idleStreakLabel(snapshot)} · budget ${passBudgetLabel(snapshot)}`;
+  return `pass ${passProgressLabel(snapshot)} · idle ${idleStreakLabel(snapshot)} · budget ${passBudgetLabel(snapshot)}`;
 }
 
 function workerProgressState(snapshot) {

@@ -9,6 +9,8 @@ globalThis.__DRAGON_STATUS__ = {
   "idleStreak": 1,
   "idleTarget": 2,
   "passBudgetRemaining": 4,
+  "currentPassNumber": 4,
+  "maxPasses": 8,
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
   "rollup": {
