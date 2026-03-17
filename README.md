@@ -24,9 +24,11 @@ dotnet run --project backend/src/Dragon.Backend.Cli -- provider-describe
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --root . --max-passes 10 --idle-passes 2 --max-cycles 100
+dotnet run --project backend/src/Dragon.Backend.Cli -- run-watch --root . --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 100
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-cycle-once --owner tmassey1979 --repo IdeaEngine --sync-github --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-polling --owner tmassey1979 --repo IdeaEngine --sync-github --max-passes 10 --idle-passes 2 --max-cycles 100 --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-watch --owner tmassey1979 --repo IdeaEngine --sync-github --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 100 --root .
 ```
 
 Dashboard status export:
@@ -48,4 +50,10 @@ for multiple passes:
 
 ```bash
 npm run run:polling
+```
+
+To keep the local runner alive between passes with a controlled poll interval:
+
+```bash
+npm run run:watch
 ```

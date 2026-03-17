@@ -702,6 +702,48 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunWatching_DelaysBetweenPassesUntilIdleThresholdIsReached()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var delays = new List<TimeSpan>();
+
+        var result = loop.RunWatching(
+            [],
+            TimeSpan.FromSeconds(15),
+            maxPasses: 3,
+            idlePassesBeforeStop: 2,
+            maxCyclesPerPass: 10,
+            delayAction: delays.Add);
+
+        Assert.True(result.ReachedIdleThreshold);
+        Assert.False(result.ReachedMaxPasses);
+        Assert.Single(delays);
+        Assert.Equal(TimeSpan.FromSeconds(15), delays[0]);
+    }
+
+    [Fact]
+    public void RunWatching_DoesNotDelayAfterFinalPass()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var delays = new List<TimeSpan>();
+
+        var result = loop.RunWatching(
+            [],
+            TimeSpan.FromSeconds(15),
+            maxPasses: 2,
+            idlePassesBeforeStop: 3,
+            maxCyclesPerPass: 10,
+            delayAction: delays.Add);
+
+        Assert.False(result.ReachedIdleThreshold);
+        Assert.True(result.ReachedMaxPasses);
+        Assert.Single(delays);
+        Assert.Equal(TimeSpan.FromSeconds(15), delays[0]);
+    }
+
+    [Fact]
     public void StatusSnapshotTrend_ComparesQueuedJobsAgainstPreviousSnapshot()
     {
         var previous = new StatusSnapshot(

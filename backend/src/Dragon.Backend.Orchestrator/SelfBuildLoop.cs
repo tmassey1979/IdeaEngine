@@ -239,6 +239,44 @@ public sealed class SelfBuildLoop
         return new PollingRunResult(passes, consecutiveIdlePasses, false, true);
     }
 
+    public PollingRunResult RunWatching(
+        IReadOnlyList<GithubIssue> issues,
+        TimeSpan pollInterval,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine",
+        int maxPasses = 10,
+        int idlePassesBeforeStop = 2,
+        int maxCyclesPerPass = 100,
+        Action<TimeSpan>? delayAction = null)
+    {
+        var passes = new List<RunUntilIdleResult>();
+        var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
+        var consecutiveIdlePasses = 0;
+        var pause = delayAction ?? (_ => { });
+
+        for (var index = 0; index < maxPasses; index += 1)
+        {
+            var pass = RunUntilIdle(issues, repo, project, maxCycles: maxCyclesPerPass);
+            passes.Add(pass);
+
+            consecutiveIdlePasses = pass.ReachedIdle
+                ? consecutiveIdlePasses + 1
+                : 0;
+
+            if (consecutiveIdlePasses >= requiredIdlePasses)
+            {
+                return new PollingRunResult(passes, consecutiveIdlePasses, true, false);
+            }
+
+            if (index + 1 < maxPasses)
+            {
+                pause(pollInterval);
+            }
+        }
+
+        return new PollingRunResult(passes, consecutiveIdlePasses, false, true);
+    }
+
     public PollingRunResult RunPollingFromGithub(
         string owner,
         string repo,
@@ -270,6 +308,51 @@ public sealed class SelfBuildLoop
             if (consecutiveIdlePasses >= requiredIdlePasses)
             {
                 return new PollingRunResult(passes, consecutiveIdlePasses, true, false);
+            }
+        }
+
+        return new PollingRunResult(passes, consecutiveIdlePasses, false, true);
+    }
+
+    public PollingRunResult RunWatchingFromGithub(
+        string owner,
+        string repo,
+        TimeSpan pollInterval,
+        string project = "DragonIdeaEngine",
+        bool syncValidatedWorkflows = false,
+        int maxPasses = 10,
+        int idlePassesBeforeStop = 2,
+        int maxCyclesPerPass = 100,
+        Action<TimeSpan>? delayAction = null)
+    {
+        var passes = new List<RunUntilIdleResult>();
+        var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
+        var consecutiveIdlePasses = 0;
+        var pause = delayAction ?? (_ => { });
+
+        for (var index = 0; index < maxPasses; index += 1)
+        {
+            var pass = RunUntilIdleFromGithub(
+                owner,
+                repo,
+                project,
+                syncValidatedWorkflows,
+                maxCyclesPerPass);
+
+            passes.Add(pass);
+
+            consecutiveIdlePasses = pass.ReachedIdle
+                ? consecutiveIdlePasses + 1
+                : 0;
+
+            if (consecutiveIdlePasses >= requiredIdlePasses)
+            {
+                return new PollingRunResult(passes, consecutiveIdlePasses, true, false);
+            }
+
+            if (index + 1 < maxPasses)
+            {
+                pause(pollInterval);
             }
         }
 

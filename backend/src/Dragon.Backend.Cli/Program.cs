@@ -15,10 +15,12 @@ return command switch
     "cycle-once" => RunCycleOnce(options),
     "run-until-idle" => RunUntilIdle(options),
     "run-polling" => RunPolling(options),
+    "run-watch" => RunWatch(options),
     "github-issues" => RunGithubIssues(options),
     "github-cycle-once" => RunGithubCycleOnce(options),
     "github-run-until-idle" => RunGithubRunUntilIdle(options),
     "github-run-polling" => RunGithubRunPolling(options),
+    "github-run-watch" => RunGithubRunWatch(options),
     "sync-workflow" => RunSyncWorkflow(options),
     _ => ShowHelp()
 };
@@ -165,6 +167,24 @@ static int RunPolling(IReadOnlyDictionary<string, string> options)
     return 0;
 }
 
+static int RunWatch(IReadOnlyDictionary<string, string> options)
+{
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
+    var stories = BacklogStoryCatalog.LoadStories(root);
+    var loop = new SelfBuildLoop(root);
+    var pollInterval = TimeSpan.FromSeconds(GetInt(options, "poll-seconds", 30));
+    var result = loop.RunWatching(
+        stories,
+        pollInterval,
+        maxPasses: GetInt(options, "max-passes", 10),
+        idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
+        maxCyclesPerPass: GetInt(options, "max-cycles", 100),
+        delayAction: Thread.Sleep);
+    ExportStatusIfRequested(loop, root, options, "run-watch");
+    PrintJson(result);
+    return 0;
+}
+
 static int RunGithubIssues(IReadOnlyDictionary<string, string> options)
 {
     if (!TryGetRepoOptions(options, out var owner, out var repo))
@@ -231,6 +251,30 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
         maxCyclesPerPass: GetInt(options, "max-cycles", 100)
     );
     ExportStatusIfRequested(loop, root, options, "github-run-polling");
+    PrintJson(result);
+    return 0;
+}
+
+static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
+{
+    if (!TryGetRepoOptions(options, out var owner, out var repo))
+    {
+        return 1;
+    }
+
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
+    var loop = new SelfBuildLoop(root);
+    var pollInterval = TimeSpan.FromSeconds(GetInt(options, "poll-seconds", 30));
+    var result = loop.RunWatchingFromGithub(
+        owner!,
+        repo!,
+        pollInterval,
+        syncValidatedWorkflows: GetBoolean(options, "sync-github"),
+        maxPasses: GetInt(options, "max-passes", 10),
+        idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
+        maxCyclesPerPass: GetInt(options, "max-cycles", 100),
+        delayAction: Thread.Sleep);
+    ExportStatusIfRequested(loop, root, options, "github-run-watch");
     PrintJson(result);
     return 0;
 }
@@ -325,10 +369,12 @@ static int ShowHelp()
           cycle-once [--root <repo-root>] [--status-out <path>]
           run-until-idle [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           run-polling [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
+          run-watch [--poll-seconds 30] [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           github-issues --owner <owner> --repo <repo> [--root <repo-root>]
           github-cycle-once --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>] [--status-out <path>]
           github-run-until-idle --owner <owner> --repo <repo> [--sync-github] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           github-run-polling --owner <owner> --repo <repo> [--sync-github] [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
+          github-run-watch --owner <owner> --repo <repo> [--sync-github] [--poll-seconds 30] [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           sync-workflow --owner <owner> --repo <repo> --issue <number> [--root <repo-root>]
         """
     );
