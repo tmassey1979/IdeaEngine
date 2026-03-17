@@ -78,6 +78,7 @@ function renderStatusSnapshot(snapshot) {
   const source = document.getElementById("status-source");
   const generatedAt = document.getElementById("status-generated-at");
   const queueDirection = document.getElementById("status-queue-direction");
+  const queueComparedAt = document.getElementById("status-queue-compared-at");
   const attentionSummary = document.getElementById("status-attention-summary");
   const failed = document.getElementById("status-rollup-failed");
   const quarantined = document.getElementById("status-rollup-quarantined");
@@ -94,6 +95,7 @@ function renderStatusSnapshot(snapshot) {
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
+  queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -133,6 +135,7 @@ async function bootStatusMock() {
     const source = document.getElementById("status-source");
     const generatedAt = document.getElementById("status-generated-at");
     const queueDirection = document.getElementById("status-queue-direction");
+    const queueComparedAt = document.getElementById("status-queue-compared-at");
     const attentionSummary = document.getElementById("status-attention-summary");
     const failed = document.getElementById("status-rollup-failed");
     const quarantined = document.getElementById("status-rollup-quarantined");
@@ -149,6 +152,7 @@ async function bootStatusMock() {
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
     queueDirection.textContent = "unavailable";
+    queueComparedAt.textContent = "Unavailable";
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";

@@ -303,6 +303,7 @@ public sealed class PlannerTests
         Assert.Equal("draining", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
         Assert.Equal("unknown", rootElement.GetProperty("queueDirection").GetString());
         Assert.Equal(0, rootElement.GetProperty("queueDelta").GetInt32());
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("queueComparedAt").ValueKind);
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -638,6 +639,7 @@ public sealed class PlannerTests
         Assert.Equal("idle", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
         Assert.Equal("unknown", rootElement.GetProperty("queueDirection").GetString());
         Assert.Equal(0, rootElement.GetProperty("queueDelta").GetInt32());
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("queueComparedAt").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -658,6 +660,7 @@ public sealed class PlannerTests
             new RecentLoopSignalSnapshot("draining", "previous"),
             "unknown",
             0,
+            null,
             3,
             []);
         var current = new StatusSnapshot(
@@ -670,6 +673,7 @@ public sealed class PlannerTests
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",
             0,
+            null,
             1,
             []);
 
@@ -677,6 +681,7 @@ public sealed class PlannerTests
 
         Assert.Equal("down", annotated.QueueDirection);
         Assert.Equal(-2, annotated.QueueDelta);
+        Assert.Equal(previous.GeneratedAt, annotated.QueueComparedAt);
     }
 
     [Fact]

@@ -77,6 +77,7 @@ public sealed class SelfBuildLoop
             recentLoopSignal,
             "unknown",
             0,
+            null,
             queuedJobs.Count,
             issues
         );
@@ -1178,6 +1179,7 @@ public sealed record StatusSnapshot(
     RecentLoopSignalSnapshot RecentLoopSignal,
     string QueueDirection,
     int QueueDelta,
+    DateTimeOffset? QueueComparedAt,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );
@@ -1211,7 +1213,8 @@ public static class StatusSnapshotTrend
             return current with
             {
                 QueueDirection = "unknown",
-                QueueDelta = 0
+                QueueDelta = 0,
+                QueueComparedAt = null
             };
         }
 
@@ -1226,7 +1229,8 @@ public static class StatusSnapshotTrend
         return current with
         {
             QueueDirection = direction,
-            QueueDelta = delta
+            QueueDelta = delta,
+            QueueComparedAt = previous.GeneratedAt
         };
     }
 }
