@@ -741,7 +741,8 @@ public sealed class GithubIssueService
             return titleNumber.Value;
         }
 
-        // When the body mentions multiple source issues, keep the earliest parseable one.
+        // When the body mentions multiple source issues, keep the earliest parseable one;
+        // repeated duplicates should collapse naturally to that same first valid reference.
         return ExtractFirstIssueNumber(body, @"source issue:\s+#(?<number>\d+)");
     }
 
