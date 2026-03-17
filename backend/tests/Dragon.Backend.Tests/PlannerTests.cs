@@ -212,7 +212,8 @@ public sealed class PlannerTests
                 ["targetArtifact"] = "docs/generated/provider-notes.md",
                 ["targetOutcome"] = "refresh provider notes summary",
                 ["requestedPriority"] = "high",
-                ["requestedBlocking"] = "true"
+                ["requestedBlocking"] = "true",
+                ["workType"] = "story"
             }));
 
         var store = new WorkflowStateStore(root);
@@ -247,6 +248,7 @@ public sealed class PlannerTests
         Assert.Equal("refresh provider notes summary", status.LeadJob.TargetOutcome);
         Assert.Equal("high", status.LeadJob.Priority);
         Assert.True(status.LeadJob.Blocking);
+        Assert.Equal("story", status.LeadJob.WorkType);
         var issue = Assert.Single(status.Issues);
         Assert.Equal(500, issue.IssueNumber);
         Assert.Equal(1, issue.QueuedJobCount);
@@ -274,7 +276,8 @@ public sealed class PlannerTests
                 ["targetArtifact"] = "ui/dragon-ui/sample-status.json",
                 ["targetOutcome"] = "refresh dashboard status snapshot",
                 ["requestedPriority"] = "high",
-                ["requestedBlocking"] = "true"
+                ["requestedBlocking"] = "true",
+                ["workType"] = "story"
             }));
 
         var store = new WorkflowStateStore(root);
@@ -323,6 +326,7 @@ public sealed class PlannerTests
         Assert.Equal("refresh dashboard status snapshot", rootElement.GetProperty("leadJob").GetProperty("targetOutcome").GetString());
         Assert.Equal("high", rootElement.GetProperty("leadJob").GetProperty("priority").GetString());
         Assert.True(rootElement.GetProperty("leadJob").GetProperty("blocking").GetBoolean());
+        Assert.Equal("story", rootElement.GetProperty("leadJob").GetProperty("workType").GetString());
         Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal("draining", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
@@ -877,7 +881,7 @@ public sealed class PlannerTests
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
-            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "refresh provider notes summary", "high", true),
+            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "refresh provider notes summary", "high", true, "story"),
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",
@@ -912,6 +916,7 @@ public sealed class PlannerTests
         Assert.Equal("refresh provider notes summary", annotated.LeadJob.TargetOutcome);
         Assert.Equal("high", annotated.LeadJob.Priority);
         Assert.True(annotated.LeadJob.Blocking);
+        Assert.Equal("story", annotated.LeadJob.WorkType);
     }
 
     [Fact]
