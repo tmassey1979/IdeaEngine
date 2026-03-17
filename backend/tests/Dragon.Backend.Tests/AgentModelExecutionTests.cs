@@ -31,6 +31,36 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void BuildPrompt_IncludesTargetArtifactHint_ForRequestedFollowUpJobs()
+    {
+        var job = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            427,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Feedback Agent",
+                ["story"],
+                "Feedback Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["requestedReason"] = "Summarize the exact artifact that changed."
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+        var userPrompt = Assert.Single(request.Messages, message => message.Role == "user").Content;
+
+        Assert.Contains("Target artifact: docs/generated/provider-notes.md", userPrompt, StringComparison.Ordinal);
+        Assert.Contains("Requested reason: Summarize the exact artifact that changed.", userPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Execute_UsesModelProviderForArchitectJobs()
     {
         var issue = new GithubIssue(

@@ -72,6 +72,16 @@ public static class AgentPromptFactory
             }
         }
 
+        if (job.Metadata.TryGetValue("targetArtifact", out var targetArtifact) && !string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            builder.AppendLine($"Target artifact: {targetArtifact}");
+        }
+
+        if (job.Metadata.TryGetValue("requestedReason", out var requestedReason) && !string.IsNullOrWhiteSpace(requestedReason))
+        {
+            builder.AppendLine($"Requested reason: {requestedReason}");
+        }
+
         builder.AppendLine();
         builder.AppendLine("Return the best concise result for this agent role.");
         return builder.ToString();
