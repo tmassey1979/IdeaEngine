@@ -735,18 +735,24 @@ public sealed class GithubIssueService
     private static int? InferSourceIssueNumber(string title, string body)
     {
         // Prefer the canonical recovery-title reference when both title and body mention a source issue.
-        var titleMatch = Regex.Match(title, @"\[Recovery\]\s+Issue\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
-        if (titleMatch.Success &&
-            int.TryParse(titleMatch.Groups["number"].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var titleNumber))
+        var titleNumber = ExtractFirstIssueNumber(title, @"\[Recovery\]\s+Issue\s+#(?<number>\d+)");
+        if (titleNumber is not null)
         {
-            return titleNumber;
+            return titleNumber.Value;
         }
 
-        var bodyMatch = Regex.Match(body, @"source issue:\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
-        if (bodyMatch.Success &&
-            int.TryParse(bodyMatch.Groups["number"].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var bodyNumber))
+        // When the body mentions multiple source issues, keep the earliest parseable one.
+        return ExtractFirstIssueNumber(body, @"source issue:\s+#(?<number>\d+)");
+    }
+
+    private static int? ExtractFirstIssueNumber(string value, string pattern)
+    {
+        foreach (Match match in Regex.Matches(value, pattern, RegexOptions.IgnoreCase))
         {
-            return bodyNumber;
+            if (int.TryParse(match.Groups["number"].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number))
+            {
+                return number;
+            }
         }
 
         return null;
