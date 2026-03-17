@@ -189,7 +189,8 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
         options,
         "run-watch",
         "complete",
-        (passNumber, result) =>
+        initialPollIntervalSeconds: (int)pollInterval.TotalSeconds,
+        workerStateResolver: (passNumber, result) =>
         {
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
             var willContinue = passNumber < maxPasses && consecutiveIdlePasses < Math.Max(1, idlePassesBeforeStop);
@@ -306,7 +307,8 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         options,
         "github-run-watch",
         "complete",
-        (passNumber, result) =>
+        initialPollIntervalSeconds: (int)pollInterval.TotalSeconds,
+        workerStateResolver: (passNumber, result) =>
         {
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
             var willContinue = passNumber < maxPasses && consecutiveIdlePasses < Math.Max(1, idlePassesBeforeStop);
@@ -357,7 +359,7 @@ static void ExportStatusIfRequested(
     LatestPassSummary? latestPass = null,
     string workerState = "complete")
 {
-    var exporter = CreateStatusExporter(loop, root, options, source, workerState, null, latestPass);
+    var exporter = CreateStatusExporter(loop, root, options, source, workerState, initialLatestPass: latestPass);
     if (exporter is null)
     {
         return;
@@ -372,6 +374,7 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     IReadOnlyDictionary<string, string> options,
     string source,
     string defaultWorkerState,
+    int? initialPollIntervalSeconds = null,
     Func<int, RunUntilIdleResult, (string WorkerState, DateTimeOffset? NextPollAt)>? workerStateResolver = null,
     LatestPassSummary? initialLatestPass = null)
 {
@@ -386,7 +389,7 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     {
         var latestPass = initialLatestPass ?? SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
         var workerState = workerStateResolver?.Invoke(passNumber, result) ?? (defaultWorkerState, (DateTimeOffset?)null);
-        var snapshot = loop.ReadStatus(source, source, workerState.WorkerState, workerState.NextPollAt, latestPass) with
+        var snapshot = loop.ReadStatus(source, source, workerState.WorkerState, workerState.NextPollAt, initialPollIntervalSeconds, latestPass) with
         {
             Source = source
         };
