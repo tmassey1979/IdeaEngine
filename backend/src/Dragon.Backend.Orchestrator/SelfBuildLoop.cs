@@ -42,6 +42,7 @@ public sealed class SelfBuildLoop
         string workerState = "snapshot",
         DateTimeOffset? nextPollAt = null,
         int? pollIntervalSeconds = null,
+        int idleStreak = 0,
         LatestPassSummary? latestPass = null)
     {
         var queuedJobs = queueStore.ReadAll();
@@ -81,6 +82,7 @@ public sealed class SelfBuildLoop
             workerState,
             nextPollAt,
             pollIntervalSeconds,
+            idleStreak,
             health,
             attentionSummary,
             rollup,
@@ -103,9 +105,10 @@ public sealed class SelfBuildLoop
         string workerState = "snapshot",
         DateTimeOffset? nextPollAt = null,
         int? pollIntervalSeconds = null,
+        int idleStreak = 0,
         LatestPassSummary? latestPass = null)
     {
-        var snapshot = ReadStatus(lastCommand, workerMode, workerState, nextPollAt, pollIntervalSeconds, latestPass);
+        var snapshot = ReadStatus(lastCommand, workerMode, workerState, nextPollAt, pollIntervalSeconds, idleStreak, latestPass);
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -1377,6 +1380,7 @@ public sealed record StatusSnapshot(
     string WorkerState,
     DateTimeOffset? NextPollAt,
     int? PollIntervalSeconds,
+    int IdleStreak,
     string Health,
     string AttentionSummary,
     StatusRollup Rollup,
