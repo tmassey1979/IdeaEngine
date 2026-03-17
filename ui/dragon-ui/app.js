@@ -180,19 +180,23 @@ function workerNote(snapshot) {
     ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
     : null;
   const idleTarget = snapshot.idleTarget ?? 0;
+  const passBudgetRemaining = snapshot.passBudgetRemaining;
   const idleProgressLabel = idleTarget > 0
     ? ` Current idle progress: ${snapshot.idleStreak ?? 0} / ${idleTarget}.`
     : snapshot.idleStreak
       ? ` Current idle streak: ${snapshot.idleStreak}.`
       : "";
+  const passBudgetLabel = typeof passBudgetRemaining === "number"
+    ? ` Remaining pass budget: ${passBudgetRemaining}.`
+    : "";
 
   if (state === "waiting") {
     return {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}${passBudgetLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}${passBudgetLabel}`,
     };
   }
 
@@ -247,6 +251,14 @@ function idleStreakLabel(snapshot) {
   }
 
   return String(idleStreak);
+}
+
+function passBudgetLabel(snapshot) {
+  if (typeof snapshot.passBudgetRemaining !== "number") {
+    return "n/a";
+  }
+
+  return String(snapshot.passBudgetRemaining);
 }
 
 function latestPassOutcome(snapshot) {
@@ -404,6 +416,7 @@ function renderStatusSnapshot(snapshot) {
   const workerState = document.getElementById("status-worker-state");
   const pollCadence = document.getElementById("status-poll-cadence");
   const idleStreak = document.getElementById("status-idle-streak");
+  const passBudget = document.getElementById("status-pass-budget");
   const generatedAt = document.getElementById("status-generated-at");
   const freshness = document.getElementById("status-freshness");
   const nextPoll = document.getElementById("status-next-poll");
@@ -452,6 +465,7 @@ function renderStatusSnapshot(snapshot) {
   workerState.className = `worker-state ${workerStateValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
   idleStreak.textContent = idleStreakLabel(snapshot);
+  passBudget.textContent = passBudgetLabel(snapshot);
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
@@ -554,6 +568,7 @@ async function bootStatusMock() {
     const workerState = document.getElementById("status-worker-state");
     const pollCadence = document.getElementById("status-poll-cadence");
     const idleStreak = document.getElementById("status-idle-streak");
+    const passBudget = document.getElementById("status-pass-budget");
     const generatedAt = document.getElementById("status-generated-at");
     const freshness = document.getElementById("status-freshness");
     const nextPoll = document.getElementById("status-next-poll");
@@ -600,6 +615,7 @@ async function bootStatusMock() {
     workerState.className = "worker-state unavailable";
     pollCadence.textContent = "Unavailable";
     idleStreak.textContent = "Unavailable";
+    passBudget.textContent = "Unavailable";
     generatedAt.textContent = "Could not load sample payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";

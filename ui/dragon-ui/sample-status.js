@@ -8,6 +8,7 @@ globalThis.__DRAGON_STATUS__ = {
   "pollIntervalSeconds": 30,
   "idleStreak": 1,
   "idleTarget": 2,
+  "passBudgetRemaining": 4,
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
   "rollup": {
