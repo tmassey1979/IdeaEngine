@@ -71,7 +71,7 @@ public sealed class GithubIssueService
 
         var labels = labelsProperty
             .EnumerateArray()
-            .Where(label => label.TryGetProperty("name", out _))
+            .Where(label => label.ValueKind == JsonValueKind.Object && label.TryGetProperty("name", out _))
             .Select(label => label.GetProperty("name").GetString())
             .OfType<string>()
             .ToArray();

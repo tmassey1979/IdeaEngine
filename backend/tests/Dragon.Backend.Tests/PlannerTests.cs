@@ -810,6 +810,33 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresMalformedLabelEntriesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 802,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              "story",
+              { "name": "story" },
+              null,
+              42
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(802, issue.Number);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_ClosesValidatedIssue()
     {
         var root = CreateTempRoot();
