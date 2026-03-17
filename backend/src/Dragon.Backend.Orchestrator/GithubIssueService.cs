@@ -31,6 +31,12 @@ public sealed class GithubIssueService
 
         foreach (var entry in document.RootElement.EnumerateArray())
         {
+            var state = entry.GetProperty("state").GetString() ?? "OPEN";
+            if (!string.Equals(state, "OPEN", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var labels = entry.GetProperty("labels")
                 .EnumerateArray()
                 .Select(label => label.GetProperty("name").GetString())
@@ -58,7 +64,7 @@ public sealed class GithubIssueService
             issues.Add(new GithubIssue(
                 entry.GetProperty("number").GetInt32(),
                 title,
-                entry.GetProperty("state").GetString() ?? "OPEN",
+                state,
                 labels,
                 entry.GetProperty("body").GetString() ?? string.Empty,
                 metadata?.Heading,

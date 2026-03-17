@@ -715,6 +715,40 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresClosedStoriesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 700,
+            "title": "[Recovery] Issue #22: Core System Principles",
+            "body": "Recovery story for quarantined issue #22.\n\nContext:\n- source issue: #22",
+            "state": "CLOSED",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          },
+          {
+            "number": 701,
+            "title": "[Story] Dragon Idea Engine Master Codex: Autonomous Software Factory Loop",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(701, issue.Number);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_ClosesValidatedIssue()
     {
         var root = CreateTempRoot();
