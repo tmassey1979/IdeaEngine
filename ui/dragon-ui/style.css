@@ -1115,6 +1115,10 @@ th {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .status-banner-line {
+    min-width: calc(50% - 9px);
+  }
 }
 
 @media (max-width: 720px) {
@@ -1135,8 +1139,17 @@ th {
   .status-grid,
   .status-meta-grid,
   .status-rollup,
-  .status-activity {
+  .status-activity,
+  .status-banner {
     grid-template-columns: 1fr;
+  }
+
+  .status-banner {
+    display: grid;
+  }
+
+  .status-banner-line {
+    min-width: 0;
   }
 
   .option-grid {
