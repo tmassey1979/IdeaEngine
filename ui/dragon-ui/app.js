@@ -336,6 +336,7 @@ function renderStatusSnapshot(snapshot) {
   const latestSummary = document.getElementById("status-latest-summary");
   const latestPassNumber = document.getElementById("status-latest-pass-number");
   const latestPassCycles = document.getElementById("status-latest-pass-cycles");
+  const latestPassWork = document.getElementById("status-latest-pass-work");
   const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
   const loopMode = document.getElementById("status-loop-mode");
   const loopSummary = document.getElementById("status-loop-summary");
@@ -396,6 +397,9 @@ function renderStatusSnapshot(snapshot) {
   latestPassCycles.textContent = snapshot.latestPass
     ? `${snapshot.latestPass.cycleCount} cycles, ${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 cycles";
+  latestPassWork.textContent = snapshot.latestPass
+    ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
+    : "0 seed, 0 consume";
   latestPassOutcomeNode.textContent = latestPassOutcome(snapshot);
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
@@ -474,6 +478,7 @@ async function bootStatusMock() {
     const latestSummary = document.getElementById("status-latest-summary");
     const latestPassNumber = document.getElementById("status-latest-pass-number");
     const latestPassCycles = document.getElementById("status-latest-pass-cycles");
+    const latestPassWork = document.getElementById("status-latest-pass-work");
     const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
     const loopMode = document.getElementById("status-loop-mode");
     const loopSummary = document.getElementById("status-loop-summary");
@@ -525,6 +530,7 @@ async function bootStatusMock() {
     latestPassGroup.className = "status-activity";
     latestPassNumber.textContent = "Unavailable";
     latestPassCycles.textContent = "Unavailable";
+    latestPassWork.textContent = "Unavailable";
     latestPassOutcomeNode.textContent = "Could not load pass summary";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
