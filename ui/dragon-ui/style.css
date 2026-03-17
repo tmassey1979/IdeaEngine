@@ -512,6 +512,7 @@ button {
   background: rgba(255, 91, 46, 0.16);
   color: #ffd7c9;
   border: 1px solid rgba(255, 91, 46, 0.24);
+  box-shadow: 0 0 0 1px rgba(255, 91, 46, 0.08), 0 0 16px rgba(255, 91, 46, 0.12);
 }
 
 .status-card-head h4 {
