@@ -1,4 +1,4 @@
-{
+globalThis.__DRAGON_PREVIOUS_STATUS__ = {
   "generatedAt": "2026-03-17T17:11:21.5555961+00:00",
   "source": "status",
   "health": "attention",
@@ -98,4 +98,4 @@
       "latestExecutionRecordedAt": "2026-03-16T22:11:22.1959085+00:00"
     }
   ]
-}
+};

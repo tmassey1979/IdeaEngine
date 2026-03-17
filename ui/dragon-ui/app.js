@@ -1,4 +1,8 @@
 async function loadStatusSnapshot() {
+  if (globalThis.__DRAGON_STATUS__) {
+    return globalThis.__DRAGON_STATUS__;
+  }
+
   const response = await fetch("sample-status.json");
   if (!response.ok) {
     throw new Error(`Unable to load sample status (${response.status})`);
@@ -8,6 +12,10 @@ async function loadStatusSnapshot() {
 }
 
 async function loadPreviousStatusSnapshot() {
+  if (globalThis.__DRAGON_PREVIOUS_STATUS__) {
+    return globalThis.__DRAGON_PREVIOUS_STATUS__;
+  }
+
   const response = await fetch("sample-status.previous.json");
   if (!response.ok) {
     return null;

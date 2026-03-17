@@ -1,5 +1,5 @@
-{
-  "generatedAt": "2026-03-17T17:11:21.5555961+00:00",
+globalThis.__DRAGON_STATUS__ = {
+  "generatedAt": "2026-03-17T18:27:02.6650205+00:00",
   "source": "status",
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
@@ -98,4 +98,4 @@
       "latestExecutionRecordedAt": "2026-03-16T22:11:22.1959085+00:00"
     }
   ]
-}
+};
