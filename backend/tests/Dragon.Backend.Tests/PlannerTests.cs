@@ -849,6 +849,50 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresInProgressAndQuarantinedLabelsDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 603,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Already in progress.",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "in-progress" }
+            ]
+          },
+          {
+            "number": 604,
+            "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+            "body": "Currently quarantined.",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "quarantined" }
+            ]
+          },
+          {
+            "number": 605,
+            "title": "[Story] Dragon Idea Engine Master Codex: Autonomous Software Factory Loop",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(605, issue.Number);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresWaitingFollowUpStateAfterDuplicateMerge()
     {
         const string json = """
@@ -870,6 +914,73 @@ public sealed class PlannerTests
             "labels": [
               { "name": "story" },
               { "name": "waiting-follow-up" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void GithubIssueService_IgnoresInProgressStateAfterDuplicateMerge()
+    {
+        const string json = """
+        [
+          {
+            "number": 606,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 606,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "in-progress" },
+              { "name": "stalled" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void GithubIssueService_IgnoresQuarantinedStateAfterDuplicateMerge()
+    {
+        const string json = """
+        [
+          {
+            "number": 607,
+            "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 607,
+            "title": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "quarantined" }
             ]
           }
         ]

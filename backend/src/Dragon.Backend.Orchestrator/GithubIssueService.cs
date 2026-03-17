@@ -103,6 +103,9 @@ public sealed class GithubIssueService
 
     private static bool IsSchedulableDiscoveredIssue(GithubIssue issue) =>
         issue.Labels.Contains("story", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("in-progress", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("stalled", StringComparer.OrdinalIgnoreCase) &&
+        !issue.Labels.Contains("quarantined", StringComparer.OrdinalIgnoreCase) &&
         !issue.Labels.Contains("validated", StringComparer.OrdinalIgnoreCase) &&
         !issue.Labels.Contains("superseded", StringComparer.OrdinalIgnoreCase) &&
         !issue.Labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase);
