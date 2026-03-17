@@ -588,6 +588,72 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_ExecutesInferredRefactorImplementFollowUp_AndAppliesOperations()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "backend", "src", "Dragon.Backend.Orchestrator"));
+        File.WriteAllText(
+            Path.Combine(root, "backend", "src", "Dragon.Backend.Orchestrator", "AgentPromptFactory.cs"),
+            "namespace Dragon.Backend.Orchestrator;\npublic static class AgentPromptFactory { }\n");
+
+        var provider = new SequencedFakeAgentModelProvider(
+            """
+            {
+              "summary": "Prompt factory reviewed.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                  "content": "namespace Dragon.Backend.Orchestrator;\npublic static class AgentPromptFactory { }\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Tighten prompt factory clarity.",
+                  "targetArtifact": "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                  "targetOutcome": "Improve prompt construction clarity without changing behavior."
+                }
+              ]
+            }
+            """,
+            """
+            {
+              "summary": "Prompt factory clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                  "content": "namespace Dragon.Backend.Orchestrator;\n// Clearer prompt-factory structure.\npublic static class AgentPromptFactory { }\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(440, "[Story] Dragon Idea Engine Master Codex: Refactor Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        var implementResult = loop.CycleOnce(issues);
+
+        Assert.NotNull(implementResult.Job);
+        Assert.Equal("refactor", implementResult.Job!.Agent);
+        Assert.Equal("implement_issue", implementResult.Job.Action);
+        Assert.NotNull(implementResult.Execution);
+        Assert.Equal("success", implementResult.Execution!.Status);
+        Assert.Equal(["backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs"], implementResult.Execution.ChangedPaths);
+        Assert.Contains("Clearer prompt-factory structure.", File.ReadAllText(Path.Combine(root, "backend", "src", "Dragon.Backend.Orchestrator", "AgentPromptFactory.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CycleOnce_OrdersRequestedModelFollowUps_ByPriorityAfterReviewAndTest()
     {
         var root = CreateTempRoot();
