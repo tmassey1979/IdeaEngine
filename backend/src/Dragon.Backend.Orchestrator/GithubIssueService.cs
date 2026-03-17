@@ -250,8 +250,8 @@ public sealed class GithubIssueService
                 executionRecords.Count > 0
                     ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent executions: none recorded",
-                executionRecords.SelectMany(record => record.ChangedPaths).Distinct().Any()
-                    ? $"- changed paths: {string.Join(", ", executionRecords.SelectMany(record => record.ChangedPaths).Distinct())}"
+                GetMeaningfulChangedPaths(executionRecords).Any()
+                    ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords))}"
                     : "- changed paths: none recorded"
             ]
         );
@@ -276,11 +276,14 @@ public sealed class GithubIssueService
     }
 
     private static bool ShouldAutoCloseValidatedWorkflow(IReadOnlyList<ExecutionRecord> executionRecords) =>
+        GetMeaningfulChangedPaths(executionRecords).Any();
+
+    private static IReadOnlyList<string> GetMeaningfulChangedPaths(IReadOnlyList<ExecutionRecord> executionRecords) =>
         executionRecords
             .SelectMany(record => record.ChangedPaths)
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.Ordinal)
-            .Any();
+            .ToArray();
 
     private GithubSyncResult SyncHeartbeatWorkflow(
         string owner,
@@ -484,8 +487,8 @@ public sealed class GithubIssueService
                 executionRecords.Count > 0
                     ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent failures: none recorded",
-                executionRecords.SelectMany(record => record.ChangedPaths).Distinct().Any()
-                    ? $"- changed paths: {string.Join(", ", executionRecords.SelectMany(record => record.ChangedPaths).Distinct())}"
+                GetMeaningfulChangedPaths(executionRecords).Any()
+                    ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords))}"
                     : "- changed paths: none recorded",
                 "",
                 "Recovery checklist:",
@@ -794,7 +797,7 @@ public sealed class GithubIssueService
         string currentStage,
         IReadOnlyList<ExecutionRecord> executionRecords)
     {
-        var changedPaths = executionRecords.SelectMany(record => record.ChangedPaths).Distinct().ToArray();
+        var changedPaths = GetMeaningfulChangedPaths(executionRecords);
         return string.Join(
             Environment.NewLine,
             [
@@ -804,7 +807,7 @@ public sealed class GithubIssueService
                 $"- source issue: #{workflow.IssueNumber}",
                 $"- blocked stage: {currentStage}",
                 $"- quarantine reason: {workflow.Note ?? "No note recorded."}",
-                changedPaths.Length > 0 ? $"- changed paths: {string.Join(", ", changedPaths)}" : "- changed paths: none recorded",
+                changedPaths.Count > 0 ? $"- changed paths: {string.Join(", ", changedPaths)}" : "- changed paths: none recorded",
                 "",
                 "Suggested recovery steps:",
                 "- reproduce the blocked stage locally",

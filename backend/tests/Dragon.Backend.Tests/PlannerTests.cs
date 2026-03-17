@@ -2006,6 +2006,53 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncQuarantinedWorkflow_OmitsBlankChangedPathsFromRecoveryTrail()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures."
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-1", "failed", "boom", DateTimeOffset.UtcNow, ["", "   "], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal))
+            {
+                return "https://github.com/tmassey1979/IdeaEngine/issues/999";
+            }
+
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("changed paths: none recorded", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void SyncQuarantinedWorkflow_UpdatesExistingRemediationComment()
     {
         var root = CreateTempRoot();
