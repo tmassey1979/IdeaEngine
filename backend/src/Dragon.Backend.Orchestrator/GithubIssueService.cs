@@ -734,6 +734,7 @@ public sealed class GithubIssueService
 
     private static int? InferSourceIssueNumber(string title, string body)
     {
+        // Prefer the canonical recovery-title reference when both title and body mention a source issue.
         var titleMatch = Regex.Match(title, @"\[Recovery\]\s+Issue\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
         if (titleMatch.Success &&
             int.TryParse(titleMatch.Groups["number"].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var titleNumber))

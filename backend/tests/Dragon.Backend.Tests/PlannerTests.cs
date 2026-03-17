@@ -644,6 +644,31 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_PrefersRecoveryTitleSourceIssueWhenBodyDisagrees()
+    {
+        const string json = """
+        [
+          {
+            "number": 500,
+            "title": "[Recovery] Issue #22: Core System Principles",
+            "body": "Recovery story for quarantined issue.\n\nContext:\n- source issue: #99",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(22, issue.SourceIssueNumber);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresInvalidRecoverySourceIssueNumbers()
     {
         const string json = """
