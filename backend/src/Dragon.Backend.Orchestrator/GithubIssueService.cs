@@ -283,7 +283,7 @@ public sealed class GithubIssueService
             .SelectMany(record => record.ChangedPaths)
             .Select(path => path.Trim())
             .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Distinct(StringComparer.Ordinal)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
     private GithubSyncResult SyncHeartbeatWorkflow(
