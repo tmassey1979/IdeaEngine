@@ -153,6 +153,7 @@ function renderStatusSnapshot(snapshot) {
   const quarantinedDelta = document.getElementById("status-rollup-delta-quarantined");
   const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
   const validatedDelta = document.getElementById("status-rollup-delta-validated");
+  const latestActivityGroup = document.getElementById("status-latest-activity-group");
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
   const latestSummary = document.getElementById("status-latest-summary");
@@ -186,6 +187,12 @@ function renderStatusSnapshot(snapshot) {
     : "No recent execution";
   latestStage.textContent = snapshot.latestActivity?.currentStage ?? "unknown";
   latestSummary.textContent = snapshot.latestActivity?.summary ?? "No recent execution summary";
+  latestActivityGroup.className = "status-activity";
+  if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
+    latestActivityGroup.classList.add("alert");
+  } else if (snapshot.recentLoopSignal?.mode === "draining") {
+    latestActivityGroup.classList.add("caution");
+  }
   loopMode.textContent = snapshot.recentLoopSignal?.mode ?? "unknown";
   loopSummary.textContent = snapshot.recentLoopSignal?.summary ?? "No recent loop summary";
   queueDelta.textContent = String(snapshot.queueDelta ?? 0);
@@ -230,6 +237,7 @@ async function bootStatusMock() {
     const quarantinedDelta = document.getElementById("status-rollup-delta-quarantined");
     const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
     const validatedDelta = document.getElementById("status-rollup-delta-validated");
+    const latestActivityGroup = document.getElementById("status-latest-activity-group");
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
     const latestSummary = document.getElementById("status-latest-summary");
@@ -261,6 +269,7 @@ async function bootStatusMock() {
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";
+    latestActivityGroup.className = "status-activity";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
     queueDelta.textContent = "0";

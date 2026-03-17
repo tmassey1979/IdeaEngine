@@ -305,6 +305,16 @@ button {
   letter-spacing: 0.1em;
 }
 
+.status-activity.alert .status-activity-line {
+  border-color: rgba(212, 20, 20, 0.24);
+  background: rgba(212, 20, 20, 0.08);
+}
+
+.status-activity.caution .status-activity-line {
+  border-color: rgba(214, 139, 42, 0.24);
+  background: rgba(214, 139, 42, 0.08);
+}
+
 .status-activity-wide {
   grid-column: span 2;
 }
