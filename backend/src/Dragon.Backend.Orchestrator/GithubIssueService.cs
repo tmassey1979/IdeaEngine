@@ -235,7 +235,7 @@ public sealed class GithubIssueService
             return SyncHeartbeatWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
         }
 
-        if (!ShouldAutoCloseValidatedWorkflow(executionRecords))
+        if (!ShouldAutoCloseValidatedWorkflow(executionRecords, rootDirectory))
         {
             return SyncHeartbeatWorkflow(owner, repo, workflow, executionRecords, rootDirectory);
         }
@@ -250,8 +250,8 @@ public sealed class GithubIssueService
                 executionRecords.Count > 0
                     ? $"- recent executions: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent executions: none recorded",
-                GetMeaningfulChangedPaths(executionRecords).Any()
-                    ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords))}"
+                GetMeaningfulChangedPaths(executionRecords, rootDirectory).Any()
+                    ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords, rootDirectory))}"
                     : "- changed paths: none recorded"
             ]
         );
@@ -275,13 +275,16 @@ public sealed class GithubIssueService
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with execution trace.");
     }
 
-    private static bool ShouldAutoCloseValidatedWorkflow(IReadOnlyList<ExecutionRecord> executionRecords) =>
-        GetMeaningfulChangedPaths(executionRecords).Any();
+    private static bool ShouldAutoCloseValidatedWorkflow(IReadOnlyList<ExecutionRecord> executionRecords, string rootDirectory) =>
+        GetMeaningfulChangedPaths(executionRecords, rootDirectory).Any();
 
-    private static IReadOnlyList<string> GetMeaningfulChangedPaths(IReadOnlyList<ExecutionRecord> executionRecords) =>
+    private static IReadOnlyList<string> GetMeaningfulChangedPaths(
+        IReadOnlyList<ExecutionRecord> executionRecords,
+        string rootDirectory) =>
         executionRecords
             .SelectMany(record => record.ChangedPaths)
             .Select(path => path.Trim().Replace('\\', '/'))
+            .Select(path => StripRepoRootPrefix(path, rootDirectory))
             .Select(path => path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path)
             .Select(path => Regex.Replace(path, "/{2,}", "/"))
             .Select(path => path.Replace("/./", "/", StringComparison.Ordinal))
@@ -304,7 +307,7 @@ public sealed class GithubIssueService
         var currentStageTiming = FormatStageTiming(currentStageState?.ObservedAt, workflow.UpdatedAt);
         var stallState = DetermineStallState(currentStageState?.ObservedAt, workflow.UpdatedAt);
         var autoCloseDeferred = string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase) &&
-            !ShouldAutoCloseValidatedWorkflow(executionRecords);
+            !ShouldAutoCloseValidatedWorkflow(executionRecords, rootDirectory);
         var releasedFromRecoveryHold = workflow.Note?.Contains("Recovery child completed", StringComparison.OrdinalIgnoreCase) == true;
         var requeuedAfterRecoveryHold = workflow.Note?.Contains("parent requeued for active flow", StringComparison.OrdinalIgnoreCase) == true;
         var retiredRecoveryIssueNumbers = releasedFromRecoveryHold && !(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
@@ -493,8 +496,8 @@ public sealed class GithubIssueService
                 executionRecords.Count > 0
                     ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
                     : "- recent failures: none recorded",
-                GetMeaningfulChangedPaths(executionRecords).Any()
-                    ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords))}"
+                GetMeaningfulChangedPaths(executionRecords, rootDirectory).Any()
+                    ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords, rootDirectory))}"
                     : "- changed paths: none recorded",
                 "",
                 "Recovery checklist:",
@@ -603,7 +606,7 @@ public sealed class GithubIssueService
             return existingIssue.Value;
         }
 
-        var body = BuildRecoveryIssueBody(workflow, currentStage, executionRecords);
+        var body = BuildRecoveryIssueBody(workflow, currentStage, executionRecords, rootDirectory);
         var result = commandRunner(
             $"issue create --repo {owner}/{repo} --title \"{EscapeForDoubleQuotes(title)}\" --body \"{EscapeForDoubleQuotes(body)}\" --label story --label recovery --label backlog",
             rootDirectory
@@ -801,9 +804,10 @@ public sealed class GithubIssueService
     private static string BuildRecoveryIssueBody(
         IssueWorkflowState workflow,
         string currentStage,
-        IReadOnlyList<ExecutionRecord> executionRecords)
+        IReadOnlyList<ExecutionRecord> executionRecords,
+        string rootDirectory)
     {
-        var changedPaths = GetMeaningfulChangedPaths(executionRecords);
+        var changedPaths = GetMeaningfulChangedPaths(executionRecords, rootDirectory);
         return string.Join(
             Environment.NewLine,
             [
@@ -821,6 +825,71 @@ public sealed class GithubIssueService
                 "- update the source issue and close this recovery story once the path is clear"
             ]
         );
+    }
+
+    private static string StripRepoRootPrefix(string path, string rootDirectory)
+    {
+        var normalizedRoot = rootDirectory.Trim().Replace('\\', '/');
+        var stripped = StripPrefix(path, normalizedRoot);
+        if (!ReferenceEquals(stripped, path))
+        {
+            return stripped;
+        }
+
+        var windowsRoot = TryConvertWslPathToWindows(normalizedRoot);
+        if (windowsRoot is not null)
+        {
+            stripped = StripPrefix(path, windowsRoot);
+            if (!ReferenceEquals(stripped, path))
+            {
+                return stripped;
+            }
+        }
+
+        var wslRoot = TryConvertWindowsPathToWsl(normalizedRoot);
+        return wslRoot is not null
+            ? StripPrefix(path, wslRoot)
+            : path;
+    }
+
+    private static string StripPrefix(string path, string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return path;
+        }
+
+        if (path.Equals(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        var prefixed = prefix.EndsWith("/", StringComparison.Ordinal) ? prefix : $"{prefix}/";
+        return path.StartsWith(prefixed, StringComparison.OrdinalIgnoreCase)
+            ? path[prefixed.Length..]
+            : path;
+    }
+
+    private static string? TryConvertWslPathToWindows(string normalizedRoot)
+    {
+        var match = Regex.Match(normalizedRoot, @"^/mnt/(?<drive>[a-zA-Z])/(?<rest>.+)$");
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return $"{match.Groups["drive"].Value.ToUpperInvariant()}:/{match.Groups["rest"].Value}";
+    }
+
+    private static string? TryConvertWindowsPathToWsl(string normalizedRoot)
+    {
+        var match = Regex.Match(normalizedRoot, @"^(?<drive>[a-zA-Z]):/(?<rest>.+)$");
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return $"/mnt/{match.Groups["drive"].Value.ToLowerInvariant()}/{match.Groups["rest"].Value}";
     }
 
     private static int? ParseIssueNumber(string result)
