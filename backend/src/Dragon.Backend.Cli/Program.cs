@@ -173,14 +173,15 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
     var stories = BacklogStoryCatalog.LoadStories(root);
     var loop = new SelfBuildLoop(root);
     var pollInterval = TimeSpan.FromSeconds(GetInt(options, "poll-seconds", 30));
+    var statusExporter = CreateStatusExporter(loop, root, options, "run-watch");
     var result = loop.RunWatching(
         stories,
         pollInterval,
         maxPasses: GetInt(options, "max-passes", 10),
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
         maxCyclesPerPass: GetInt(options, "max-cycles", 100),
-        delayAction: Thread.Sleep);
-    ExportStatusIfRequested(loop, root, options, "run-watch");
+        delayAction: Thread.Sleep,
+        passCompleted: statusExporter);
     PrintJson(result);
     return 0;
 }
@@ -265,6 +266,7 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
     var pollInterval = TimeSpan.FromSeconds(GetInt(options, "poll-seconds", 30));
+    var statusExporter = CreateStatusExporter(loop, root, options, "github-run-watch");
     var result = loop.RunWatchingFromGithub(
         owner!,
         repo!,
@@ -273,8 +275,8 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         maxPasses: GetInt(options, "max-passes", 10),
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
         maxCyclesPerPass: GetInt(options, "max-cycles", 100),
-        delayAction: Thread.Sleep);
-    ExportStatusIfRequested(loop, root, options, "github-run-watch");
+        delayAction: Thread.Sleep,
+        passCompleted: statusExporter);
     PrintJson(result);
     return 0;
 }
@@ -301,18 +303,36 @@ static int RunSyncWorkflow(IReadOnlyDictionary<string, string> options)
 
 static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDictionary<string, string> options, string source)
 {
-    var outputPath = GetNullable(options, "status-out");
-    if (string.IsNullOrWhiteSpace(outputPath))
+    var exporter = CreateStatusExporter(loop, root, options, source);
+    if (exporter is null)
     {
         return;
     }
 
-    var resolvedOutputPath = Path.GetFullPath(outputPath, root);
-    var snapshot = loop.ReadStatus() with
+    exporter(1, new RunUntilIdleResult([], true, false));
+}
+
+static Action<int, RunUntilIdleResult>? CreateStatusExporter(
+    SelfBuildLoop loop,
+    string root,
+    IReadOnlyDictionary<string, string> options,
+    string source)
+{
+    var outputPath = GetNullable(options, "status-out");
+    if (string.IsNullOrWhiteSpace(outputPath))
     {
-        Source = source
+        return null;
+    }
+
+    var resolvedOutputPath = Path.GetFullPath(outputPath, root);
+    return (_, _) =>
+    {
+        var snapshot = loop.ReadStatus() with
+        {
+            Source = source
+        };
+        WriteStatusSnapshot(resolvedOutputPath, snapshot);
     };
-    WriteStatusSnapshot(resolvedOutputPath, snapshot);
 }
 
 static void WriteStatusSnapshot(string outputPath, StatusSnapshot snapshot)

@@ -215,7 +215,8 @@ public sealed class SelfBuildLoop
         string project = "DragonIdeaEngine",
         int maxPasses = 10,
         int idlePassesBeforeStop = 2,
-        int maxCyclesPerPass = 100)
+        int maxCyclesPerPass = 100,
+        Action<int, RunUntilIdleResult>? passCompleted = null)
     {
         var passes = new List<RunUntilIdleResult>();
         var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
@@ -225,6 +226,7 @@ public sealed class SelfBuildLoop
         {
             var pass = RunUntilIdle(issues, repo, project, maxCycles: maxCyclesPerPass);
             passes.Add(pass);
+            passCompleted?.Invoke(index + 1, pass);
 
             consecutiveIdlePasses = pass.ReachedIdle
                 ? consecutiveIdlePasses + 1
@@ -247,7 +249,8 @@ public sealed class SelfBuildLoop
         int maxPasses = 10,
         int idlePassesBeforeStop = 2,
         int maxCyclesPerPass = 100,
-        Action<TimeSpan>? delayAction = null)
+        Action<TimeSpan>? delayAction = null,
+        Action<int, RunUntilIdleResult>? passCompleted = null)
     {
         var passes = new List<RunUntilIdleResult>();
         var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
@@ -258,6 +261,7 @@ public sealed class SelfBuildLoop
         {
             var pass = RunUntilIdle(issues, repo, project, maxCycles: maxCyclesPerPass);
             passes.Add(pass);
+            passCompleted?.Invoke(index + 1, pass);
 
             consecutiveIdlePasses = pass.ReachedIdle
                 ? consecutiveIdlePasses + 1
@@ -284,7 +288,8 @@ public sealed class SelfBuildLoop
         bool syncValidatedWorkflows = false,
         int maxPasses = 10,
         int idlePassesBeforeStop = 2,
-        int maxCyclesPerPass = 100)
+        int maxCyclesPerPass = 100,
+        Action<int, RunUntilIdleResult>? passCompleted = null)
     {
         var passes = new List<RunUntilIdleResult>();
         var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
@@ -300,6 +305,7 @@ public sealed class SelfBuildLoop
                 maxCyclesPerPass);
 
             passes.Add(pass);
+            passCompleted?.Invoke(index + 1, pass);
 
             consecutiveIdlePasses = pass.ReachedIdle
                 ? consecutiveIdlePasses + 1
@@ -323,7 +329,8 @@ public sealed class SelfBuildLoop
         int maxPasses = 10,
         int idlePassesBeforeStop = 2,
         int maxCyclesPerPass = 100,
-        Action<TimeSpan>? delayAction = null)
+        Action<TimeSpan>? delayAction = null,
+        Action<int, RunUntilIdleResult>? passCompleted = null)
     {
         var passes = new List<RunUntilIdleResult>();
         var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
@@ -340,6 +347,7 @@ public sealed class SelfBuildLoop
                 maxCyclesPerPass);
 
             passes.Add(pass);
+            passCompleted?.Invoke(index + 1, pass);
 
             consecutiveIdlePasses = pass.ReachedIdle
                 ? consecutiveIdlePasses + 1

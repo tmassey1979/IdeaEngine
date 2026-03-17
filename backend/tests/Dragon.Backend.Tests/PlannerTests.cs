@@ -744,6 +744,44 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunWatching_ReportsEachCompletedPass()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var completedPasses = new List<int>();
+
+        var result = loop.RunWatching(
+            [],
+            TimeSpan.FromSeconds(15),
+            maxPasses: 3,
+            idlePassesBeforeStop: 2,
+            maxCyclesPerPass: 10,
+            delayAction: _ => { },
+            passCompleted: (passNumber, _) => completedPasses.Add(passNumber));
+
+        Assert.True(result.ReachedIdleThreshold);
+        Assert.Equal([1, 2], completedPasses);
+    }
+
+    [Fact]
+    public void RunPolling_ReportsEachCompletedPassUntilMaxPasses()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var completedPasses = new List<int>();
+
+        var result = loop.RunPolling(
+            [],
+            maxPasses: 2,
+            idlePassesBeforeStop: 3,
+            maxCyclesPerPass: 10,
+            passCompleted: (passNumber, _) => completedPasses.Add(passNumber));
+
+        Assert.True(result.ReachedMaxPasses);
+        Assert.Equal([1, 2], completedPasses);
+    }
+
+    [Fact]
     public void StatusSnapshotTrend_ComparesQueuedJobsAgainstPreviousSnapshot()
     {
         var previous = new StatusSnapshot(
