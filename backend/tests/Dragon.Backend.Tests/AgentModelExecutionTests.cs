@@ -277,6 +277,43 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_CarriesStructuredFollowUpRequests_WithoutExplicitAgent_WhenArtifactImpliesOne()
+    {
+        var root = CreateTempRoot();
+        var issue = new GithubIssue(
+            420,
+            "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "documentation", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "followUps": [
+                {
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Operator summary should be generated immediately.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider update."
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+
+        var result = executor.Execute(root, job);
+
+        Assert.NotNull(result.RequestedFollowUps);
+        Assert.Single(result.RequestedFollowUps!);
+        Assert.True(string.IsNullOrWhiteSpace(result.RequestedFollowUps[0].Agent));
+        Assert.Equal("docs/generated/provider-notes.md", result.RequestedFollowUps[0].TargetArtifact);
+    }
+
+    [Fact]
     public void CycleOnce_QueuesRequestedModelFollowUps_AlongsideReviewAndTest()
     {
         var root = CreateTempRoot();
@@ -325,6 +362,47 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("docs/generated/provider-notes.md", feedbackFollowUp.Metadata["targetArtifact"]);
         Assert.Equal("Produce an operator-facing summary of the provider notes.", feedbackFollowUp.Metadata["targetOutcome"]);
         Assert.Equal("documentation", feedbackFollowUp.Metadata["preferredAgent"]);
+    }
+
+    [Fact]
+    public void CycleOnce_InfersAgentForRequestedFollowUps_WhenAgentIsOmitted()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Summarize the documentation change for operators.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider notes."
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(436, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        var result = loop.CycleOnce(issues);
+
+        var inferredFollowUp = Assert.Single(result.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+        Assert.Equal("documentation", inferredFollowUp.Metadata["preferredAgent"]);
     }
 
     [Fact]
@@ -650,6 +728,32 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("docs/ARCHITECTURE.md", parsed.FollowUps[0].TargetArtifact);
         Assert.Equal("Produce a concise operator-facing architecture summary.", parsed.FollowUps[0].TargetOutcome);
         Assert.Contains("Operators need", parsed.FollowUps[0].Reason!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ParseStructuredResult_AllowsFollowUpWithoutExplicitAgent()
+    {
+        var parsed = AgentStructuredResultParser.Parse(
+            """
+            {
+              "summary": "Documentation updated.",
+              "followUps": [
+                {
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary."
+                }
+              ]
+            }
+            """
+        );
+
+        Assert.NotNull(parsed);
+        Assert.NotNull(parsed!.FollowUps);
+        Assert.Single(parsed.FollowUps!);
+        Assert.True(string.IsNullOrWhiteSpace(parsed.FollowUps[0].Agent));
+        Assert.Equal("summarize_issue", parsed.FollowUps[0].Action);
     }
 
     [Fact]

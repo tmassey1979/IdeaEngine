@@ -287,16 +287,20 @@ public sealed class SelfBuildLoop
 
         foreach (var requestedFollowUp in requestedFollowUps
             .OrderBy(GetRequestedFollowUpPriorityRank)
-            .ThenBy(followUp => followUp.Agent, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(followUp => followUp.Agent ?? string.Empty, StringComparer.OrdinalIgnoreCase)
             .ThenBy(followUp => followUp.Action, StringComparer.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrWhiteSpace(requestedFollowUp.Agent) || string.IsNullOrWhiteSpace(requestedFollowUp.Action))
+            var followUpAgent = string.IsNullOrWhiteSpace(requestedFollowUp.Agent)
+                ? InferPreferredAgent(requestedFollowUp.TargetArtifact)
+                : requestedFollowUp.Agent;
+
+            if (string.IsNullOrWhiteSpace(followUpAgent) || string.IsNullOrWhiteSpace(requestedFollowUp.Action))
             {
                 continue;
             }
 
             if (followUps.Any(existing =>
-                string.Equals(existing.Agent, requestedFollowUp.Agent, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.Agent, followUpAgent, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(existing.Action, requestedFollowUp.Action, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
@@ -305,7 +309,7 @@ public sealed class SelfBuildLoop
             followUps.Add(CreateFollowUpJob(
                 job,
                 execution,
-                requestedFollowUp.Agent,
+                followUpAgent,
                 requestedFollowUp.Action,
                 execution.JobId,
                 requestedFollowUp.Priority,
