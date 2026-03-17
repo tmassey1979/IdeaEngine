@@ -374,6 +374,17 @@ button {
   grid-column: span 2;
 }
 
+.latest-pass-strip {
+  align-content: start;
+}
+
+.latest-pass-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .status-rollup-card {
   padding: 14px 16px;
   border-radius: 16px;
@@ -846,6 +857,19 @@ button {
   color: #d2d6da;
   background: rgba(122, 135, 146, 0.12);
   border-color: rgba(122, 135, 146, 0.24);
+}
+
+.work-mix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 135, 146, 0.24);
+  color: #d2d6da;
+  background: rgba(122, 135, 146, 0.12);
+  font-size: 0.82rem;
 }
 
 .status-grid {

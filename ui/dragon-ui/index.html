@@ -203,10 +203,15 @@
 
           <div class="status-activity" id="status-latest-pass-group">
             <p class="status-activity-line"><span>Latest pass</span><strong id="status-latest-pass-number">No pass recorded</strong></p>
-            <p class="status-activity-line"><span>Cycle mix</span><strong id="status-latest-pass-cycles" class="cycle-mix unknown">0 cycles</strong></p>
-            <p class="status-activity-line"><span>Work mix</span><strong id="status-latest-pass-work">0 seed, 0 consume</strong></p>
-            <p class="status-activity-line"><span>Pass mix</span><strong id="status-latest-pass-mix" class="pass-mix unknown">No pass mix</strong></p>
-            <p class="status-activity-line"><span>Pass outcome</span><strong id="status-latest-pass-outcome" class="pass-outcome unknown">No polling summary</strong></p>
+            <div class="status-activity-line status-activity-wide latest-pass-strip">
+              <span>Latest pass summary</span>
+              <div class="latest-pass-badges">
+                <strong id="status-latest-pass-cycles" class="cycle-mix unknown">0 cycles</strong>
+                <strong id="status-latest-pass-work" class="work-mix">0 seed, 0 consume</strong>
+                <strong id="status-latest-pass-mix" class="pass-mix unknown">No pass mix</strong>
+                <strong id="status-latest-pass-outcome" class="pass-outcome unknown">No polling summary</strong>
+              </div>
+            </div>
           </div>
 
           <div class="status-rollup">
