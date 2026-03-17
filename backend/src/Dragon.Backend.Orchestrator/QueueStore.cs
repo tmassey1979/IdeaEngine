@@ -50,17 +50,7 @@ public sealed class QueueStore
             return null;
         }
 
-        var selectedIndex = jobs
-            .Select((job, index) => new { job, index })
-            .OrderBy(item => GetQueuePriorityRank(item.job))
-            .ThenBy(item => GetTargetingRank(item.job))
-            .ThenBy(item => GetRoleAlignmentRank(item.job))
-            .ThenBy(item => GetActionRank(item.job))
-            .ThenBy(item => GetRollupBreadthRank(item.job))
-            .ThenBy(item => item.index)
-            .First()
-            .index;
-
+        var selectedIndex = GetNextIndex(jobs);
         var next = jobs[selectedIndex];
         jobs.RemoveAt(selectedIndex);
 
@@ -79,6 +69,28 @@ public sealed class QueueStore
 
         return next;
     }
+
+    public SelfBuildJob? Peek()
+    {
+        var jobs = ReadAll().ToList();
+        if (jobs.Count == 0)
+        {
+            return null;
+        }
+
+        return jobs[GetNextIndex(jobs)];
+    }
+
+    private static int GetNextIndex(IReadOnlyList<SelfBuildJob> jobs) => jobs
+        .Select((job, index) => new { job, index })
+        .OrderBy(item => GetQueuePriorityRank(item.job))
+        .ThenBy(item => GetTargetingRank(item.job))
+        .ThenBy(item => GetRoleAlignmentRank(item.job))
+        .ThenBy(item => GetActionRank(item.job))
+        .ThenBy(item => GetRollupBreadthRank(item.job))
+        .ThenBy(item => item.index)
+        .First()
+        .index;
 
     private static int GetQueuePriorityRank(SelfBuildJob job)
     {

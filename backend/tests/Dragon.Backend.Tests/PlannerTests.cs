@@ -188,6 +188,8 @@ public sealed class PlannerTests
         queue.Enqueue(second);
 
         Assert.Equal(2, queue.ReadAll().Count);
+        Assert.Equal(1, queue.Peek()!.Issue);
+        Assert.Equal(2, queue.ReadAll().Count);
         Assert.Equal(1, queue.Dequeue()!.Issue);
         Assert.Equal(2, queue.Dequeue()!.Issue);
         Assert.Null(queue.Dequeue());
@@ -235,6 +237,10 @@ public sealed class PlannerTests
         var status = loop.ReadStatus();
 
         Assert.Equal(1, status.QueuedJobs);
+        Assert.NotNull(status.LeadJob);
+        Assert.Equal(500, status.LeadJob!.IssueNumber);
+        Assert.Equal("documentation", status.LeadJob.Agent);
+        Assert.Equal("implement_issue", status.LeadJob.Action);
         var issue = Assert.Single(status.Issues);
         Assert.Equal(500, issue.IssueNumber);
         Assert.Equal(1, issue.QueuedJobCount);
@@ -302,6 +308,9 @@ public sealed class PlannerTests
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("failedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("rollup").GetProperty("inProgressIssues").GetInt32());
+        Assert.Equal(610, rootElement.GetProperty("leadJob").GetProperty("issueNumber").GetInt32());
+        Assert.Equal("documentation", rootElement.GetProperty("leadJob").GetProperty("agent").GetString());
+        Assert.Equal("implement_issue", rootElement.GetProperty("leadJob").GetProperty("action").GetString());
         Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal("draining", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
@@ -830,6 +839,7 @@ public sealed class PlannerTests
             "previous",
             new StatusRollup(0, 0, 1, 0),
             null,
+            null,
             new RecentLoopSignalSnapshot("draining", "previous"),
             "unknown",
             0,
@@ -855,6 +865,7 @@ public sealed class PlannerTests
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
+            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue"),
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",
@@ -883,6 +894,8 @@ public sealed class PlannerTests
         Assert.Equal(4, annotated.PassBudgetRemaining);
         Assert.Equal(2, annotated.CurrentPassNumber);
         Assert.Equal(6, annotated.MaxPasses);
+        Assert.NotNull(annotated.LeadJob);
+        Assert.Equal(500, annotated.LeadJob!.IssueNumber);
     }
 
     [Fact]

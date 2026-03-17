@@ -52,6 +52,7 @@ public sealed class SelfBuildLoop
         int? maxPasses = null)
     {
         var queuedJobs = queueStore.ReadAll();
+        var leadJob = queueStore.Peek();
         var issues = workflowStateStore.ReadAll().Values
             .OrderBy(item => item.IssueNumber)
             .Select(workflow =>
@@ -98,6 +99,11 @@ public sealed class SelfBuildLoop
             health,
             attentionSummary,
             rollup,
+            leadJob is null ? null : new LeadJobSnapshot(
+                leadJob.Issue,
+                leadJob.Payload.Title,
+                leadJob.Agent,
+                leadJob.Action),
             latestActivity,
             recentLoopSignal,
             "unknown",
@@ -1408,6 +1414,7 @@ public sealed record StatusSnapshot(
     string Health,
     string AttentionSummary,
     StatusRollup Rollup,
+    LeadJobSnapshot? LeadJob,
     LatestActivitySnapshot? LatestActivity,
     RecentLoopSignalSnapshot RecentLoopSignal,
     string QueueDirection,
@@ -1440,6 +1447,13 @@ public sealed record StatusRollupDelta(
     int QuarantinedIssues,
     int InProgressIssues,
     int ValidatedIssues
+);
+
+public sealed record LeadJobSnapshot(
+    int IssueNumber,
+    string IssueTitle,
+    string Agent,
+    string Action
 );
 
 public sealed record LatestActivitySnapshot(
