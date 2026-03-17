@@ -64,6 +64,7 @@ public sealed class SelfBuildLoop
         var health = DeriveStatusHealth(queuedJobs.Count, issues);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health);
         var rollup = BuildStatusRollup(issues);
+        var latestActivity = BuildLatestActivity(issues);
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -71,6 +72,7 @@ public sealed class SelfBuildLoop
             health,
             attentionSummary,
             rollup,
+            latestActivity,
             queuedJobs.Count,
             issues
         );
@@ -1097,6 +1099,27 @@ public sealed class SelfBuildLoop
             issues.Count(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)),
             issues.Count(issue => string.Equals(issue.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         );
+
+    private static LatestActivitySnapshot? BuildLatestActivity(IReadOnlyList<IssueStatusSnapshot> issues)
+    {
+        var latest = issues
+            .Where(issue => issue.LatestExecutionRecordedAt is not null)
+            .OrderByDescending(issue => issue.LatestExecutionRecordedAt)
+            .FirstOrDefault();
+
+        if (latest is null)
+        {
+            return null;
+        }
+
+        return new LatestActivitySnapshot(
+            latest.IssueNumber,
+            latest.IssueTitle,
+            latest.CurrentStage,
+            latest.LatestExecutionSummary,
+            latest.LatestExecutionRecordedAt!.Value
+        );
+    }
 }
 
 public sealed record CycleResult(
@@ -1122,6 +1145,7 @@ public sealed record StatusSnapshot(
     string Health,
     string AttentionSummary,
     StatusRollup Rollup,
+    LatestActivitySnapshot? LatestActivity,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );
@@ -1131,6 +1155,14 @@ public sealed record StatusRollup(
     int QuarantinedIssues,
     int InProgressIssues,
     int ValidatedIssues
+);
+
+public sealed record LatestActivitySnapshot(
+    int IssueNumber,
+    string IssueTitle,
+    string CurrentStage,
+    string? Summary,
+    DateTimeOffset RecordedAt
 );
 
 public sealed record IssueStatusSnapshot(

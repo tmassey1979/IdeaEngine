@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-17T16:59:30.4804974+00:00",
+  "generatedAt": "2026-03-17T17:01:09.6141317+00:00",
   "source": "status",
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
@@ -8,6 +8,13 @@
     "quarantinedIssues": 0,
     "inProgressIssues": 1,
     "validatedIssues": 4
+  },
+  "latestActivity": {
+    "issueNumber": 23,
+    "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+    "currentStage": "review",
+    "summary": "Review completed for implementation stage architect with no changed paths supplied.",
+    "recordedAt": "2026-03-16T22:16:05.8700824+00:00"
   },
   "queuedJobs": 1,
   "issues": [

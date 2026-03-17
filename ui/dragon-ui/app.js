@@ -82,6 +82,9 @@ function renderStatusSnapshot(snapshot) {
   const quarantined = document.getElementById("status-rollup-quarantined");
   const inProgress = document.getElementById("status-rollup-in-progress");
   const validated = document.getElementById("status-rollup-validated");
+  const latestIssue = document.getElementById("status-latest-issue");
+  const latestStage = document.getElementById("status-latest-stage");
+  const latestSummary = document.getElementById("status-latest-summary");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
@@ -91,6 +94,11 @@ function renderStatusSnapshot(snapshot) {
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
   inProgress.textContent = String(snapshot.rollup?.inProgressIssues ?? 0);
   validated.textContent = String(snapshot.rollup?.validatedIssues ?? 0);
+  latestIssue.textContent = snapshot.latestActivity
+    ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
+    : "No recent execution";
+  latestStage.textContent = snapshot.latestActivity?.currentStage ?? "unknown";
+  latestSummary.textContent = snapshot.latestActivity?.summary ?? "No recent execution summary";
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -121,6 +129,9 @@ async function bootStatusMock() {
     const quarantined = document.getElementById("status-rollup-quarantined");
     const inProgress = document.getElementById("status-rollup-in-progress");
     const validated = document.getElementById("status-rollup-validated");
+    const latestIssue = document.getElementById("status-latest-issue");
+    const latestStage = document.getElementById("status-latest-stage");
+    const latestSummary = document.getElementById("status-latest-summary");
     chip.textContent = "Sample snapshot unavailable";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
@@ -130,6 +141,9 @@ async function bootStatusMock() {
     quarantined.textContent = "0";
     inProgress.textContent = "0";
     validated.textContent = "0";
+    latestIssue.textContent = "No recent execution";
+    latestStage.textContent = "unknown";
+    latestSummary.textContent = "Could not load status summary";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>

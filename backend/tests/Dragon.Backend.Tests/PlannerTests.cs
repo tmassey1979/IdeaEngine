@@ -298,6 +298,8 @@ public sealed class PlannerTests
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("failedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("rollup").GetProperty("inProgressIssues").GetInt32());
+        Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
+        Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -628,6 +630,8 @@ public sealed class PlannerTests
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("inProgressIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("rollup").GetProperty("validatedIssues").GetInt32());
+        Assert.Equal(22, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
+        Assert.Equal("test", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());

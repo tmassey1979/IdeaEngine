@@ -281,6 +281,30 @@ button {
   margin-bottom: 16px;
 }
 
+.status-activity {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.status-activity-line {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-activity-line span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 .status-rollup-card {
   padding: 14px 16px;
   border-radius: 16px;
@@ -864,7 +888,8 @@ th {
   .progress-step,
   .status-grid,
   .status-meta-grid,
-  .status-rollup {
+  .status-rollup,
+  .status-activity {
     grid-template-columns: 1fr;
   }
 
