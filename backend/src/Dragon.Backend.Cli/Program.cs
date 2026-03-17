@@ -111,7 +111,7 @@ static int RunQueue(IReadOnlyDictionary<string, string> options)
 
 static int RunStatus(IReadOnlyDictionary<string, string> options)
 {
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
     var outputPath = GetNullable(options, "out");
     var snapshot = string.IsNullOrWhiteSpace(outputPath)

@@ -9,3 +9,9 @@ The mock also reads `sample-status.json`, which mirrors the backend
 real orchestrator fields like queued job counts, workflow notes, current stage,
 latest execution summary, and execution notes while we stay in a static
 prototype phase.
+
+To refresh that payload from the repo root, run:
+
+```bash
+npm run status:ui
+```

@@ -19,9 +19,18 @@ Current C# backend entrypoint:
 
 ```bash
 dotnet test backend/Dragon.Backend.slnx
+npm run status:ui
 dotnet run --project backend/src/Dragon.Backend.Cli -- provider-describe
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-cycle-once --owner tmassey1979 --repo IdeaEngine --sync-github --root .
 ```
+
+Dashboard status export:
+
+```bash
+npm run status:ui
+```
+
+That refreshes [ui/dragon-ui/sample-status.json](/mnt/c/code/Playground/IdeaEngine/ui/dragon-ui/sample-status.json) from the live backend `status` snapshot so the mock dashboard reflects current queue and workflow state without editing the sample file by hand.

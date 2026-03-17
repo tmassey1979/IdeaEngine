@@ -1,38 +1,71 @@
 {
-  "queuedJobs": 5,
+  "queuedJobs": 1,
   "issues": [
     {
-      "issueNumber": 344,
-      "issueTitle": "Remove Deprecated Node Backend Scaffold",
+      "issueNumber": 22,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:13:29.3752334+00:00"
+    },
+    {
+      "issueNumber": 23,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
       "overallStatus": "in_progress",
       "currentStage": "review",
       "queuedJobCount": 1,
-      "workflowNote": "Local cleanup landed; remote confirmation still pending.",
-      "latestExecutionSummary": "Removed the legacy Node backend scaffold and aligned docs around the C# backend path.",
-      "latestExecutionNotes": "execution notes: kept stronger same-artifact implementation and pruned weaker duplicates for repo cleanup follow-ups.",
-      "latestExecutionRecordedAt": "2026-03-17T09:24:00-05:00"
+      "workflowNote": null,
+      "latestExecutionSummary": "Review completed for implementation stage architect with no changed paths supplied.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:16:05.8700824+00:00"
     },
     {
-      "issueNumber": 351,
-      "issueTitle": "Story Outcome Sync Notes",
-      "overallStatus": "in_progress",
-      "currentStage": "documentation",
-      "queuedJobCount": 2,
-      "workflowNote": "Artifact-aware operator summary queued after a multi-file implementation cycle.",
-      "latestExecutionSummary": "Expanded visibility so GitHub heartbeat comments show execution notes from the latest run.",
-      "latestExecutionNotes": "summary conflict resolution: pruned stale summarize_issue work because a newer same-artifact implement_issue is already queued.",
-      "latestExecutionRecordedAt": "2026-03-17T10:02:00-05:00"
-    },
-    {
-      "issueNumber": 352,
-      "issueTitle": "Recovery Story Closure Rules",
-      "overallStatus": "quarantined",
+      "issueNumber": 101,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+      "overallStatus": "validated",
       "currentStage": "test",
-      "queuedJobCount": 2,
-      "workflowNote": "Recovery path remains active until changed-path evidence validates a safe close.",
-      "latestExecutionSummary": "Held validated-close because meaningful implementation evidence was still ambiguous after recovery sync.",
-      "latestExecutionNotes": "implementation conflict resolution: kept newer or higher-specificity same-artifact implementation; superseded implementation issues: 349, 350.",
-      "latestExecutionRecordedAt": "2026-03-17T10:41:00-05:00"
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:04:42.5779746+00:00"
+    },
+    {
+      "issueNumber": 102,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:08:58.4405796+00:00"
+    },
+    {
+      "issueNumber": 103,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Repository Structure",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:09:05.5359423+00:00"
+    },
+    {
+      "issueNumber": 104,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Root Repo",
+      "overallStatus": "failed",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Test failed because the review stage has not completed successfully.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:11:22.1959085+00:00"
     }
   ]
 }
