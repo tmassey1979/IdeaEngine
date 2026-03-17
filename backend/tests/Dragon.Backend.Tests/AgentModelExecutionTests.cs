@@ -641,6 +641,71 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_DoesNotRequeueDeferredTargetedSummary_WhenImplementationDidNotChangeTargetArtifact()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs", "generated"));
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "provider-notes.md"), "# Provider Notes\nInitial.\n");
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "other-notes.md"), "# Other Notes\nInitial.\n");
+
+        var provider = new SequencedFakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Summarize the updated provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider notes."
+                },
+                {
+                  "priority": "high",
+                  "reason": "Tighten the provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Update the provider notes with clearer operator guidance."
+                }
+              ]
+            }
+            """,
+            """
+            {
+              "summary": "Other notes clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/other-notes.md",
+                  "content": "# Other Notes\nUnrelated change.\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(444, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        var implementResult = loop.CycleOnce(issues);
+
+        Assert.DoesNotContain(implementResult.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+    }
+
+    [Fact]
     public void CycleOnce_ExecutesInferredDocumentationImplementFollowUp_AndAppliesOperations()
     {
         var root = CreateTempRoot();

@@ -352,6 +352,14 @@ public sealed class SelfBuildLoop
             return;
         }
 
+        if (sourceJob.Metadata.TryGetValue("deferredSummaryTargetArtifact", out var deferredTargetArtifact) &&
+            !string.IsNullOrWhiteSpace(deferredTargetArtifact) &&
+            !(execution.ChangedPaths ?? []).Any(path =>
+                string.Equals(path, deferredTargetArtifact, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
         if (followUps.Any(existing =>
             string.Equals(existing.Agent, deferredAgent, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(existing.Action, deferredAction, StringComparison.OrdinalIgnoreCase)))
