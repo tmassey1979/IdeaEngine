@@ -340,7 +340,7 @@ public sealed class SelfBuildLoop
         return followUps;
     }
 
-    private static void EnqueueDeferredSummaryFollowUp(
+    private void EnqueueDeferredSummaryFollowUp(
         SelfBuildJob sourceJob,
         JobExecutionResult execution,
         List<SelfBuildJob> followUps)
@@ -357,6 +357,15 @@ public sealed class SelfBuildLoop
             !string.IsNullOrWhiteSpace(deferredTargetArtifact) &&
             !(execution.ChangedPaths ?? []).Any(path =>
                 string.Equals(path, deferredTargetArtifact, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (sourceJob.Metadata.TryGetValue("deferredSummaryTargetArtifact", out deferredTargetArtifact) &&
+            !string.IsNullOrWhiteSpace(deferredTargetArtifact) &&
+            queueStore.ReadAll().Any(existing =>
+                string.Equals(existing.Action, "implement_issue", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.Metadata.GetValueOrDefault("targetArtifact"), deferredTargetArtifact, StringComparison.OrdinalIgnoreCase)))
         {
             return;
         }
