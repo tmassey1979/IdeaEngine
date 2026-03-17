@@ -36,7 +36,7 @@ public sealed class SelfBuildLoop
 
     public IReadOnlyList<SelfBuildJob> ReadQueue() => queueStore.ReadAll();
 
-    public StatusSnapshot ReadStatus()
+    public StatusSnapshot ReadStatus(LatestPassSummary? latestPass = null)
     {
         var queuedJobs = queueStore.ReadAll();
         var issues = workflowStateStore.ReadAll().Values
@@ -80,13 +80,14 @@ public sealed class SelfBuildLoop
             null,
             new StatusRollupDelta(0, 0, 0, 0),
             queuedJobs.Count,
-            issues
+            issues,
+            latestPass
         );
     }
 
-    public StatusSnapshot WriteStatus(string outputPath)
+    public StatusSnapshot WriteStatus(string outputPath, LatestPassSummary? latestPass = null)
     {
-        var snapshot = ReadStatus();
+        var snapshot = ReadStatus(latestPass);
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -1309,6 +1310,21 @@ public sealed class SelfBuildLoop
 
         return new RecentLoopSignalSnapshot("idle", $"Loop reached idle after issue #{latestActivity.IssueNumber}.");
     }
+
+    public static LatestPassSummary BuildLatestPassSummary(int passNumber, RunUntilIdleResult result)
+    {
+        var seededCycles = result.Cycles.Count(cycle => string.Equals(cycle.Mode, "seed", StringComparison.OrdinalIgnoreCase));
+        var consumedCycles = result.Cycles.Count(cycle => string.Equals(cycle.Mode, "consume", StringComparison.OrdinalIgnoreCase));
+
+        return new LatestPassSummary(
+            passNumber,
+            result.Cycles.Count,
+            seededCycles,
+            consumedCycles,
+            result.ReachedIdle,
+            result.ReachedMaxCycles
+        );
+    }
 }
 
 public sealed record CycleResult(
@@ -1348,7 +1364,17 @@ public sealed record StatusSnapshot(
     DateTimeOffset? QueueComparedAt,
     StatusRollupDelta RollupDelta,
     int QueuedJobs,
-    IReadOnlyList<IssueStatusSnapshot> Issues
+    IReadOnlyList<IssueStatusSnapshot> Issues,
+    LatestPassSummary? LatestPass = null
+);
+
+public sealed record LatestPassSummary(
+    int PassNumber,
+    int CycleCount,
+    int SeededCycles,
+    int ConsumedCycles,
+    bool ReachedIdle,
+    bool ReachedMaxCycles
 );
 
 public sealed record StatusRollup(

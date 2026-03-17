@@ -744,6 +744,28 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void BuildLatestPassSummary_CapturesPassOutcomeCounts()
+    {
+        var pass = new RunUntilIdleResult(
+            [
+                new CycleResult("seed", null, null, []),
+                new CycleResult("consume", null, null, []),
+                new CycleResult("consume", null, null, [])
+            ],
+            true,
+            false);
+
+        var summary = SelfBuildLoop.BuildLatestPassSummary(3, pass);
+
+        Assert.Equal(3, summary.PassNumber);
+        Assert.Equal(3, summary.CycleCount);
+        Assert.Equal(1, summary.SeededCycles);
+        Assert.Equal(2, summary.ConsumedCycles);
+        Assert.True(summary.ReachedIdle);
+        Assert.False(summary.ReachedMaxCycles);
+    }
+
+    [Fact]
     public void RunWatching_ReportsEachCompletedPass()
     {
         var root = CreateTempRoot();
@@ -821,6 +843,29 @@ public sealed class PlannerTests
         Assert.Equal(1, annotated.RollupDelta.FailedIssues);
         Assert.Equal(-1, annotated.RollupDelta.InProgressIssues);
         Assert.Equal(1, annotated.RollupDelta.ValidatedIssues);
+    }
+
+    [Fact]
+    public void WriteStatus_IncludesLatestPassSummaryWhenProvided()
+    {
+        var root = CreateTempRoot();
+        var outputPath = Path.Combine(root, "ui", "dragon-ui", "sample-status.json");
+        var loop = new SelfBuildLoop(root);
+        var latestPass = new LatestPassSummary(2, 4, 1, 3, true, false);
+
+        var snapshot = loop.WriteStatus(outputPath, latestPass);
+
+        Assert.NotNull(snapshot.LatestPass);
+        Assert.Equal(2, snapshot.LatestPass!.PassNumber);
+
+        using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var latestPassElement = document.RootElement.GetProperty("latestPass");
+        Assert.Equal(2, latestPassElement.GetProperty("passNumber").GetInt32());
+        Assert.Equal(4, latestPassElement.GetProperty("cycleCount").GetInt32());
+        Assert.Equal(1, latestPassElement.GetProperty("seededCycles").GetInt32());
+        Assert.Equal(3, latestPassElement.GetProperty("consumedCycles").GetInt32());
+        Assert.True(latestPassElement.GetProperty("reachedIdle").GetBoolean());
+        Assert.False(latestPassElement.GetProperty("reachedMaxCycles").GetBoolean());
     }
 
     [Fact]

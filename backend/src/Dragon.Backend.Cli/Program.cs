@@ -156,13 +156,14 @@ static int RunPolling(IReadOnlyDictionary<string, string> options)
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var stories = BacklogStoryCatalog.LoadStories(root);
     var loop = new SelfBuildLoop(root);
+    var statusExporter = CreateStatusExporter(loop, root, options, "run-polling");
     var result = loop.RunPolling(
         stories,
         maxPasses: GetInt(options, "max-passes", 10),
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
-        maxCyclesPerPass: GetInt(options, "max-cycles", 100)
+        maxCyclesPerPass: GetInt(options, "max-cycles", 100),
+        passCompleted: statusExporter
     );
-    ExportStatusIfRequested(loop, root, options, "run-polling");
     PrintJson(result);
     return 0;
 }
@@ -243,15 +244,16 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
 
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
+    var statusExporter = CreateStatusExporter(loop, root, options, "github-run-polling");
     var result = loop.RunPollingFromGithub(
         owner!,
         repo!,
         syncValidatedWorkflows: GetBoolean(options, "sync-github"),
         maxPasses: GetInt(options, "max-passes", 10),
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
-        maxCyclesPerPass: GetInt(options, "max-cycles", 100)
+        maxCyclesPerPass: GetInt(options, "max-cycles", 100),
+        passCompleted: statusExporter
     );
-    ExportStatusIfRequested(loop, root, options, "github-run-polling");
     PrintJson(result);
     return 0;
 }
@@ -325,11 +327,16 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     }
 
     var resolvedOutputPath = Path.GetFullPath(outputPath, root);
-    return (_, _) =>
+    return (passNumber, result) =>
     {
         var snapshot = loop.ReadStatus() with
         {
             Source = source
+        };
+        var latestPass = SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
+        snapshot = snapshot with
+        {
+            LatestPass = latestPass
         };
         WriteStatusSnapshot(resolvedOutputPath, snapshot);
     };
