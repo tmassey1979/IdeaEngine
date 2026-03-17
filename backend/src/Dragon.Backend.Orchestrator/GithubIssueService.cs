@@ -160,6 +160,11 @@ public sealed class GithubIssueService
             return false;
         }
 
+        if (!numberProperty.TryGetInt32(out var issueNumber))
+        {
+            return false;
+        }
+
         var title = entry.TryGetProperty("title", out var titleProperty) && titleProperty.ValueKind == JsonValueKind.String
             ? titleProperty.GetString() ?? string.Empty
             : string.Empty;
@@ -169,7 +174,7 @@ public sealed class GithubIssueService
         backlogIndex.TryGetValue(title, out var metadata);
 
         issue = new GithubIssue(
-            numberProperty.GetInt32(),
+            issueNumber,
             title,
             state,
             labels,
