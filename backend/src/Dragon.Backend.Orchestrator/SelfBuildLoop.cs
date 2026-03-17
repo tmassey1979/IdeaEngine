@@ -62,6 +62,7 @@ public sealed class SelfBuildLoop
         }
 
         RemoveSupersededRecoveryJobs(issues);
+        RemoveSupersededSummaryJobs();
 
         if (queueStore.ReadAll().Count == 0)
         {
@@ -566,6 +567,25 @@ public sealed class SelfBuildLoop
             return latestRecoveryIssuesByParent.TryGetValue(sourceIssueNumber, out var latestRecoveryIssueNumber) &&
                 latestRecoveryIssueNumber != job.Issue;
         });
+    }
+
+    private void RemoveSupersededSummaryJobs()
+    {
+        var queuedImplementationTargets = queueStore.ReadAll()
+            .Where(job => string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+            .Select(job => job.Metadata.GetValueOrDefault("targetArtifact"))
+            .Where(targetArtifact => !string.IsNullOrWhiteSpace(targetArtifact))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (queuedImplementationTargets.Count == 0)
+        {
+            return;
+        }
+
+        queueStore.RemoveAll(job =>
+            string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")) &&
+            queuedImplementationTargets.Contains(job.Metadata.GetValueOrDefault("targetArtifact")!));
     }
 
     private static SelfBuildJob CreateFollowUpJob(

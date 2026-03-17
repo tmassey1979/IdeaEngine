@@ -874,6 +874,68 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_RemovesQueuedSupersededSummaries_WhenSameArtifactImplementationIsQueued()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs", "generated"));
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "provider-notes.md"), "# Provider Notes\nInitial.\n");
+
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Provider notes clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nClearer operator guidance.\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var queue = new QueueStore(root);
+
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            1001,
+            new SelfBuildJobPayload("[Story] Stale provider summary", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "low",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Summarize the broader operator impact of the targeted implementation.",
+                ["changedArtifactRollup"] = "docs/generated/provider-notes.md|docs/generated/provider-rollup.md"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            1002,
+            new SelfBuildJobPayload("[Story] Pending provider note update", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Apply a newer provider-notes improvement."
+            }));
+
+        var result = loop.CycleOnce([]);
+
+        Assert.NotNull(result.Job);
+        Assert.Equal(1002, result.Job!.Issue);
+        Assert.Equal("implement_issue", result.Job.Action);
+        Assert.DoesNotContain(loop.ReadQueue(), job => job.Issue == 1001 && job.Action == "summarize_issue");
+    }
+
+    [Fact]
     public void CycleOnce_EnqueuesOperatorSummary_WhenTargetedImplementationChangesMultipleArtifacts()
     {
         var root = CreateTempRoot();
