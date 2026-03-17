@@ -33,10 +33,12 @@ dotnet run --project backend/src/Dragon.Backend.Cli -- provider-describe
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- run-until-idle --max-cycles 20 --root .
+dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --max-passes 10 --idle-passes 2 --max-cycles 20 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- queue --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-cycle-once --owner tmassey1979 --repo IdeaEngine --sync-github --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-until-idle --owner tmassey1979 --repo IdeaEngine --sync-github --max-cycles 20 --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-polling --owner tmassey1979 --repo IdeaEngine --sync-github --max-passes 10 --idle-passes 2 --max-cycles 20 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tmassey1979 --repo IdeaEngine --issue 23 --root .
 ```
 
@@ -48,6 +50,7 @@ Provider direction:
 
 `--sync-github` is guarded: it only comments on and closes an issue after the workflow reaches `validated`, and the sync comment now includes recent execution IDs and changed-path trace data.
 `run-until-idle` is bounded by `--max-cycles` and keeps cycling until the local queue is empty and there is no more schedulable backlog work in the current issue set.
+`run-polling` is the next bare-minimum unattended step: it repeats `run-until-idle` across multiple passes and only stops after the loop has stayed idle for the configured number of polls.
 
 Repeated failures are also guarded: when the same stage keeps failing across cycles, the issue is marked `quarantined` in `.dragon/state/issues.json`, the loop stops reseeding it automatically, and the GitHub issue gets a maintained remediation comment plus a `quarantined` label instead of being closed.
 

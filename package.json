@@ -6,6 +6,7 @@
   "scripts": {
     "status:ui": "node scripts/refresh-ui-status.mjs status",
     "run:ui": "node scripts/refresh-ui-status.mjs run",
+    "run:polling": "dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --root . --max-passes 10 --idle-passes 2 --max-cycles 100",
     "test": "dotnet test backend/Dragon.Backend.slnx",
     "test:backend": "dotnet test backend/Dragon.Backend.slnx"
   }

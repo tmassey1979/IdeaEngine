@@ -209,6 +209,73 @@ public sealed class SelfBuildLoop
         return new RunUntilIdleResult(cycles, false, true);
     }
 
+    public PollingRunResult RunPolling(
+        IReadOnlyList<GithubIssue> issues,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine",
+        int maxPasses = 10,
+        int idlePassesBeforeStop = 2,
+        int maxCyclesPerPass = 100)
+    {
+        var passes = new List<RunUntilIdleResult>();
+        var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
+        var consecutiveIdlePasses = 0;
+
+        for (var index = 0; index < maxPasses; index += 1)
+        {
+            var pass = RunUntilIdle(issues, repo, project, maxCycles: maxCyclesPerPass);
+            passes.Add(pass);
+
+            consecutiveIdlePasses = pass.ReachedIdle
+                ? consecutiveIdlePasses + 1
+                : 0;
+
+            if (consecutiveIdlePasses >= requiredIdlePasses)
+            {
+                return new PollingRunResult(passes, consecutiveIdlePasses, true, false);
+            }
+        }
+
+        return new PollingRunResult(passes, consecutiveIdlePasses, false, true);
+    }
+
+    public PollingRunResult RunPollingFromGithub(
+        string owner,
+        string repo,
+        string project = "DragonIdeaEngine",
+        bool syncValidatedWorkflows = false,
+        int maxPasses = 10,
+        int idlePassesBeforeStop = 2,
+        int maxCyclesPerPass = 100)
+    {
+        var passes = new List<RunUntilIdleResult>();
+        var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
+        var consecutiveIdlePasses = 0;
+
+        for (var index = 0; index < maxPasses; index += 1)
+        {
+            var pass = RunUntilIdleFromGithub(
+                owner,
+                repo,
+                project,
+                syncValidatedWorkflows,
+                maxCyclesPerPass);
+
+            passes.Add(pass);
+
+            consecutiveIdlePasses = pass.ReachedIdle
+                ? consecutiveIdlePasses + 1
+                : 0;
+
+            if (consecutiveIdlePasses >= requiredIdlePasses)
+            {
+                return new PollingRunResult(passes, consecutiveIdlePasses, true, false);
+            }
+        }
+
+        return new PollingRunResult(passes, consecutiveIdlePasses, false, true);
+    }
+
     public GithubSyncResult SyncValidatedWorkflow(string owner, string repo, int issueNumber)
     {
         var workflows = workflowStateStore.ReadAll();
@@ -1168,6 +1235,13 @@ public sealed record RunUntilIdleResult(
     IReadOnlyList<CycleResult> Cycles,
     bool ReachedIdle,
     bool ReachedMaxCycles
+);
+
+public sealed record PollingRunResult(
+    IReadOnlyList<RunUntilIdleResult> Passes,
+    int ConsecutiveIdlePasses,
+    bool ReachedIdleThreshold,
+    bool ReachedMaxPasses
 );
 
 public sealed record StatusSnapshot(

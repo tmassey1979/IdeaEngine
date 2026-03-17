@@ -651,6 +651,57 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunPolling_ReachesIdleThresholdAfterDrainingWork()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(
+                22,
+                "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                "OPEN",
+                ["story"],
+                "",
+                "Core System Principles",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        };
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        var result = loop.RunPolling(stories, maxPasses: 3, idlePassesBeforeStop: 2, maxCyclesPerPass: 10);
+
+        Assert.True(result.ReachedIdleThreshold);
+        Assert.False(result.ReachedMaxPasses);
+        Assert.Equal(2, result.ConsecutiveIdlePasses);
+        Assert.Equal(2, result.Passes.Count);
+        Assert.NotEmpty(result.Passes[0].Cycles);
+        Assert.Empty(result.Passes[1].Cycles);
+    }
+
+    [Fact]
+    public void RunPolling_StopsAtMaxPassesWhenIdleThresholdIsNotReached()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+
+        var result = loop.RunPolling([], maxPasses: 2, idlePassesBeforeStop: 3, maxCyclesPerPass: 10);
+
+        Assert.False(result.ReachedIdleThreshold);
+        Assert.True(result.ReachedMaxPasses);
+        Assert.Equal(2, result.ConsecutiveIdlePasses);
+        Assert.Equal(2, result.Passes.Count);
+        Assert.All(result.Passes, pass =>
+        {
+            Assert.True(pass.ReachedIdle);
+            Assert.Empty(pass.Cycles);
+        });
+    }
+
+    [Fact]
     public void StatusSnapshotTrend_ComparesQueuedJobsAgainstPreviousSnapshot()
     {
         var previous = new StatusSnapshot(
