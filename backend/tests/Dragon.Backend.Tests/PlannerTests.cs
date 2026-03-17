@@ -782,6 +782,42 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_PrefersMostCompleteDuplicateIssueDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 804,
+            "title": "",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 804,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Richer duplicate entry",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(804, issue.Number);
+        Assert.Equal("[Story] Dragon Idea Engine Master Codex: System Architecture", issue.Title);
+        Assert.Equal("Richer duplicate entry", issue.Body);
+        Assert.Equal("System Architecture", issue.Heading);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresMalformedEntriesDuringBacklogDiscovery()
     {
         const string json = """

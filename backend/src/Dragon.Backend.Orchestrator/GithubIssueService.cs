@@ -57,10 +57,45 @@ public sealed class GithubIssueService
 
             return issues
                 .GroupBy(issue => issue.Number)
-                .Select(group => group.First())
+                .Select(group => group
+                    .OrderByDescending(CalculateIssueCompleteness)
+                    .ThenByDescending(issue => issue.Labels.Count)
+                    .ThenByDescending(issue => issue.Title.Length)
+                    .First())
                 .OrderBy(issue => issue.Number)
                 .ToArray();
         }
+    }
+
+    private static int CalculateIssueCompleteness(GithubIssue issue)
+    {
+        var score = 0;
+        if (!string.IsNullOrWhiteSpace(issue.Title))
+        {
+            score += 1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(issue.Body))
+        {
+            score += 1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(issue.Heading))
+        {
+            score += 1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(issue.SourceFile))
+        {
+            score += 1;
+        }
+
+        if (issue.SourceIssueNumber is not null)
+        {
+            score += 1;
+        }
+
+        return score;
     }
 
     private static bool TryMapIssue(
