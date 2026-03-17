@@ -192,6 +192,7 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
         initialPollIntervalSeconds: (int)pollInterval.TotalSeconds,
         currentIdleStreak: () => consecutiveIdlePasses,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
+        currentPassBudgetRemaining: passNumber => Math.Max(0, maxPasses - passNumber),
         workerStateResolver: (passNumber, result) =>
         {
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
@@ -312,6 +313,7 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         initialPollIntervalSeconds: (int)pollInterval.TotalSeconds,
         currentIdleStreak: () => consecutiveIdlePasses,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
+        currentPassBudgetRemaining: passNumber => Math.Max(0, maxPasses - passNumber),
         workerStateResolver: (passNumber, result) =>
         {
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
@@ -381,6 +383,7 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     int? initialPollIntervalSeconds = null,
     Func<int>? currentIdleStreak = null,
     int idleTarget = 0,
+    Func<int, int>? currentPassBudgetRemaining = null,
     Func<int, RunUntilIdleResult, (string WorkerState, DateTimeOffset? NextPollAt)>? workerStateResolver = null,
     LatestPassSummary? initialLatestPass = null)
 {
@@ -403,6 +406,7 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
             initialPollIntervalSeconds,
             currentIdleStreak?.Invoke() ?? 0,
             idleTarget,
+            currentPassBudgetRemaining?.Invoke(passNumber),
             latestPass) with
         {
             Source = source
