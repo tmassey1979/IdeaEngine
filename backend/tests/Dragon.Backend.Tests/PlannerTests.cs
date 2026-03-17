@@ -847,6 +847,26 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_TreatsMalformedJsonResponsesAsEmptyBacklog()
+    {
+        var service = new GithubIssueService((_, _) => "{not json");
+
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void GithubIssueService_TreatsNonArrayResponsesAsEmptyBacklog()
+    {
+        var service = new GithubIssueService((_, _) => """{ "message": "not an array" }""");
+
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_ClosesValidatedIssue()
     {
         var root = CreateTempRoot();

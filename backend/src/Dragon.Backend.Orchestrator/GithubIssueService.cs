@@ -26,24 +26,41 @@ public sealed class GithubIssueService
         );
 
         var backlogIndex = BacklogIndexLoader.Load(rootDirectory);
-        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
-        var issues = new List<GithubIssue>();
-
-        foreach (var entry in document.RootElement.EnumerateArray())
+        JsonDocument document;
+        try
         {
-            if (!TryMapIssue(entry, backlogIndex, out var issue))
-            {
-                continue;
-            }
-
-            issues.Add(issue);
+            document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        }
+        catch (JsonException)
+        {
+            return [];
         }
 
-        return issues
-            .GroupBy(issue => issue.Number)
-            .Select(group => group.First())
-            .OrderBy(issue => issue.Number)
-            .ToArray();
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            var issues = new List<GithubIssue>();
+
+            foreach (var entry in document.RootElement.EnumerateArray())
+            {
+                if (!TryMapIssue(entry, backlogIndex, out var issue))
+                {
+                    continue;
+                }
+
+                issues.Add(issue);
+            }
+
+            return issues
+                .GroupBy(issue => issue.Number)
+                .Select(group => group.First())
+                .OrderBy(issue => issue.Number)
+                .ToArray();
+        }
     }
 
     private static bool TryMapIssue(
