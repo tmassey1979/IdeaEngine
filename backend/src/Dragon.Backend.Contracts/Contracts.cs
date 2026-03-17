@@ -92,7 +92,8 @@ public sealed record ExecutionRecord(
     string Summary,
     DateTimeOffset RecordedAt,
     IReadOnlyList<string> ChangedPaths,
-    IReadOnlyList<string> FollowUpAgents
+    IReadOnlyList<string> FollowUpAgents,
+    string Notes = ""
 );
 
 public sealed record AgentModelMessage(

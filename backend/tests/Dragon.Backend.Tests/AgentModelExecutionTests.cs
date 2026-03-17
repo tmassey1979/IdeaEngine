@@ -1058,6 +1058,8 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("implement_issue", result.Job.Action);
         Assert.Equal("1005", result.Job.Metadata["supersededImplementationIssues"]);
         Assert.Contains("specificity", result.Job.Metadata["implementationConflictResolution"], StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(result.ExecutionRecord);
+        Assert.Contains("Superseded implementation issues: 1005", result.ExecutionRecord!.Notes, StringComparison.Ordinal);
         Assert.DoesNotContain(loop.ReadQueue(), job => job.Issue == 1005 && job.Action == "implement_issue");
     }
 
