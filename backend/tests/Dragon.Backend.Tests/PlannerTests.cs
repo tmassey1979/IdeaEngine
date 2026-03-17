@@ -1849,7 +1849,12 @@ public sealed class PlannerTests
             }
 
             return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
-                ? """[{ "id": 77, "body": "<!-- dragon-backend-remediation --> old" }]"""
+                ? """
+                [
+                  { "id": "bad", "body": "<!-- dragon-backend-remediation --> wrong-shape" },
+                  { "id": 77, "body": "<!-- dragon-backend-remediation --> old" }
+                ]
+                """
                 : string.Empty;
         });
 
@@ -2014,7 +2019,12 @@ public sealed class PlannerTests
         {
             commands.Add(arguments);
             return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
-                ? """[{ "id": 99, "body": "<!-- dragon-backend-heartbeat --> old" }]"""
+                ? """
+                [
+                  { "id": "bad", "body": "<!-- dragon-backend-heartbeat --> wrong-shape" },
+                  { "id": 99, "body": "<!-- dragon-backend-heartbeat --> old" }
+                ]
+                """
                 : string.Empty;
         });
 

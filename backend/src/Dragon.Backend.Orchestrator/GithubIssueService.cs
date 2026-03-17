@@ -918,14 +918,36 @@ public sealed class GithubIssueService
             rootDirectory
         );
 
-        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        using (document)
+        {
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
         foreach (var entry in document.RootElement.EnumerateArray())
         {
-            var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
+            if (!entry.TryGetProperty("id", out var idProperty) || idProperty.ValueKind != JsonValueKind.Number || !idProperty.TryGetInt64(out var commentId))
+            {
+                continue;
+            }
+
+            var body = ReadTextProperty(entry, "body");
             if (body.Contains(marker, StringComparison.Ordinal))
             {
-                return entry.GetProperty("id").GetInt64();
+                return commentId;
             }
+        }
         }
 
         return null;
