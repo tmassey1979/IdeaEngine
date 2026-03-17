@@ -942,13 +942,18 @@ public sealed class GithubIssueService
         }
 
         var queryIndex = path.IndexOf('?');
-        var fragmentIndex = path.IndexOf('#');
-        var cutIndex =
-            queryIndex >= 0 && fragmentIndex >= 0 ? Math.Min(queryIndex, fragmentIndex) :
-            queryIndex >= 0 ? queryIndex :
-            fragmentIndex;
+        var withoutQuery = queryIndex >= 0 ? path[..queryIndex] : path;
 
-        return cutIndex >= 0 ? path[..cutIndex] : path;
+        var fragmentIndex = withoutQuery.IndexOf('#');
+        if (fragmentIndex < 0)
+        {
+            return withoutQuery;
+        }
+
+        var fragment = withoutQuery[fragmentIndex..];
+        return Regex.IsMatch(fragment, @"^#L\d+(?:C\d+)?$", RegexOptions.IgnoreCase)
+            ? withoutQuery[..fragmentIndex]
+            : withoutQuery;
     }
 
     private static string DecodeHtmlEntities(string path)
