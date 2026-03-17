@@ -78,6 +78,7 @@ public sealed class SelfBuildLoop
             "unknown",
             0,
             null,
+            new StatusRollupDelta(0, 0, 0, 0),
             queuedJobs.Count,
             issues
         );
@@ -1180,11 +1181,19 @@ public sealed record StatusSnapshot(
     string QueueDirection,
     int QueueDelta,
     DateTimeOffset? QueueComparedAt,
+    StatusRollupDelta RollupDelta,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );
 
 public sealed record StatusRollup(
+    int FailedIssues,
+    int QuarantinedIssues,
+    int InProgressIssues,
+    int ValidatedIssues
+);
+
+public sealed record StatusRollupDelta(
     int FailedIssues,
     int QuarantinedIssues,
     int InProgressIssues,
@@ -1214,7 +1223,8 @@ public static class StatusSnapshotTrend
             {
                 QueueDirection = "unknown",
                 QueueDelta = 0,
-                QueueComparedAt = null
+                QueueComparedAt = null,
+                RollupDelta = new StatusRollupDelta(0, 0, 0, 0)
             };
         }
 
@@ -1230,7 +1240,13 @@ public static class StatusSnapshotTrend
         {
             QueueDirection = direction,
             QueueDelta = delta,
-            QueueComparedAt = previous.GeneratedAt
+            QueueComparedAt = previous.GeneratedAt,
+            RollupDelta = new StatusRollupDelta(
+                current.Rollup.FailedIssues - previous.Rollup.FailedIssues,
+                current.Rollup.QuarantinedIssues - previous.Rollup.QuarantinedIssues,
+                current.Rollup.InProgressIssues - previous.Rollup.InProgressIssues,
+                current.Rollup.ValidatedIssues - previous.Rollup.ValidatedIssues
+            )
         };
     }
 }

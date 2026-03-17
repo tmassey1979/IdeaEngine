@@ -304,6 +304,8 @@ public sealed class PlannerTests
         Assert.Equal("unknown", rootElement.GetProperty("queueDirection").GetString());
         Assert.Equal(0, rootElement.GetProperty("queueDelta").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("queueComparedAt").ValueKind);
+        Assert.Equal(0, rootElement.GetProperty("rollupDelta").GetProperty("failedIssues").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("rollupDelta").GetProperty("inProgressIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -640,6 +642,7 @@ public sealed class PlannerTests
         Assert.Equal("unknown", rootElement.GetProperty("queueDirection").GetString());
         Assert.Equal(0, rootElement.GetProperty("queueDelta").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("queueComparedAt").ValueKind);
+        Assert.Equal(0, rootElement.GetProperty("rollupDelta").GetProperty("validatedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -661,6 +664,7 @@ public sealed class PlannerTests
             "unknown",
             0,
             null,
+            new StatusRollupDelta(0, 0, 0, 0),
             3,
             []);
         var current = new StatusSnapshot(
@@ -668,12 +672,13 @@ public sealed class PlannerTests
             "status",
             "healthy",
             "current",
-            new StatusRollup(0, 0, 1, 0),
+            new StatusRollup(1, 0, 0, 1),
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",
             0,
             null,
+            new StatusRollupDelta(0, 0, 0, 0),
             1,
             []);
 
@@ -682,6 +687,9 @@ public sealed class PlannerTests
         Assert.Equal("down", annotated.QueueDirection);
         Assert.Equal(-2, annotated.QueueDelta);
         Assert.Equal(previous.GeneratedAt, annotated.QueueComparedAt);
+        Assert.Equal(1, annotated.RollupDelta.FailedIssues);
+        Assert.Equal(-1, annotated.RollupDelta.InProgressIssues);
+        Assert.Equal(1, annotated.RollupDelta.ValidatedIssues);
     }
 
     [Fact]

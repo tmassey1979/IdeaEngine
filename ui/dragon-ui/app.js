@@ -23,6 +23,14 @@ function formatTimestamp(value) {
   });
 }
 
+function formatDelta(value) {
+  if (value > 0) {
+    return `+${value}`;
+  }
+
+  return String(value ?? 0);
+}
+
 function badgeClassForStatus(status) {
   return status === "quarantined" ? "warn" : "good";
 }
@@ -84,6 +92,10 @@ function renderStatusSnapshot(snapshot) {
   const quarantined = document.getElementById("status-rollup-quarantined");
   const inProgress = document.getElementById("status-rollup-in-progress");
   const validated = document.getElementById("status-rollup-validated");
+  const failedDelta = document.getElementById("status-rollup-delta-failed");
+  const quarantinedDelta = document.getElementById("status-rollup-delta-quarantined");
+  const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
+  const validatedDelta = document.getElementById("status-rollup-delta-validated");
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
   const latestSummary = document.getElementById("status-latest-summary");
@@ -101,6 +113,10 @@ function renderStatusSnapshot(snapshot) {
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
   inProgress.textContent = String(snapshot.rollup?.inProgressIssues ?? 0);
   validated.textContent = String(snapshot.rollup?.validatedIssues ?? 0);
+  failedDelta.textContent = formatDelta(snapshot.rollupDelta?.failedIssues ?? 0);
+  quarantinedDelta.textContent = formatDelta(snapshot.rollupDelta?.quarantinedIssues ?? 0);
+  inProgressDelta.textContent = formatDelta(snapshot.rollupDelta?.inProgressIssues ?? 0);
+  validatedDelta.textContent = formatDelta(snapshot.rollupDelta?.validatedIssues ?? 0);
   latestIssue.textContent = snapshot.latestActivity
     ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
     : "No recent execution";
@@ -141,6 +157,10 @@ async function bootStatusMock() {
     const quarantined = document.getElementById("status-rollup-quarantined");
     const inProgress = document.getElementById("status-rollup-in-progress");
     const validated = document.getElementById("status-rollup-validated");
+    const failedDelta = document.getElementById("status-rollup-delta-failed");
+    const quarantinedDelta = document.getElementById("status-rollup-delta-quarantined");
+    const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
+    const validatedDelta = document.getElementById("status-rollup-delta-validated");
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
     const latestSummary = document.getElementById("status-latest-summary");
@@ -158,6 +178,10 @@ async function bootStatusMock() {
     quarantined.textContent = "0";
     inProgress.textContent = "0";
     validated.textContent = "0";
+    failedDelta.textContent = "0";
+    quarantinedDelta.textContent = "0";
+    inProgressDelta.textContent = "0";
+    validatedDelta.textContent = "0";
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";

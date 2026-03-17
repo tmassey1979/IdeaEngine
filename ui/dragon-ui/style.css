@@ -329,6 +329,13 @@ button {
   font-size: 1.6rem;
 }
 
+.status-rollup-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .status-banner-line {
   display: grid;
   gap: 4px;
