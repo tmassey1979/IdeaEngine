@@ -1688,6 +1688,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncWorkflow_HeartbeatIncludesExecutionConflictNotes()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            110,
+            "System Architecture",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-dev", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("pending", null, DateTimeOffset.UtcNow, null)
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(
+                110,
+                "System Architecture",
+                "developer",
+                "implement_issue",
+                "job-dev",
+                "success",
+                "done",
+                DateTimeOffset.UtcNow,
+                ["docs/ARCHITECTURE.md"],
+                ["review"],
+                "Kept newer or higher-specificity same-artifact implementation; pruned weaker duplicates. Superseded implementation issues: 1005.")
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/110/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("execution notes: Kept newer or higher-specificity same-artifact implementation; pruned weaker duplicates. Superseded implementation issues: 1005.", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_UsesHeartbeatWhenChangedPathsAreBlank()
     {
         var root = CreateTempRoot();

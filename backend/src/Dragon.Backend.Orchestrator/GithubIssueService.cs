@@ -339,6 +339,9 @@ public sealed class GithubIssueService
                 latestExecution is not null
                     ? $"- latest outcome: {latestExecution.JobAgent} {latestExecution.Status} ({latestExecution.Summary})"
                     : "- latest outcome: none recorded",
+                latestExecution is not null && !string.IsNullOrWhiteSpace(latestExecution.Notes)
+                    ? $"- execution notes: {latestExecution.Notes}"
+                    : "- execution notes: none",
                 latestExecutionTiming is not null
                     ? $"- latest execution recorded: {latestExecutionTiming}"
                     : "- latest execution recorded: none",
