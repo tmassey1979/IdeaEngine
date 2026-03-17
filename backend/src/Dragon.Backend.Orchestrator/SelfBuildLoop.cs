@@ -63,6 +63,7 @@ public sealed class SelfBuildLoop
 
         RemoveSupersededRecoveryJobs(issues);
         RemoveSupersededSummaryJobs();
+        RemoveSupersededImplementationJobs();
 
         if (queueStore.ReadAll().Count == 0)
         {
@@ -586,6 +587,52 @@ public sealed class SelfBuildLoop
             string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
             !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")) &&
             queuedImplementationTargets.Contains(job.Metadata.GetValueOrDefault("targetArtifact")!));
+    }
+
+    private void RemoveSupersededImplementationJobs()
+    {
+        var strongestPriorityByArtifact = queueStore.ReadAll()
+            .Where(job => string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+            .Where(job => !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")))
+            .GroupBy(job => job.Metadata.GetValueOrDefault("targetArtifact")!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Min(job => GetImplementationPriorityRank(job)),
+                StringComparer.OrdinalIgnoreCase);
+
+        if (strongestPriorityByArtifact.Count == 0)
+        {
+            return;
+        }
+
+        queueStore.RemoveAll(job =>
+        {
+            if (!string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var targetArtifact = job.Metadata.GetValueOrDefault("targetArtifact");
+            return !string.IsNullOrWhiteSpace(targetArtifact) &&
+                strongestPriorityByArtifact.TryGetValue(targetArtifact, out var strongestPriority) &&
+                GetImplementationPriorityRank(job) > strongestPriority;
+        });
+    }
+
+    private static int GetImplementationPriorityRank(SelfBuildJob job)
+    {
+        var priority = job.Metadata.GetValueOrDefault("requestedPriority");
+        if (string.Equals(priority, "high", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (string.Equals(priority, "low", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        return 1;
     }
 
     private static SelfBuildJob CreateFollowUpJob(
