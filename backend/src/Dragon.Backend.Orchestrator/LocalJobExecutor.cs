@@ -16,10 +16,12 @@ public sealed class LocalJobExecutor
     };
 
     private readonly LocalCommandRunner commandRunner;
+    private readonly IAgentModelProvider? modelProvider;
 
-    public LocalJobExecutor(LocalCommandRunner? commandRunner = null)
+    public LocalJobExecutor(LocalCommandRunner? commandRunner = null, IAgentModelProvider? modelProvider = null)
     {
         this.commandRunner = commandRunner ?? RunCommand;
+        this.modelProvider = modelProvider;
     }
 
     public JobExecutionResult Execute(string rootDirectory, SelfBuildJob job)
@@ -33,6 +35,7 @@ public sealed class LocalJobExecutor
                 "developer" => ExecuteDeveloper(rootDirectory, job),
                 "review" => ExecutionOutcome.FromSummary(ExecuteReview(rootDirectory, job)),
                 "test" => ExecutionOutcome.FromSummary(ExecuteTest(rootDirectory, job)),
+                _ when IsModelBackedAgent(job.Agent) => ExecuteModelBacked(rootDirectory, job),
                 _ => ExecutionOutcome.FromSummary($"No local executor is registered for {job.Agent}; marked complete for bootstrap flow.")
             };
 
@@ -42,6 +45,22 @@ public sealed class LocalJobExecutor
         {
             return new JobExecutionResult(jobId, job.Agent, "failed", exception.Message, DateTimeOffset.UtcNow);
         }
+    }
+
+    private ExecutionOutcome ExecuteModelBacked(string rootDirectory, SelfBuildJob job)
+    {
+        if (modelProvider is null)
+        {
+            return ExecutionOutcome.FromSummary($"No model provider configured for {job.Agent}; marked complete for bootstrap flow.");
+        }
+
+        var request = AgentPromptFactory.Build(job, modelProvider.Describe().DefaultModel);
+        var response = modelProvider.GenerateAsync(request).GetAwaiter().GetResult();
+        var summary = string.IsNullOrWhiteSpace(response.OutputText)
+            ? $"{job.Agent} completed through {response.Provider}."
+            : response.OutputText.Trim();
+
+        return ExecutionOutcome.FromSummary(summary);
     }
 
     private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
@@ -257,4 +276,15 @@ public sealed class LocalJobExecutor
     {
         public static ExecutionOutcome FromSummary(string summary) => new(summary, []);
     }
+
+    private static bool IsModelBackedAgent(string agent) => agent switch
+    {
+        "architect" => true,
+        "documentation" => true,
+        "feedback" => true,
+        "idea" => true,
+        "repository-manager" => true,
+        "refactor" => true,
+        _ => false
+    };
 }

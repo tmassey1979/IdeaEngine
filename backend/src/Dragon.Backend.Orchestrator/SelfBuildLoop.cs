@@ -361,12 +361,32 @@ public sealed class SelfBuildLoop
             return "test";
         }
 
-        if (title.Contains("architect", StringComparison.Ordinal))
+        if (title.Contains("architect agent", StringComparison.Ordinal))
         {
             return "architect";
         }
 
-        if (title.Contains("refactor", StringComparison.Ordinal))
+        if (title.Contains("documentation agent", StringComparison.Ordinal))
+        {
+            return "documentation";
+        }
+
+        if (title.Contains("feedback agent", StringComparison.Ordinal))
+        {
+            return "feedback";
+        }
+
+        if (title.Contains("idea agent", StringComparison.Ordinal))
+        {
+            return "idea";
+        }
+
+        if (title.Contains("repository manager agent", StringComparison.Ordinal))
+        {
+            return "repository-manager";
+        }
+
+        if (title.Contains("refactor agent", StringComparison.Ordinal))
         {
             return "refactor";
         }
