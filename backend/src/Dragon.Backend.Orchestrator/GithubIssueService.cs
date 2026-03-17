@@ -61,6 +61,9 @@ public sealed class GithubIssueService
                     .OrderByDescending(CalculateIssueCompleteness)
                     .ThenByDescending(issue => issue.Labels.Count)
                     .ThenByDescending(issue => issue.Title.Length)
+                    .ThenByDescending(issue => issue.Body.Length)
+                    .ThenBy(issue => issue.Title, StringComparer.Ordinal)
+                    .ThenBy(issue => issue.Body, StringComparer.Ordinal)
                     .First())
                 .OrderBy(issue => issue.Number)
                 .ToArray();

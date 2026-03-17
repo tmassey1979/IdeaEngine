@@ -818,6 +818,40 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_UsesDeterministicTieBreakForEquallyCompleteDuplicates()
+    {
+        const string json = """
+        [
+          {
+            "number": 805,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Zulu body",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 805,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Alpha body",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(805, issue.Number);
+        Assert.Equal("Alpha body", issue.Body);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresMalformedEntriesDuringBacklogDiscovery()
     {
         const string json = """
