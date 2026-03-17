@@ -42,11 +42,17 @@ function formatDelta(value) {
 
 function withFallbackTrend(currentSnapshot, previousSnapshot) {
   if (!previousSnapshot) {
-    return currentSnapshot;
+    return {
+      ...currentSnapshot,
+      comparisonMode: "backend",
+    };
   }
 
   if ((currentSnapshot.queueDirection && currentSnapshot.queueDirection !== "unknown") || currentSnapshot.queueComparedAt) {
-    return currentSnapshot;
+    return {
+      ...currentSnapshot,
+      comparisonMode: "backend",
+    };
   }
 
   const queueDelta = (currentSnapshot.queuedJobs ?? 0) - (previousSnapshot.queuedJobs ?? 0);
@@ -56,6 +62,7 @@ function withFallbackTrend(currentSnapshot, previousSnapshot) {
 
   return {
     ...currentSnapshot,
+    comparisonMode: "fallback",
     queueDirection,
     queueDelta,
     queueComparedAt: previousSnapshot.generatedAt ?? null,
@@ -124,6 +131,7 @@ function renderStatusSnapshot(snapshot) {
   const generatedAt = document.getElementById("status-generated-at");
   const queueDirection = document.getElementById("status-queue-direction");
   const queueComparedAt = document.getElementById("status-queue-compared-at");
+  const comparisonMode = document.getElementById("status-comparison-mode");
   const attentionSummary = document.getElementById("status-attention-summary");
   const failed = document.getElementById("status-rollup-failed");
   const quarantined = document.getElementById("status-rollup-quarantined");
@@ -145,6 +153,7 @@ function renderStatusSnapshot(snapshot) {
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
+  comparisonMode.textContent = snapshot.comparisonMode ?? "backend";
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -192,6 +201,7 @@ async function bootStatusMock() {
     const generatedAt = document.getElementById("status-generated-at");
     const queueDirection = document.getElementById("status-queue-direction");
     const queueComparedAt = document.getElementById("status-queue-compared-at");
+    const comparisonMode = document.getElementById("status-comparison-mode");
     const attentionSummary = document.getElementById("status-attention-summary");
     const failed = document.getElementById("status-rollup-failed");
     const quarantined = document.getElementById("status-rollup-quarantined");
@@ -213,6 +223,7 @@ async function bootStatusMock() {
     generatedAt.textContent = "Could not load sample payload";
     queueDirection.textContent = "unavailable";
     queueComparedAt.textContent = "Unavailable";
+    comparisonMode.textContent = "unavailable";
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";
