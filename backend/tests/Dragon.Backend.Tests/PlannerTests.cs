@@ -992,6 +992,44 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_PreservesBacklogMetadataAcrossDuplicateIssuesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 811,
+            "title": "[Recovery] Custom duplicate without codex title",
+            "body": "This duplicate has a richer body.\n\nContext:\n- source issue: #22",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          },
+          {
+            "number": 811,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(811, issue.Number);
+        Assert.Equal("[Recovery] Custom duplicate without codex title", issue.Title);
+        Assert.Equal(22, issue.SourceIssueNumber);
+        Assert.Equal("System Architecture", issue.Heading);
+        Assert.Contains("01-dragon-idea-engine-master-codex", issue.SourceFile, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GithubIssueService_UsesDeterministicTieBreakForEquallyCompleteDuplicates()
     {
         const string json = """

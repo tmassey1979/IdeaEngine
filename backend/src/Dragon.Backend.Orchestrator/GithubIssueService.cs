@@ -77,10 +77,20 @@ public sealed class GithubIssueService
                         .Select(issue => issue.SourceIssueNumber)
                         .FirstOrDefault(value => value is not null);
 
+                    var mergedHeading = group
+                        .Select(issue => issue.Heading)
+                        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
+                    var mergedSourceFile = group
+                        .Select(issue => issue.SourceFile)
+                        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
                     return selected with
                     {
                         Labels = mergedLabels,
-                        SourceIssueNumber = mergedSourceIssueNumber
+                        SourceIssueNumber = mergedSourceIssueNumber,
+                        Heading = mergedHeading,
+                        SourceFile = mergedSourceFile
                     };
                 })
                 .OrderBy(issue => issue.Number)
