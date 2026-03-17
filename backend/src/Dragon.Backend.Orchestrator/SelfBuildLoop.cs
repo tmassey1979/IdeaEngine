@@ -582,21 +582,71 @@ public sealed class SelfBuildLoop
 
     private void RemoveSupersededSummaryJobs()
     {
-        var queuedImplementationTargets = queueStore.ReadAll()
+        var jobs = queueStore.ReadAll().ToList();
+        var queuedImplementationJobsByTarget = jobs
             .Where(job => string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
-            .Select(job => job.Metadata.GetValueOrDefault("targetArtifact"))
-            .Where(targetArtifact => !string.IsNullOrWhiteSpace(targetArtifact))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Where(job => !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")))
+            .GroupBy(job => job.Metadata.GetValueOrDefault("targetArtifact")!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(job => GetImplementationPriorityRank(job))
+                    .ThenByDescending(job => job.Issue)
+                    .ThenByDescending(GetImplementationSpecificityRank)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
 
-        if (queuedImplementationTargets.Count == 0)
+        if (queuedImplementationJobsByTarget.Count == 0)
         {
             return;
         }
 
-        queueStore.RemoveAll(job =>
-            string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
-            !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")) &&
-            queuedImplementationTargets.Contains(job.Metadata.GetValueOrDefault("targetArtifact")!));
+        var removalsByWinnerIssue = new Dictionary<int, List<int>>();
+        var keptJobs = new List<SelfBuildJob>();
+        foreach (var job in jobs)
+        {
+            if (!string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase))
+            {
+                keptJobs.Add(job);
+                continue;
+            }
+
+            var targetArtifact = job.Metadata.GetValueOrDefault("targetArtifact");
+            if (string.IsNullOrWhiteSpace(targetArtifact) ||
+                !queuedImplementationJobsByTarget.TryGetValue(targetArtifact, out var winnerJob))
+            {
+                keptJobs.Add(job);
+                continue;
+            }
+
+            if (!removalsByWinnerIssue.TryGetValue(winnerJob.Issue, out var removedIssues))
+            {
+                removedIssues = [];
+                removalsByWinnerIssue[winnerJob.Issue] = removedIssues;
+            }
+
+            removedIssues.Add(job.Issue);
+        }
+
+        var updatedJobs = keptJobs
+            .Select(job =>
+            {
+                if (!removalsByWinnerIssue.TryGetValue(job.Issue, out var removedIssues) || removedIssues.Count == 0)
+                {
+                    return job;
+                }
+
+                var metadata = new Dictionary<string, string>(job.Metadata, StringComparer.Ordinal)
+                {
+                    ["supersededSummaryIssues"] = string.Join("|", removedIssues.OrderBy(issue => issue)),
+                    ["summaryConflictResolution"] = "Kept same-artifact implementation and pruned superseded summary jobs."
+                };
+
+                return job with { Metadata = metadata };
+            })
+            .ToList();
+
+        queueStore.ReplaceAll(updatedJobs);
     }
 
     private void RemoveSupersededImplementationJobs()
