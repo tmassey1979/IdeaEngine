@@ -955,7 +955,18 @@ public sealed class GithubIssueService
             return path;
         }
 
+        var markdownLinkMatch = Regex.Match(path, @"^\[[^\]]*\]\((?<path>.+)\)$");
+        if (markdownLinkMatch.Success)
+        {
+            return markdownLinkMatch.Groups["path"].Value.Trim();
+        }
+
         if ((path[0], path[^1]) is ('`', '`') or ('[', ']') or ('(', ')') or ('"', '"') or ('\'', '\''))
+        {
+            return path[1..^1].Trim();
+        }
+
+        if (path[0] == '<' && path[^1] == '>')
         {
             return path[1..^1].Trim();
         }
