@@ -173,8 +173,43 @@ function workerStateInfo(snapshot) {
   };
 }
 
+function workerCompletionInfo(snapshot) {
+  const reason = snapshot.workerCompletionReason;
+  const state = snapshot.workerState ?? "snapshot";
+
+  if (!reason) {
+    if (state === "waiting") {
+      return { label: "active", state: "active" };
+    }
+
+    if (state === "complete") {
+      return { label: "complete", state: "complete" };
+    }
+
+    if (state === "snapshot") {
+      return { label: "not recorded", state: "snapshot" };
+    }
+
+    return { label: "unavailable", state: "unavailable" };
+  }
+
+  switch (reason) {
+    case "idle_target_reached":
+      return { label: "idle target reached", state: "complete" };
+    case "idle_run_completed":
+      return { label: "idle run completed", state: "complete" };
+    case "max_passes_reached":
+      return { label: "pass cap reached", state: "capped" };
+    case "max_cycles_reached":
+      return { label: "cycle cap reached", state: "capped" };
+    default:
+      return { label: reason.replaceAll("_", " "), state: "snapshot" };
+  }
+}
+
 function workerNote(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
+  const completion = workerCompletionInfo(snapshot);
   const nextPollLabel = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "the next scheduled interval";
   const cadenceLabel = snapshot.pollIntervalSeconds
     ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
@@ -211,7 +246,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${passProgressLabelText}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}`,
     };
   }
 
@@ -464,6 +499,7 @@ function renderStatusSnapshot(snapshot) {
   const lastCommand = document.getElementById("status-last-command");
   const workerMode = document.getElementById("status-worker-mode");
   const workerState = document.getElementById("status-worker-state");
+  const workerCompletion = document.getElementById("status-worker-completion");
   const pollCadence = document.getElementById("status-poll-cadence");
   const workerProgress = document.getElementById("status-worker-progress");
   const generatedAt = document.getElementById("status-generated-at");
@@ -512,6 +548,9 @@ function renderStatusSnapshot(snapshot) {
   const workerStateValue = workerStateInfo(snapshot);
   workerState.textContent = workerStateValue.label;
   workerState.className = `worker-state ${workerStateValue.state}`;
+  const workerCompletionValue = workerCompletionInfo(snapshot);
+  workerCompletion.textContent = workerCompletionValue.label;
+  workerCompletion.className = `worker-completion ${workerCompletionValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
   workerProgress.textContent = workerProgressLabel(snapshot);
   workerProgress.className = `worker-progress ${workerProgressState(snapshot)}`;
@@ -615,6 +654,7 @@ async function bootStatusMock() {
     const lastCommand = document.getElementById("status-last-command");
     const workerMode = document.getElementById("status-worker-mode");
     const workerState = document.getElementById("status-worker-state");
+    const workerCompletion = document.getElementById("status-worker-completion");
     const pollCadence = document.getElementById("status-poll-cadence");
     const workerProgress = document.getElementById("status-worker-progress");
     const generatedAt = document.getElementById("status-generated-at");
@@ -661,6 +701,8 @@ async function bootStatusMock() {
     workerMode.className = "worker-mode unavailable";
     workerState.textContent = "unavailable";
     workerState.className = "worker-state unavailable";
+    workerCompletion.textContent = "unavailable";
+    workerCompletion.className = "worker-completion unavailable";
     pollCadence.textContent = "Unavailable";
     workerProgress.textContent = "Unavailable";
     workerProgress.className = "worker-progress unavailable";

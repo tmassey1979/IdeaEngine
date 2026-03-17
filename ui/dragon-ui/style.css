@@ -684,6 +684,37 @@ button {
   border-color: rgba(212, 20, 20, 0.24);
 }
 
+.worker-completion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 130px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+}
+
+.worker-completion.active,
+.worker-completion.snapshot {
+  color: #d2d6da;
+  background: rgba(122, 135, 146, 0.12);
+  border-color: rgba(122, 135, 146, 0.24);
+}
+
+.worker-completion.complete {
+  color: #d8f4e6;
+  background: rgba(79, 181, 127, 0.12);
+  border-color: rgba(79, 181, 127, 0.25);
+}
+
+.worker-completion.capped,
+.worker-completion.unavailable {
+  color: #f2c0c0;
+  background: rgba(212, 20, 20, 0.14);
+  border-color: rgba(212, 20, 20, 0.24);
+}
+
 .worker-progress {
   display: inline-flex;
   align-items: center;
