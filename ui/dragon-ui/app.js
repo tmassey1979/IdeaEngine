@@ -265,6 +265,30 @@ function workerProgressLabel(snapshot) {
   return `idle ${idleStreakLabel(snapshot)} · budget ${passBudgetLabel(snapshot)}`;
 }
 
+function workerProgressState(snapshot) {
+  const state = snapshot.workerState ?? "snapshot";
+
+  if (state === "waiting") {
+    const idleTarget = snapshot.idleTarget ?? 0;
+    const idleStreak = snapshot.idleStreak ?? 0;
+    if (idleTarget > 0 && idleStreak >= idleTarget) {
+      return "ready";
+    }
+
+    return "waiting";
+  }
+
+  if (state === "complete") {
+    return "complete";
+  }
+
+  if (state === "snapshot") {
+    return "snapshot";
+  }
+
+  return "unavailable";
+}
+
 function latestPassOutcome(snapshot) {
   const latestPass = snapshot.latestPass;
   if (!latestPass) {
@@ -468,6 +492,7 @@ function renderStatusSnapshot(snapshot) {
   workerState.className = `worker-state ${workerStateValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
   workerProgress.textContent = workerProgressLabel(snapshot);
+  workerProgress.className = `worker-progress ${workerProgressState(snapshot)}`;
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
@@ -616,6 +641,7 @@ async function bootStatusMock() {
     workerState.className = "worker-state unavailable";
     pollCadence.textContent = "Unavailable";
     workerProgress.textContent = "Unavailable";
+    workerProgress.className = "worker-progress unavailable";
     generatedAt.textContent = "Could not load sample payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
