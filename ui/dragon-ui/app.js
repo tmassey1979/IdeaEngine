@@ -91,6 +91,18 @@ function badgeClassForStatus(status) {
   return status === "quarantined" ? "warn" : "good";
 }
 
+function comparisonNote(snapshot) {
+  if (snapshot.comparisonMode === "fallback") {
+    return "Comparison values are being derived in the UI from the previous exported snapshot.";
+  }
+
+  if (snapshot.comparisonMode === "unavailable") {
+    return "Comparison values are unavailable because the current status payload could not be loaded.";
+  }
+
+  return "Comparison data is coming directly from the exported backend snapshot.";
+}
+
 function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
@@ -149,6 +161,7 @@ function renderStatusSnapshot(snapshot) {
   const queueDirection = document.getElementById("status-queue-direction");
   const queueComparedAt = document.getElementById("status-queue-compared-at");
   const comparisonMode = document.getElementById("status-comparison-mode");
+  const compareNote = document.getElementById("status-compare-note");
   const attentionSummary = document.getElementById("status-attention-summary");
   const failed = document.getElementById("status-rollup-failed");
   const quarantined = document.getElementById("status-rollup-quarantined");
@@ -175,6 +188,8 @@ function renderStatusSnapshot(snapshot) {
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
   comparisonMode.textContent = snapshot.comparisonMode ?? "backend";
   comparisonMode.className = `comparison-mode ${snapshot.comparisonMode ?? "backend"}`;
+  compareNote.textContent = comparisonNote(snapshot);
+  compareNote.className = `status-compare-note ${snapshot.comparisonMode ?? "backend"}`;
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -240,6 +255,7 @@ async function bootStatusMock() {
     const queueDirection = document.getElementById("status-queue-direction");
     const queueComparedAt = document.getElementById("status-queue-compared-at");
     const comparisonMode = document.getElementById("status-comparison-mode");
+    const compareNote = document.getElementById("status-compare-note");
     const attentionSummary = document.getElementById("status-attention-summary");
     const failed = document.getElementById("status-rollup-failed");
     const quarantined = document.getElementById("status-rollup-quarantined");
@@ -266,6 +282,8 @@ async function bootStatusMock() {
     queueComparedAt.textContent = "Unavailable";
     comparisonMode.textContent = "unavailable";
     comparisonMode.className = "comparison-mode unavailable";
+    compareNote.textContent = "Comparison values are unavailable because the current status payload could not be loaded.";
+    compareNote.className = "status-compare-note unavailable";
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";
