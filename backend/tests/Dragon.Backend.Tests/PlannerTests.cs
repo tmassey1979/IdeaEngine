@@ -241,6 +241,8 @@ public sealed class PlannerTests
         Assert.Equal(500, status.LeadJob!.IssueNumber);
         Assert.Equal("documentation", status.LeadJob.Agent);
         Assert.Equal("implement_issue", status.LeadJob.Action);
+        Assert.Equal("docs/generated/provider-notes.md", status.LeadJob.TargetArtifact);
+        Assert.Equal("high", status.LeadJob.Priority);
         var issue = Assert.Single(status.Issues);
         Assert.Equal(500, issue.IssueNumber);
         Assert.Equal(1, issue.QueuedJobCount);
@@ -311,6 +313,8 @@ public sealed class PlannerTests
         Assert.Equal(610, rootElement.GetProperty("leadJob").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("leadJob").GetProperty("agent").GetString());
         Assert.Equal("implement_issue", rootElement.GetProperty("leadJob").GetProperty("action").GetString());
+        Assert.Equal("ui/dragon-ui/sample-status.json", rootElement.GetProperty("leadJob").GetProperty("targetArtifact").GetString());
+        Assert.Equal("high", rootElement.GetProperty("leadJob").GetProperty("priority").GetString());
         Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal("draining", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());
@@ -865,7 +869,7 @@ public sealed class PlannerTests
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
-            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue"),
+            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "high"),
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",
@@ -896,6 +900,8 @@ public sealed class PlannerTests
         Assert.Equal(6, annotated.MaxPasses);
         Assert.NotNull(annotated.LeadJob);
         Assert.Equal(500, annotated.LeadJob!.IssueNumber);
+        Assert.Equal("docs/generated/provider-notes.md", annotated.LeadJob.TargetArtifact);
+        Assert.Equal("high", annotated.LeadJob.Priority);
     }
 
     [Fact]
