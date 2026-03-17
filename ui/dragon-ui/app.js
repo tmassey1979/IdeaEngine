@@ -537,6 +537,10 @@ function renderStatusSnapshot(snapshot) {
   const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
   const validatedDelta = document.getElementById("status-rollup-delta-validated");
   const latestActivityGroup = document.getElementById("status-latest-activity-group");
+  const leadJobGroup = document.getElementById("status-lead-job-group");
+  const leadJobIssue = document.getElementById("status-lead-job-issue");
+  const leadJobAgent = document.getElementById("status-lead-job-agent");
+  const leadJobAction = document.getElementById("status-lead-job-action");
   const latestPassGroup = document.getElementById("status-latest-pass-group");
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
@@ -599,6 +603,12 @@ function renderStatusSnapshot(snapshot) {
   quarantinedDelta.className = deltaClass(snapshot.rollupDelta?.quarantinedIssues ?? 0);
   inProgressDelta.className = deltaClass(snapshot.rollupDelta?.inProgressIssues ?? 0);
   validatedDelta.className = deltaClass(snapshot.rollupDelta?.validatedIssues ?? 0);
+  leadJobIssue.textContent = snapshot.leadJob
+    ? `#${snapshot.leadJob.issueNumber} ${snapshot.leadJob.issueTitle}`
+    : "No queued work";
+  leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
+  leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
+  leadJobGroup.className = "status-activity";
   latestIssue.textContent = snapshot.latestActivity
     ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
     : "No recent execution";
@@ -692,6 +702,10 @@ async function bootStatusMock() {
     const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
     const validatedDelta = document.getElementById("status-rollup-delta-validated");
     const latestActivityGroup = document.getElementById("status-latest-activity-group");
+    const leadJobGroup = document.getElementById("status-lead-job-group");
+    const leadJobIssue = document.getElementById("status-lead-job-issue");
+    const leadJobAgent = document.getElementById("status-lead-job-agent");
+    const leadJobAction = document.getElementById("status-lead-job-action");
     const latestPassGroup = document.getElementById("status-latest-pass-group");
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
@@ -748,6 +762,10 @@ async function bootStatusMock() {
     quarantinedDelta.className = "";
     inProgressDelta.className = "";
     validatedDelta.className = "";
+    leadJobIssue.textContent = "No queued work";
+    leadJobAgent.textContent = "unavailable";
+    leadJobAction.textContent = "unavailable";
+    leadJobGroup.className = "status-activity";
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";

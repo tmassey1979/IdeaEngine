@@ -21,6 +21,12 @@ globalThis.__DRAGON_STATUS__ = {
     "inProgressIssues": 1,
     "validatedIssues": 4
   },
+  "leadJob": {
+    "issueNumber": 23,
+    "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+    "agent": "review",
+    "action": "summarize_issue"
+  },
   "latestActivity": {
     "issueNumber": 23,
     "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
