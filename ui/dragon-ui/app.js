@@ -173,6 +173,7 @@ function renderStatusSnapshot(snapshot) {
   loopMode.textContent = snapshot.recentLoopSignal?.mode ?? "unknown";
   loopSummary.textContent = snapshot.recentLoopSignal?.summary ?? "No recent loop summary";
   queueDelta.textContent = String(snapshot.queueDelta ?? 0);
+  queueDelta.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -243,6 +244,7 @@ async function bootStatusMock() {
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
     queueDelta.textContent = "0";
+    queueDelta.className = "queue-trend unavailable";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>
