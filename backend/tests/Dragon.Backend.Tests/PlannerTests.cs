@@ -1830,6 +1830,66 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_NormalizesEncodedSpacePathsBeforeClosing()
+    {
+        var root = FindRepoRoot();
+        var workflow = new IssueWorkflowState(
+            106,
+            "Spaced Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-dev", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-review", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-test", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(
+                106,
+                "Spaced Architecture",
+                "developer",
+                "implement_issue",
+                "job-dev",
+                "success",
+                "done",
+                DateTimeOffset.UtcNow,
+                [
+                    "docs/My%20Architecture.md",
+                    "[Architecture](docs/My%20Architecture.md)",
+                    "[Architecture](<docs%2FMy%20Architecture.md>)",
+                    "\"docs/My%20Architecture.md\"",
+                    "`docs/My%20Architecture.md`"
+                ],
+                ["review"]),
+            new ExecutionRecord(106, "Spaced Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
+            new ExecutionRecord(106, "Spaced Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issue close 106", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("changed paths: docs/My Architecture.md", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("docs/My%20Architecture.md", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("[Architecture](docs/My%20Architecture.md)", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("[Architecture](<docs%2FMy%20Architecture.md>)", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("\"docs/My%20Architecture.md\"", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("`docs/My%20Architecture.md`", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_DoesNotCloseIssueWhenChangedPathsEscapeRepo()
     {
         var root = FindRepoRoot();
