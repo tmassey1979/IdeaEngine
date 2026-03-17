@@ -385,6 +385,10 @@ button {
   align-items: center;
 }
 
+.latest-pass-badges > * {
+  flex: 0 1 auto;
+}
+
 .status-rollup-card {
   padding: 14px 16px;
   border-radius: 16px;
@@ -1430,6 +1434,10 @@ th {
   .status-banner-line {
     min-width: calc(50% - 9px);
   }
+
+  .latest-pass-badges > * {
+    flex: 1 1 180px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1460,6 +1468,15 @@ th {
   }
 
   .status-banner-line {
+    min-width: 0;
+  }
+
+  .latest-pass-badges {
+    gap: 8px;
+  }
+
+  .latest-pass-badges > * {
+    flex: 1 1 100%;
     min-width: 0;
   }
 
