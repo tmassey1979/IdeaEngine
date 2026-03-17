@@ -29,6 +29,14 @@
     "inProgressIssues": 0,
     "validatedIssues": 0
   },
+  "latestPass": {
+    "passNumber": 4,
+    "cycleCount": 3,
+    "seededCycles": 1,
+    "consumedCycles": 2,
+    "reachedIdle": false,
+    "reachedMaxCycles": false
+  },
   "queuedJobs": 1,
   "issues": [
     {

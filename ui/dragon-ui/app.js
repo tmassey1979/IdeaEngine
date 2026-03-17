@@ -155,6 +155,23 @@ function comparisonLabel(snapshot) {
   return "Backend";
 }
 
+function latestPassOutcome(snapshot) {
+  const latestPass = snapshot.latestPass;
+  if (!latestPass) {
+    return "No polling summary";
+  }
+
+  if (latestPass.reachedMaxCycles) {
+    return "Pass hit max cycle cap";
+  }
+
+  if (latestPass.reachedIdle) {
+    return "Pass reached idle";
+  }
+
+  return "Pass completed with remaining work";
+}
+
 function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
@@ -228,9 +245,13 @@ function renderStatusSnapshot(snapshot) {
   const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
   const validatedDelta = document.getElementById("status-rollup-delta-validated");
   const latestActivityGroup = document.getElementById("status-latest-activity-group");
+  const latestPassGroup = document.getElementById("status-latest-pass-group");
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
   const latestSummary = document.getElementById("status-latest-summary");
+  const latestPassNumber = document.getElementById("status-latest-pass-number");
+  const latestPassCycles = document.getElementById("status-latest-pass-cycles");
+  const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
   const loopMode = document.getElementById("status-loop-mode");
   const loopSummary = document.getElementById("status-loop-summary");
   const queueDelta = document.getElementById("status-queue-delta");
@@ -272,11 +293,19 @@ function renderStatusSnapshot(snapshot) {
   latestStage.textContent = snapshot.latestActivity?.currentStage ?? "unknown";
   latestSummary.textContent = snapshot.latestActivity?.summary ?? "No recent execution summary";
   latestActivityGroup.className = "status-activity";
+  latestPassGroup.className = "status-activity";
+  latestPassNumber.textContent = snapshot.latestPass ? `Pass ${snapshot.latestPass.passNumber}` : "No pass recorded";
+  latestPassCycles.textContent = snapshot.latestPass
+    ? `${snapshot.latestPass.cycleCount} cycles, ${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
+    : "0 cycles";
+  latestPassOutcomeNode.textContent = latestPassOutcome(snapshot);
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
+    latestPassGroup.classList.add("alert");
     feed.classList.add("deemphasized");
   } else if (snapshot.recentLoopSignal?.mode === "draining") {
     latestActivityGroup.classList.add("caution");
+    latestPassGroup.classList.add("caution");
   }
   loopMode.textContent = snapshot.recentLoopSignal?.mode ?? "unknown";
   loopSummary.textContent = snapshot.recentLoopSignal?.summary ?? "No recent loop summary";
@@ -333,9 +362,13 @@ async function bootStatusMock() {
     const inProgressDelta = document.getElementById("status-rollup-delta-in-progress");
     const validatedDelta = document.getElementById("status-rollup-delta-validated");
     const latestActivityGroup = document.getElementById("status-latest-activity-group");
+    const latestPassGroup = document.getElementById("status-latest-pass-group");
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
     const latestSummary = document.getElementById("status-latest-summary");
+    const latestPassNumber = document.getElementById("status-latest-pass-number");
+    const latestPassCycles = document.getElementById("status-latest-pass-cycles");
+    const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
     const loopMode = document.getElementById("status-loop-mode");
     const loopSummary = document.getElementById("status-loop-summary");
     const queueDelta = document.getElementById("status-queue-delta");
@@ -373,6 +406,10 @@ async function bootStatusMock() {
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";
     latestActivityGroup.className = "status-activity";
+    latestPassGroup.className = "status-activity";
+    latestPassNumber.textContent = "Unavailable";
+    latestPassCycles.textContent = "Unavailable";
+    latestPassOutcomeNode.textContent = "Could not load pass summary";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
     queueDelta.textContent = "0";
