@@ -25,7 +25,9 @@ globalThis.__DRAGON_STATUS__ = {
     "issueNumber": 23,
     "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
     "agent": "review",
-    "action": "summarize_issue"
+    "action": "summarize_issue",
+    "targetArtifact": "backend/src/Dragon.Backend.Orchestrator/WorkflowStateStore.cs",
+    "priority": "high"
   },
   "latestActivity": {
     "issueNumber": 23,

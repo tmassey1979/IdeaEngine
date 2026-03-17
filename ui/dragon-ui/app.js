@@ -541,6 +541,8 @@ function renderStatusSnapshot(snapshot) {
   const leadJobIssue = document.getElementById("status-lead-job-issue");
   const leadJobAgent = document.getElementById("status-lead-job-agent");
   const leadJobAction = document.getElementById("status-lead-job-action");
+  const leadJobTarget = document.getElementById("status-lead-job-target");
+  const leadJobPriority = document.getElementById("status-lead-job-priority");
   const latestPassGroup = document.getElementById("status-latest-pass-group");
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
@@ -608,6 +610,8 @@ function renderStatusSnapshot(snapshot) {
     : "No queued work";
   leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
   leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
+  leadJobTarget.textContent = snapshot.leadJob?.targetArtifact ?? "none";
+  leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
   leadJobGroup.className = "status-activity";
   latestIssue.textContent = snapshot.latestActivity
     ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
@@ -706,6 +710,8 @@ async function bootStatusMock() {
     const leadJobIssue = document.getElementById("status-lead-job-issue");
     const leadJobAgent = document.getElementById("status-lead-job-agent");
     const leadJobAction = document.getElementById("status-lead-job-action");
+    const leadJobTarget = document.getElementById("status-lead-job-target");
+    const leadJobPriority = document.getElementById("status-lead-job-priority");
     const latestPassGroup = document.getElementById("status-latest-pass-group");
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
@@ -765,6 +771,8 @@ async function bootStatusMock() {
     leadJobIssue.textContent = "No queued work";
     leadJobAgent.textContent = "unavailable";
     leadJobAction.textContent = "unavailable";
+    leadJobTarget.textContent = "unavailable";
+    leadJobPriority.textContent = "unavailable";
     leadJobGroup.className = "status-activity";
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
