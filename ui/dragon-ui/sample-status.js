@@ -27,6 +27,7 @@ globalThis.__DRAGON_STATUS__ = {
     "agent": "review",
     "action": "summarize_issue",
     "targetArtifact": "backend/src/Dragon.Backend.Orchestrator/WorkflowStateStore.cs",
+    "targetOutcome": "document workflow state recovery behavior",
     "priority": "high"
   },
   "latestActivity": {

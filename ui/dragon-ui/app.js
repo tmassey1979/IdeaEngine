@@ -542,6 +542,7 @@ function renderStatusSnapshot(snapshot) {
   const leadJobAgent = document.getElementById("status-lead-job-agent");
   const leadJobAction = document.getElementById("status-lead-job-action");
   const leadJobTarget = document.getElementById("status-lead-job-target");
+  const leadJobOutcome = document.getElementById("status-lead-job-outcome");
   const leadJobPriority = document.getElementById("status-lead-job-priority");
   const latestPassGroup = document.getElementById("status-latest-pass-group");
   const latestIssue = document.getElementById("status-latest-issue");
@@ -611,6 +612,7 @@ function renderStatusSnapshot(snapshot) {
   leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
   leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
   leadJobTarget.textContent = snapshot.leadJob?.targetArtifact ?? "none";
+  leadJobOutcome.textContent = snapshot.leadJob?.targetOutcome ?? "none";
   leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
   leadJobGroup.className = "status-activity";
   latestIssue.textContent = snapshot.latestActivity
@@ -711,6 +713,7 @@ async function bootStatusMock() {
     const leadJobAgent = document.getElementById("status-lead-job-agent");
     const leadJobAction = document.getElementById("status-lead-job-action");
     const leadJobTarget = document.getElementById("status-lead-job-target");
+    const leadJobOutcome = document.getElementById("status-lead-job-outcome");
     const leadJobPriority = document.getElementById("status-lead-job-priority");
     const latestPassGroup = document.getElementById("status-latest-pass-group");
     const latestIssue = document.getElementById("status-latest-issue");
@@ -772,6 +775,7 @@ async function bootStatusMock() {
     leadJobAgent.textContent = "unavailable";
     leadJobAction.textContent = "unavailable";
     leadJobTarget.textContent = "unavailable";
+    leadJobOutcome.textContent = "unavailable";
     leadJobPriority.textContent = "unavailable";
     leadJobGroup.className = "status-activity";
     latestIssue.textContent = "No recent execution";
