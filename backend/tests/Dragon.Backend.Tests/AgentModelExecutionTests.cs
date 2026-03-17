@@ -524,6 +524,70 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_ExecutesInferredDocumentationImplementFollowUp_AndAppliesOperations()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs", "generated"));
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "provider-notes.md"), "# Provider Notes\nInitial.\n");
+
+        var provider = new SequencedFakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Tighten the provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Update the provider notes with clearer operator guidance."
+                }
+              ]
+            }
+            """,
+            """
+            {
+              "summary": "Provider notes clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nClearer operator guidance.\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(439, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        var implementResult = loop.CycleOnce(issues);
+
+        Assert.NotNull(implementResult.Job);
+        Assert.Equal("documentation", implementResult.Job!.Agent);
+        Assert.Equal("implement_issue", implementResult.Job.Action);
+        Assert.NotNull(implementResult.Execution);
+        Assert.Equal("success", implementResult.Execution!.Status);
+        Assert.Equal(["docs/generated/provider-notes.md"], implementResult.Execution.ChangedPaths);
+        Assert.Contains("Clearer operator guidance.", File.ReadAllText(Path.Combine(root, "docs", "generated", "provider-notes.md")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CycleOnce_OrdersRequestedModelFollowUps_ByPriorityAfterReviewAndTest()
     {
         var root = CreateTempRoot();
@@ -966,6 +1030,25 @@ public sealed class AgentModelExecutionTests
         {
             LastRequest = request;
             return Task.FromResult(new AgentModelResponse("fake", request.Model, "resp_test", outputText, "completed"));
+        }
+    }
+
+    private sealed class SequencedFakeAgentModelProvider : IAgentModelProvider
+    {
+        private readonly Queue<string> outputs;
+
+        public SequencedFakeAgentModelProvider(params string[] outputs)
+        {
+            this.outputs = new Queue<string>(outputs);
+        }
+
+        public AgentModelProviderDescriptor Describe() =>
+            new("fake", "memory", "gpt-5", "OPENAI_API_KEY", "test provider");
+
+        public Task<AgentModelResponse> GenerateAsync(AgentModelRequest request, CancellationToken cancellationToken = default)
+        {
+            var output = outputs.Count > 0 ? outputs.Dequeue() : """{"summary":"No output configured."}""";
+            return Task.FromResult(new AgentModelResponse("fake", request.Model, "resp_test", output, "completed"));
         }
     }
 }
