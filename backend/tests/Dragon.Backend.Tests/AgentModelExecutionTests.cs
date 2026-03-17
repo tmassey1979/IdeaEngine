@@ -484,6 +484,46 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_InfersImplementActionForRequestedFollowUps_WhenOutcomeImpliesUpdate()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Tighten the provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Update the provider notes with clearer operator guidance."
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(438, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        var result = loop.CycleOnce(issues);
+
+        var inferredFollowUp = Assert.Single(result.FollowUps, job => job.Agent == "documentation" && job.Action == "implement_issue");
+        Assert.Equal("documentation", inferredFollowUp.Metadata["preferredAgent"]);
+    }
+
+    [Fact]
     public void CycleOnce_OrdersRequestedModelFollowUps_ByPriorityAfterReviewAndTest()
     {
         var root = CreateTempRoot();

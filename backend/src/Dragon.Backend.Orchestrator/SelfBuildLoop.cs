@@ -464,6 +464,13 @@ public sealed class SelfBuildLoop
 
     private static string? InferFollowUpAction(RequestedFollowUp followUp)
     {
+        var targetOutcome = followUp.TargetOutcome ?? string.Empty;
+
+        if (ContainsImplementationVerb(targetOutcome))
+        {
+            return "implement_issue";
+        }
+
         if (!string.IsNullOrWhiteSpace(followUp.TargetArtifact) || !string.IsNullOrWhiteSpace(followUp.TargetOutcome))
         {
             return "summarize_issue";
@@ -471,6 +478,14 @@ public sealed class SelfBuildLoop
 
         return null;
     }
+
+    private static bool ContainsImplementationVerb(string value) =>
+        value.Contains("update", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("improve", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("refactor", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("rewrite", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("edit", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("clean up", StringComparison.OrdinalIgnoreCase);
 
     private static string RecommendAgent(GithubIssue issue)
     {
