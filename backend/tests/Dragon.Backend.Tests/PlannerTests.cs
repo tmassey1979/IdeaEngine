@@ -837,6 +837,16 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_TreatsBlankResponsesAsEmptyBacklog()
+    {
+        var service = new GithubIssueService((_, _) => "   ");
+
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_ClosesValidatedIssue()
     {
         var root = CreateTempRoot();

@@ -26,7 +26,7 @@ public sealed class GithubIssueService
         );
 
         var backlogIndex = BacklogIndexLoader.Load(rootDirectory);
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
         var issues = new List<GithubIssue>();
 
         foreach (var entry in document.RootElement.EnumerateArray())
