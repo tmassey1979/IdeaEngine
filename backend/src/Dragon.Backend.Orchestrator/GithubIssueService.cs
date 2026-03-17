@@ -31,46 +31,12 @@ public sealed class GithubIssueService
 
         foreach (var entry in document.RootElement.EnumerateArray())
         {
-            var state = entry.GetProperty("state").GetString() ?? "OPEN";
-            if (!string.Equals(state, "OPEN", StringComparison.OrdinalIgnoreCase))
+            if (!TryMapIssue(entry, backlogIndex, out var issue))
             {
                 continue;
             }
 
-            var labels = entry.GetProperty("labels")
-                .EnumerateArray()
-                .Select(label => label.GetProperty("name").GetString())
-                .OfType<string>()
-                .ToArray();
-
-            if (!labels.Contains("story", StringComparer.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (labels.Contains("superseded", StringComparer.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var title = entry.GetProperty("title").GetString() ?? string.Empty;
-            backlogIndex.TryGetValue(title, out var metadata);
-
-            issues.Add(new GithubIssue(
-                entry.GetProperty("number").GetInt32(),
-                title,
-                state,
-                labels,
-                entry.GetProperty("body").GetString() ?? string.Empty,
-                metadata?.Heading,
-                metadata?.SourceFile,
-                InferSourceIssueNumber(title, entry.GetProperty("body").GetString() ?? string.Empty)
-            ));
+            issues.Add(issue);
         }
 
         return issues
@@ -78,6 +44,74 @@ public sealed class GithubIssueService
             .Select(group => group.First())
             .OrderBy(issue => issue.Number)
             .ToArray();
+    }
+
+    private static bool TryMapIssue(
+        JsonElement entry,
+        IReadOnlyDictionary<string, BacklogStoryMetadata> backlogIndex,
+        out GithubIssue issue)
+    {
+        issue = default!;
+
+        if (!entry.TryGetProperty("state", out var stateProperty))
+        {
+            return false;
+        }
+
+        var state = stateProperty.GetString() ?? "OPEN";
+        if (!string.Equals(state, "OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!entry.TryGetProperty("labels", out var labelsProperty) || labelsProperty.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        var labels = labelsProperty
+            .EnumerateArray()
+            .Where(label => label.TryGetProperty("name", out _))
+            .Select(label => label.GetProperty("name").GetString())
+            .OfType<string>()
+            .ToArray();
+
+        if (!labels.Contains("story", StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (labels.Contains("superseded", StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (labels.Contains("waiting-follow-up", StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!entry.TryGetProperty("number", out var numberProperty) || numberProperty.ValueKind != JsonValueKind.Number)
+        {
+            return false;
+        }
+
+        var title = entry.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() ?? string.Empty : string.Empty;
+        var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
+        backlogIndex.TryGetValue(title, out var metadata);
+
+        issue = new GithubIssue(
+            numberProperty.GetInt32(),
+            title,
+            state,
+            labels,
+            body,
+            metadata?.Heading,
+            metadata?.SourceFile,
+            InferSourceIssueNumber(title, body)
+        );
+
+        return true;
     }
 
     public GithubSyncResult SyncWorkflow(
