@@ -252,6 +252,140 @@ button {
   box-shadow: var(--shadow);
 }
 
+.idea-list,
+.project-list,
+.progress-timeline {
+  display: grid;
+  gap: 14px;
+}
+
+.idea-card,
+.project-card,
+.progress-step,
+.idea-form label {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.idea-card,
+.project-card,
+.progress-step {
+  padding: 16px;
+}
+
+.idea-card h4,
+.project-name,
+.progress-step h4,
+.idea-form span {
+  margin: 0 0 8px;
+}
+
+.idea-card p,
+.project-meta,
+.project-stats span,
+.progress-step p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.idea-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.idea-form {
+  display: grid;
+  gap: 14px;
+}
+
+.idea-form label {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.idea-form input,
+.idea-form textarea,
+.idea-form select {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.idea-form textarea {
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.project-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.active-project {
+  border-color: rgba(212, 20, 20, 0.28);
+  background: linear-gradient(180deg, rgba(212, 20, 20, 0.08), rgba(255, 255, 255, 0.03));
+}
+
+.project-name {
+  font-size: 1.08rem;
+}
+
+.project-stats {
+  text-align: right;
+}
+
+.project-stats strong {
+  display: block;
+  font-size: 1.5rem;
+}
+
+.progress-step {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.step-dot {
+  width: 14px;
+  height: 14px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.03);
+}
+
+.progress-step.done .step-dot {
+  background: var(--green);
+}
+
+.progress-step.current {
+  border-color: rgba(212, 20, 20, 0.28);
+  background: rgba(212, 20, 20, 0.08);
+}
+
+.progress-step.current .step-dot {
+  background: var(--red);
+  box-shadow: 0 0 0 6px rgba(212, 20, 20, 0.12);
+}
+
 .panel {
   padding: 22px;
 }
@@ -521,7 +655,9 @@ th {
   }
 
   .backlog-row,
-  .queue-list li {
+  .queue-list li,
+  .project-card,
+  .progress-step {
     grid-template-columns: 1fr;
   }
 }

@@ -40,8 +40,11 @@
 
         <nav class="nav">
           <a class="nav-link active" href="#overview">Overview</a>
+          <a class="nav-link" href="#ideas">Ideas</a>
+          <a class="nav-link" href="#submit">Submit Idea</a>
+          <a class="nav-link" href="#projects">Projects</a>
+          <a class="nav-link" href="#progress">Progress</a>
           <a class="nav-link" href="#workflows">Workflows</a>
-          <a class="nav-link" href="#backlog">Backlog</a>
           <a class="nav-link" href="#recovery">Recovery</a>
           <a class="nav-link" href="#repositories">Repositories</a>
         </nav>
@@ -80,36 +83,193 @@
             <p class="hero-copy">
               This mockup focuses on the real system we have been building: a C#
               orchestrator that reads GitHub stories, runs implementation loops,
-              syncs workflow state, and manages recovery paths when work stalls.
+              syncs workflow state, manages recovery paths when work stalls, and
+              gives operators one place to submit new ideas and watch them move
+              into active projects.
             </p>
           </div>
 
           <div class="hero-actions">
-            <button class="primary">Run Until Idle</button>
-            <button class="secondary">Open Queue Intel</button>
+            <button class="primary">Submit New Idea</button>
+            <button class="secondary">View Active Projects</button>
           </div>
         </header>
 
         <section class="stats-grid">
           <article class="stat-card accent-orange">
-            <p class="stat-label">Open Runnable Stories</p>
-            <p class="stat-value">27</p>
-            <p class="stat-meta">5 newly eligible after recovery release</p>
+            <p class="stat-label">Ideas In Intake</p>
+            <p class="stat-value">14</p>
+            <p class="stat-meta">4 waiting human approval, 10 ready to slice</p>
           </article>
           <article class="stat-card accent-blue">
-            <p class="stat-label">Active Workflows</p>
-            <p class="stat-value">9</p>
-            <p class="stat-meta">Developer 4, Review 3, Test 2</p>
+            <p class="stat-label">Active Projects</p>
+            <p class="stat-value">6</p>
+            <p class="stat-meta">3 self-hosting, 2 client repos, 1 incubating</p>
           </article>
           <article class="stat-card accent-green">
-            <p class="stat-label">Validated This Week</p>
+            <p class="stat-label">Stories Completed</p>
             <p class="stat-value">41</p>
-            <p class="stat-meta">34 auto-closed, 7 waiting follow-up</p>
+            <p class="stat-meta">This week across all tracked projects</p>
           </article>
           <article class="stat-card accent-red">
-            <p class="stat-label">Quarantined</p>
+            <p class="stat-label">Needs Attention</p>
             <p class="stat-value">3</p>
-            <p class="stat-meta">2 with active recovery children</p>
+            <p class="stat-meta">Recovery paths active on 2 projects</p>
+          </article>
+        </section>
+
+        <section class="two-column" id="ideas">
+          <article class="panel panel-large">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Idea Intake</p>
+                <h3>Ideas waiting to become work</h3>
+              </div>
+              <span class="chip">14 open ideas</span>
+            </div>
+
+            <div class="idea-list">
+              <article class="idea-card">
+                <div class="idea-meta">
+                  <span class="badge good">Approved</span>
+                  <span class="mono">Idea 118</span>
+                </div>
+                <h4>Voice-to-backlog capture for late-night idea dumps</h4>
+                <p>Convert spoken notes into triaged backlog candidates with suggested epics and first stories.</p>
+              </article>
+              <article class="idea-card">
+                <div class="idea-meta">
+                  <span class="badge warn">Reviewing</span>
+                  <span class="mono">Idea 121</span>
+                </div>
+                <h4>Autonomous regression report after every validated story</h4>
+                <p>Generate a short operator summary showing what changed, what passed, and what still looks risky.</p>
+              </article>
+              <article class="idea-card">
+                <div class="idea-meta">
+                  <span class="badge muted">Draft</span>
+                  <span class="mono">Idea 126</span>
+                </div>
+                <h4>Project heatmap for stalled repos and overloaded epics</h4>
+                <p>Highlight where the factory is burning time so new work can be redirected earlier.</p>
+              </article>
+            </div>
+          </article>
+
+          <article class="panel" id="submit">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Submit Idea</p>
+                <h3>Start something new</h3>
+              </div>
+            </div>
+
+            <form class="idea-form">
+              <label>
+                <span>Idea title</span>
+                <input type="text" value="Auto-generate release notes from validated stories" />
+              </label>
+              <label>
+                <span>Why this matters</span>
+                <textarea rows="5">As an operator, I want release notes assembled automatically so I can understand what changed without reading every issue thread.</textarea>
+              </label>
+              <label>
+                <span>Target project</span>
+                <select>
+                  <option>IdeaEngine</option>
+                  <option>Dragon CRM</option>
+                  <option>New incubator project</option>
+                </select>
+              </label>
+              <div class="form-actions">
+                <button type="button" class="primary">Submit Idea</button>
+                <button type="button" class="secondary">Save Draft</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <section class="two-column" id="projects">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Projects</p>
+                <h3>What the system is building</h3>
+              </div>
+            </div>
+
+            <div class="project-list">
+              <article class="project-card active-project">
+                <div>
+                  <p class="project-name">IdeaEngine</p>
+                  <p class="project-meta">Self-hosting platform core</p>
+                </div>
+                <div class="project-stats">
+                  <strong>68%</strong>
+                  <span>104 / 153 stories delivered</span>
+                </div>
+              </article>
+              <article class="project-card">
+                <div>
+                  <p class="project-name">Dragon CRM</p>
+                  <p class="project-meta">Client workflow automation</p>
+                </div>
+                <div class="project-stats">
+                  <strong>41%</strong>
+                  <span>37 / 90 stories delivered</span>
+                </div>
+              </article>
+              <article class="project-card">
+                <div>
+                  <p class="project-name">Release Intelligence</p>
+                  <p class="project-meta">Incubator from idea intake</p>
+                </div>
+                <div class="project-stats">
+                  <strong>12%</strong>
+                  <span>idea approved, slicing in progress</span>
+                </div>
+              </article>
+            </div>
+          </article>
+
+          <article class="panel" id="progress">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Progress Monitor</p>
+                <h3>One project, end to end</h3>
+              </div>
+            </div>
+
+            <div class="progress-timeline">
+              <div class="progress-step done">
+                <span class="step-dot"></span>
+                <div>
+                  <h4>Idea accepted</h4>
+                  <p>Approved by operator and converted into an epic with sliced stories.</p>
+                </div>
+              </div>
+              <div class="progress-step done">
+                <span class="step-dot"></span>
+                <div>
+                  <h4>Stories in motion</h4>
+                  <p>Developer, review, and test stages are running against queued backlog work.</p>
+                </div>
+              </div>
+              <div class="progress-step current">
+                <span class="step-dot"></span>
+                <div>
+                  <h4>Recovery monitoring</h4>
+                  <p>One child story is paused while a recovery issue validates changed-path evidence.</p>
+                </div>
+              </div>
+              <div class="progress-step">
+                <span class="step-dot"></span>
+                <div>
+                  <h4>Validated release</h4>
+                  <p>System will close the story once meaningful implementation evidence is synced back to GitHub.</p>
+                </div>
+              </div>
+            </div>
           </article>
         </section>
 
