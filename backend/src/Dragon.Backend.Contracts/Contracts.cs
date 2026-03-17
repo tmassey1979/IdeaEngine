@@ -127,8 +127,8 @@ public sealed record AgentStructuredResult(
 );
 
 public sealed record RequestedFollowUp(
-    string Agent,
-    string Action,
+    string? Agent,
+    string? Action,
     string? Priority = null,
     string? Reason = null,
     bool Blocking = false,

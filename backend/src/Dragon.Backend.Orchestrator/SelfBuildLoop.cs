@@ -288,20 +288,23 @@ public sealed class SelfBuildLoop
         foreach (var requestedFollowUp in requestedFollowUps
             .OrderBy(GetRequestedFollowUpPriorityRank)
             .ThenBy(followUp => followUp.Agent ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(followUp => followUp.Action, StringComparer.OrdinalIgnoreCase))
+            .ThenBy(followUp => followUp.Action ?? string.Empty, StringComparer.OrdinalIgnoreCase))
         {
             var followUpAgent = string.IsNullOrWhiteSpace(requestedFollowUp.Agent)
                 ? InferPreferredAgent(requestedFollowUp.TargetArtifact)
                 : requestedFollowUp.Agent;
+            var followUpAction = string.IsNullOrWhiteSpace(requestedFollowUp.Action)
+                ? InferFollowUpAction(requestedFollowUp)
+                : requestedFollowUp.Action;
 
-            if (string.IsNullOrWhiteSpace(followUpAgent) || string.IsNullOrWhiteSpace(requestedFollowUp.Action))
+            if (string.IsNullOrWhiteSpace(followUpAgent) || string.IsNullOrWhiteSpace(followUpAction))
             {
                 continue;
             }
 
             if (followUps.Any(existing =>
                 string.Equals(existing.Agent, followUpAgent, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(existing.Action, requestedFollowUp.Action, StringComparison.OrdinalIgnoreCase)))
+                string.Equals(existing.Action, followUpAction, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
@@ -310,7 +313,7 @@ public sealed class SelfBuildLoop
                 job,
                 execution,
                 followUpAgent,
-                requestedFollowUp.Action,
+                followUpAction,
                 execution.JobId,
                 requestedFollowUp.Priority,
                 requestedFollowUp.Reason,
@@ -454,6 +457,16 @@ public sealed class SelfBuildLoop
             targetArtifact.EndsWith(".js", StringComparison.OrdinalIgnoreCase))
         {
             return "refactor";
+        }
+
+        return null;
+    }
+
+    private static string? InferFollowUpAction(RequestedFollowUp followUp)
+    {
+        if (!string.IsNullOrWhiteSpace(followUp.TargetArtifact) || !string.IsNullOrWhiteSpace(followUp.TargetOutcome))
+        {
+            return "summarize_issue";
         }
 
         return null;
