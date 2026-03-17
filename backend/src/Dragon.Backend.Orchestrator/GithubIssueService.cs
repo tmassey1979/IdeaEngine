@@ -73,7 +73,11 @@ public sealed class GithubIssueService
             ));
         }
 
-        return issues.OrderBy(issue => issue.Number).ToArray();
+        return issues
+            .GroupBy(issue => issue.Number)
+            .Select(group => group.First())
+            .OrderBy(issue => issue.Number)
+            .ToArray();
     }
 
     public GithubSyncResult SyncWorkflow(

@@ -749,6 +749,39 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_DeduplicatesStoriesByIssueNumberDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 800,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "First copy",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 800,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Second copy",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(800, issue.Number);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_ClosesValidatedIssue()
     {
         var root = CreateTempRoot();
