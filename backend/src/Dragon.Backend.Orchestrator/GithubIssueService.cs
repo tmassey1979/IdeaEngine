@@ -281,6 +281,7 @@ public sealed class GithubIssueService
     private static IReadOnlyList<string> GetMeaningfulChangedPaths(IReadOnlyList<ExecutionRecord> executionRecords) =>
         executionRecords
             .SelectMany(record => record.ChangedPaths)
+            .Select(path => path.Trim())
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.Ordinal)
             .ToArray();

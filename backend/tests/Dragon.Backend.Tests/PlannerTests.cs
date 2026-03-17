@@ -1730,6 +1730,46 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_TrimsChangedPathsBeforeClosing()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            104,
+            "System Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-dev", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-review", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-test", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(104, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, [" docs/ARCHITECTURE.md ", "docs/ARCHITECTURE.md"], ["review"]),
+            new ExecutionRecord(104, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
+            new ExecutionRecord(104, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issue close 104", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("changed paths: docs/ARCHITECTURE.md", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("changed paths:  docs/ARCHITECTURE.md ", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_DoesNotCloseIssueWithActiveRecoveryChildren()
     {
         var root = CreateTempRoot();
