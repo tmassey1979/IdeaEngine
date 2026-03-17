@@ -971,7 +971,7 @@ public sealed class GithubIssueService
         if (markdownLinkMatch.Success)
         {
             var linkTarget = markdownLinkMatch.Groups["path"].Value.Trim();
-            var titleMatch = Regex.Match(linkTarget, "^(?<path>.+?)\\s+(?:\"[^\"]*\"|'[^']*')$");
+            var titleMatch = Regex.Match(linkTarget, "^(?<path>.+?)\\s+(?:\"[^\"]*\"|'[^']*'|\\([^)]*\\))$");
             var normalizedLinkTarget = titleMatch.Success
                 ? titleMatch.Groups["path"].Value.Trim()
                 : linkTarget;
