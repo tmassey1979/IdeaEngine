@@ -539,6 +539,7 @@ function renderStatusSnapshot(snapshot) {
   const latestActivityGroup = document.getElementById("status-latest-activity-group");
   const leadJobGroup = document.getElementById("status-lead-job-group");
   const leadJobIssue = document.getElementById("status-lead-job-issue");
+  const leadJobWorkType = document.getElementById("status-lead-job-work-type");
   const leadJobAgent = document.getElementById("status-lead-job-agent");
   const leadJobAction = document.getElementById("status-lead-job-action");
   const leadJobBlocking = document.getElementById("status-lead-job-blocking");
@@ -610,6 +611,7 @@ function renderStatusSnapshot(snapshot) {
   leadJobIssue.textContent = snapshot.leadJob
     ? `#${snapshot.leadJob.issueNumber} ${snapshot.leadJob.issueTitle}`
     : "No queued work";
+  leadJobWorkType.textContent = snapshot.leadJob?.workType ?? "story";
   leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
   leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
   leadJobBlocking.textContent = snapshot.leadJob?.blocking ? "yes" : "no";
@@ -712,6 +714,7 @@ async function bootStatusMock() {
     const latestActivityGroup = document.getElementById("status-latest-activity-group");
     const leadJobGroup = document.getElementById("status-lead-job-group");
     const leadJobIssue = document.getElementById("status-lead-job-issue");
+    const leadJobWorkType = document.getElementById("status-lead-job-work-type");
     const leadJobAgent = document.getElementById("status-lead-job-agent");
     const leadJobAction = document.getElementById("status-lead-job-action");
     const leadJobBlocking = document.getElementById("status-lead-job-blocking");
@@ -775,6 +778,7 @@ async function bootStatusMock() {
     inProgressDelta.className = "";
     validatedDelta.className = "";
     leadJobIssue.textContent = "No queued work";
+    leadJobWorkType.textContent = "unavailable";
     leadJobAgent.textContent = "unavailable";
     leadJobAction.textContent = "unavailable";
     leadJobBlocking.textContent = "unavailable";

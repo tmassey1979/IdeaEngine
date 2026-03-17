@@ -24,6 +24,7 @@ globalThis.__DRAGON_STATUS__ = {
   "leadJob": {
     "issueNumber": 23,
     "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+    "workType": "story",
     "agent": "review",
     "action": "summarize_issue",
     "blocking": true,
