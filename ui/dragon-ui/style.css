@@ -274,6 +274,33 @@ button {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.status-rollup {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.status-rollup-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-rollup-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.status-rollup-card strong {
+  font-size: 1.6rem;
+}
+
 .status-banner-line {
   display: grid;
   gap: 4px;
@@ -836,7 +863,8 @@ th {
   .project-card,
   .progress-step,
   .status-grid,
-  .status-meta-grid {
+  .status-meta-grid,
+  .status-rollup {
     grid-template-columns: 1fr;
   }
 

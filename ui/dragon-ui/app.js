@@ -78,11 +78,19 @@ function renderStatusSnapshot(snapshot) {
   const source = document.getElementById("status-source");
   const generatedAt = document.getElementById("status-generated-at");
   const attentionSummary = document.getElementById("status-attention-summary");
+  const failed = document.getElementById("status-rollup-failed");
+  const quarantined = document.getElementById("status-rollup-quarantined");
+  const inProgress = document.getElementById("status-rollup-in-progress");
+  const validated = document.getElementById("status-rollup-validated");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
+  failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
+  quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
+  inProgress.textContent = String(snapshot.rollup?.inProgressIssues ?? 0);
+  validated.textContent = String(snapshot.rollup?.validatedIssues ?? 0);
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -109,11 +117,19 @@ async function bootStatusMock() {
     const source = document.getElementById("status-source");
     const generatedAt = document.getElementById("status-generated-at");
     const attentionSummary = document.getElementById("status-attention-summary");
+    const failed = document.getElementById("status-rollup-failed");
+    const quarantined = document.getElementById("status-rollup-quarantined");
+    const inProgress = document.getElementById("status-rollup-in-progress");
+    const validated = document.getElementById("status-rollup-validated");
     chip.textContent = "Sample snapshot unavailable";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
     attentionSummary.textContent = "Could not load status summary";
+    failed.textContent = "0";
+    quarantined.textContent = "0";
+    inProgress.textContent = "0";
+    validated.textContent = "0";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>

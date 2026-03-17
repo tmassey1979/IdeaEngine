@@ -63,12 +63,14 @@ public sealed class SelfBuildLoop
 
         var health = DeriveStatusHealth(queuedJobs.Count, issues);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health);
+        var rollup = BuildStatusRollup(issues);
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
             "status",
             health,
             attentionSummary,
+            rollup,
             queuedJobs.Count,
             issues
         );
@@ -1077,18 +1079,24 @@ public sealed class SelfBuildLoop
 
     private static string BuildAttentionSummary(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues, string health)
     {
-        var quarantined = issues.Count(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase));
-        var failed = issues.Count(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase));
-        var inProgress = issues.Count(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase));
+        var rollup = BuildStatusRollup(issues);
 
         return health switch
         {
-            "blocked" => $"{quarantined} quarantined issue(s) need intervention.",
-            "attention" => $"{failed} failed issue(s) need review.",
-            "healthy" => $"{queuedJobs} queued job(s), {inProgress} issue(s) in progress.",
+            "blocked" => $"{rollup.QuarantinedIssues} quarantined issue(s) need intervention.",
+            "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
+            "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
             _ => "No queued work and no active issue workflows."
         };
     }
+
+    private static StatusRollup BuildStatusRollup(IReadOnlyList<IssueStatusSnapshot> issues) =>
+        new(
+            issues.Count(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase)),
+            issues.Count(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)),
+            issues.Count(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)),
+            issues.Count(issue => string.Equals(issue.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
+        );
 }
 
 public sealed record CycleResult(
@@ -1113,8 +1121,16 @@ public sealed record StatusSnapshot(
     string Source,
     string Health,
     string AttentionSummary,
+    StatusRollup Rollup,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
+);
+
+public sealed record StatusRollup(
+    int FailedIssues,
+    int QuarantinedIssues,
+    int InProgressIssues,
+    int ValidatedIssues
 );
 
 public sealed record IssueStatusSnapshot(

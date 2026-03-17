@@ -295,6 +295,9 @@ public sealed class PlannerTests
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal("healthy", rootElement.GetProperty("health").GetString());
         Assert.Contains("queued job", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("failedIssues").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
+        Assert.Equal(1, rootElement.GetProperty("rollup").GetProperty("inProgressIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -621,6 +624,10 @@ public sealed class PlannerTests
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal("idle", rootElement.GetProperty("health").GetString());
         Assert.Contains("No queued work", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("failedIssues").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("inProgressIssues").GetInt32());
+        Assert.Equal(1, rootElement.GetProperty("rollup").GetProperty("validatedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
