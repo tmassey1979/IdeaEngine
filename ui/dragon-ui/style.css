@@ -203,6 +203,32 @@ body {
   line-height: 1.6;
 }
 
+.hero-rail-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.hero-rail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f1e2dc;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.hero-rail.safe {
+  color: #d8f4e6;
+  border-color: rgba(79, 181, 127, 0.22);
+  background: rgba(79, 181, 127, 0.12);
+}
+
 .hero-actions {
   display: flex;
   gap: 12px;
