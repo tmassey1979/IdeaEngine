@@ -293,6 +293,8 @@ public sealed class PlannerTests
         var rootElement = document.RootElement;
         Assert.Equal("status", rootElement.GetProperty("source").GetString());
         Assert.Equal("status", rootElement.GetProperty("workerMode").GetString());
+        Assert.Equal("snapshot", rootElement.GetProperty("workerState").GetString());
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("nextPollAt").ValueKind);
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal("healthy", rootElement.GetProperty("health").GetString());
         Assert.Contains("queued job", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
@@ -811,6 +813,8 @@ public sealed class PlannerTests
             DateTimeOffset.UtcNow.AddMinutes(-5),
             "status",
             "status",
+            "snapshot",
+            null,
             "healthy",
             "previous",
             new StatusRollup(0, 0, 1, 0),
@@ -826,6 +830,8 @@ public sealed class PlannerTests
             DateTimeOffset.UtcNow,
             "status",
             "watch",
+            "waiting",
+            DateTimeOffset.UtcNow.AddMinutes(1),
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
@@ -847,6 +853,7 @@ public sealed class PlannerTests
         Assert.Equal(-1, annotated.RollupDelta.InProgressIssues);
         Assert.Equal(1, annotated.RollupDelta.ValidatedIssues);
         Assert.Equal("watch", annotated.WorkerMode);
+        Assert.Equal("waiting", annotated.WorkerState);
     }
 
     [Fact]
@@ -857,14 +864,19 @@ public sealed class PlannerTests
         var loop = new SelfBuildLoop(root);
         var latestPass = new LatestPassSummary(2, 4, 1, 3, true, false);
 
-        var snapshot = loop.WriteStatus(outputPath, "polling", latestPass);
+        var nextPollAt = DateTimeOffset.UtcNow.AddSeconds(30);
+        var snapshot = loop.WriteStatus(outputPath, "polling", "waiting", nextPollAt, latestPass);
 
         Assert.NotNull(snapshot.LatestPass);
         Assert.Equal(2, snapshot.LatestPass!.PassNumber);
         Assert.Equal("polling", snapshot.WorkerMode);
+        Assert.Equal("waiting", snapshot.WorkerState);
+        Assert.Equal(nextPollAt, snapshot.NextPollAt);
 
         using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
         Assert.Equal("polling", document.RootElement.GetProperty("workerMode").GetString());
+        Assert.Equal("waiting", document.RootElement.GetProperty("workerState").GetString());
+        Assert.Equal(nextPollAt, document.RootElement.GetProperty("nextPollAt").GetDateTimeOffset());
         var latestPassElement = document.RootElement.GetProperty("latestPass");
         Assert.Equal(2, latestPassElement.GetProperty("passNumber").GetInt32());
         Assert.Equal(4, latestPassElement.GetProperty("cycleCount").GetInt32());

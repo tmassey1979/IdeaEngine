@@ -36,7 +36,11 @@ public sealed class SelfBuildLoop
 
     public IReadOnlyList<SelfBuildJob> ReadQueue() => queueStore.ReadAll();
 
-    public StatusSnapshot ReadStatus(string workerMode = "status", LatestPassSummary? latestPass = null)
+    public StatusSnapshot ReadStatus(
+        string workerMode = "status",
+        string workerState = "snapshot",
+        DateTimeOffset? nextPollAt = null,
+        LatestPassSummary? latestPass = null)
     {
         var queuedJobs = queueStore.ReadAll();
         var issues = workflowStateStore.ReadAll().Values
@@ -71,6 +75,8 @@ public sealed class SelfBuildLoop
             DateTimeOffset.UtcNow,
             "status",
             workerMode,
+            workerState,
+            nextPollAt,
             health,
             attentionSummary,
             rollup,
@@ -86,9 +92,14 @@ public sealed class SelfBuildLoop
         );
     }
 
-    public StatusSnapshot WriteStatus(string outputPath, string workerMode = "status", LatestPassSummary? latestPass = null)
+    public StatusSnapshot WriteStatus(
+        string outputPath,
+        string workerMode = "status",
+        string workerState = "snapshot",
+        DateTimeOffset? nextPollAt = null,
+        LatestPassSummary? latestPass = null)
     {
-        var snapshot = ReadStatus(workerMode, latestPass);
+        var snapshot = ReadStatus(workerMode, workerState, nextPollAt, latestPass);
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -1356,6 +1367,8 @@ public sealed record StatusSnapshot(
     DateTimeOffset GeneratedAt,
     string Source,
     string WorkerMode,
+    string WorkerState,
+    DateTimeOffset? NextPollAt,
     string Health,
     string AttentionSummary,
     StatusRollup Rollup,
