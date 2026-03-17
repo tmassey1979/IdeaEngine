@@ -113,6 +113,11 @@ public sealed class GithubIssueService
             return false;
         }
 
+        if (stateProperty.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
         var state = stateProperty.GetString() ?? "OPEN";
         if (!string.Equals(state, "OPEN", StringComparison.OrdinalIgnoreCase))
         {

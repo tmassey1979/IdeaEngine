@@ -907,6 +907,29 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresUnexpectedStateTypesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 807,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": 123,
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresMalformedLabelEntriesDuringBacklogDiscovery()
     {
         const string json = """
