@@ -30,13 +30,13 @@ public static class AgentPromptFactory
 
     private static string BuildInstructions(string agent) => agent.ToLowerInvariant() switch
     {
-        "architect" => "You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation.",
-        "documentation" => "You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations.",
-        "feedback" => "You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language.",
-        "idea" => "You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices.",
-        "repository-manager" => "You are the repository manager agent. Focus on repository hygiene, branch strategy, and delivery mechanics.",
-        "refactor" => "You are the refactor agent. Improve structure and clarity without changing intended behavior.",
-        _ => $"You are the {agent} agent. Complete the assigned work and return a concise actionable result."
+        "architect" => "You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. Return JSON only with fields: summary, recommendation, artifacts.",
+        "documentation" => "You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations. Return JSON only with fields: summary, recommendation, artifacts.",
+        "feedback" => "You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language. Return JSON only with fields: summary, recommendation, artifacts.",
+        "idea" => "You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices. Return JSON only with fields: summary, recommendation, artifacts.",
+        "repository-manager" => "You are the repository manager agent. Focus on repository hygiene, branch strategy, and delivery mechanics. Return JSON only with fields: summary, recommendation, artifacts.",
+        "refactor" => "You are the refactor agent. Improve structure and clarity without changing intended behavior. Return JSON only with fields: summary, recommendation, artifacts.",
+        _ => $"You are the {agent} agent. Complete the assigned work. Return JSON only with fields: summary, recommendation, artifacts."
     };
 
     private static string BuildUserPrompt(SelfBuildJob job)

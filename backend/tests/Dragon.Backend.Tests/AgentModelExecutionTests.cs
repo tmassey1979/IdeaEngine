@@ -25,6 +25,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("implement_issue", request.Purpose);
         Assert.Equal("gpt-5", request.Model);
         Assert.Contains("architect agent", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Return JSON only", request.Instructions!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(request.Messages, message => message.Role == "user" && message.Content.Contains(issue.Title, StringComparison.Ordinal));
         Assert.Equal("310", request.Metadata!["issueNumber"]);
     }
@@ -52,6 +53,61 @@ public sealed class AgentModelExecutionTests
         Assert.NotNull(provider.LastRequest);
         Assert.Equal("architect", provider.LastRequest!.Agent);
         Assert.Equal("implement_issue", provider.LastRequest.Purpose);
+    }
+
+    [Fact]
+    public void Execute_UsesStructuredAgentResultSummary_WhenProviderReturnsJson()
+    {
+        var issue = new GithubIssue(
+            418,
+            "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "documentation", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation plan generated.",
+              "recommendation": "Update operator docs before enabling unattended mode.",
+              "artifacts": ["docs/OPENAI_PROVIDER.md", "docs/AUTONOMY_ROADMAP.md"]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Equal("Documentation plan generated.", result.Summary);
+    }
+
+    [Fact]
+    public void ParseStructuredResult_ReadsJsonAgentOutput()
+    {
+        var parsed = AgentStructuredResultParser.Parse(
+            """
+            {
+              "summary": "Architecture direction updated.",
+              "recommendation": "Use API-backed providers first.",
+              "artifacts": ["docs/ARCHITECTURE.md"]
+            }
+            """
+        );
+
+        Assert.NotNull(parsed);
+        Assert.Equal("Architecture direction updated.", parsed!.Summary);
+        Assert.Equal("Use API-backed providers first.", parsed.Recommendation);
+        Assert.NotNull(parsed.Artifacts);
+        Assert.Single(parsed.Artifacts!);
+    }
+
+    [Fact]
+    public void ParseStructuredResult_ReturnsNullForPlainText()
+    {
+        var parsed = AgentStructuredResultParser.Parse("plain text result");
+
+        Assert.Null(parsed);
     }
 
     [Fact]
@@ -96,6 +152,13 @@ public sealed class AgentModelExecutionTests
 
     private sealed class FakeAgentModelProvider : IAgentModelProvider
     {
+        private readonly string outputText;
+
+        public FakeAgentModelProvider(string outputText = "Architect response from provider.")
+        {
+            this.outputText = outputText;
+        }
+
         public AgentModelRequest? LastRequest { get; private set; }
 
         public AgentModelProviderDescriptor Describe() =>
@@ -104,7 +167,7 @@ public sealed class AgentModelExecutionTests
         public Task<AgentModelResponse> GenerateAsync(AgentModelRequest request, CancellationToken cancellationToken = default)
         {
             LastRequest = request;
-            return Task.FromResult(new AgentModelResponse("fake", request.Model, "resp_test", "Architect response from provider.", "completed"));
+            return Task.FromResult(new AgentModelResponse("fake", request.Model, "resp_test", outputText, "completed"));
         }
     }
 }

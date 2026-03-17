@@ -117,6 +117,12 @@ public sealed record AgentModelResponse(
     string? FinishReason = null
 );
 
+public sealed record AgentStructuredResult(
+    string Summary,
+    string? Recommendation = null,
+    IReadOnlyList<string>? Artifacts = null
+);
+
 public sealed record AgentModelProviderDescriptor(
     string Name,
     string Transport,

@@ -72,7 +72,10 @@ public sealed class LocalJobExecutor
 
         var request = AgentPromptFactory.Build(job, modelProvider.Describe().DefaultModel);
         var response = modelProvider.GenerateAsync(request).GetAwaiter().GetResult();
-        var summary = string.IsNullOrWhiteSpace(response.OutputText)
+        var structuredResult = AgentStructuredResultParser.Parse(response.OutputText);
+        var summary = !string.IsNullOrWhiteSpace(structuredResult?.Summary)
+            ? structuredResult.Summary
+            : string.IsNullOrWhiteSpace(response.OutputText)
             ? $"{job.Agent} completed through {response.Provider}."
             : response.OutputText.Trim();
 
