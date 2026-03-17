@@ -7,6 +7,7 @@ globalThis.__DRAGON_STATUS__ = {
   "nextPollAt": "2026-03-17T18:27:32.6650205+00:00",
   "pollIntervalSeconds": 30,
   "idleStreak": 1,
+  "idleTarget": 2,
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
   "rollup": {

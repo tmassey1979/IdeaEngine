@@ -179,17 +179,20 @@ function workerNote(snapshot) {
   const cadenceLabel = snapshot.pollIntervalSeconds
     ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
     : null;
-  const idleStreakLabel = snapshot.idleStreak
-    ? ` Current idle streak: ${snapshot.idleStreak}.`
-    : "";
+  const idleTarget = snapshot.idleTarget ?? 0;
+  const idleProgressLabel = idleTarget > 0
+    ? ` Current idle progress: ${snapshot.idleStreak ?? 0} / ${idleTarget}.`
+    : snapshot.idleStreak
+      ? ` Current idle streak: ${snapshot.idleStreak}.`
+      : "";
 
   if (state === "waiting") {
     return {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${idleStreakLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${idleStreakLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${idleProgressLabel}`,
     };
   }
 
@@ -233,6 +236,17 @@ function pollCadenceLabel(snapshot) {
   }
 
   return `${minutes}m ${remainder}s`;
+}
+
+function idleStreakLabel(snapshot) {
+  const idleStreak = snapshot.idleStreak ?? 0;
+  const idleTarget = snapshot.idleTarget ?? 0;
+
+  if (idleTarget > 0) {
+    return `${idleStreak} / ${idleTarget}`;
+  }
+
+  return String(idleStreak);
 }
 
 function latestPassOutcome(snapshot) {
@@ -437,7 +451,7 @@ function renderStatusSnapshot(snapshot) {
   workerState.textContent = workerStateValue.label;
   workerState.className = `worker-state ${workerStateValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
-  idleStreak.textContent = String(snapshot.idleStreak ?? 0);
+  idleStreak.textContent = idleStreakLabel(snapshot);
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
