@@ -252,6 +252,101 @@ button {
   box-shadow: var(--shadow);
 }
 
+.status-panel {
+  margin-top: 20px;
+}
+
+.status-grid,
+.status-feed,
+.status-meta-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.status-summary,
+.status-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-summary {
+  padding: 18px;
+}
+
+.status-kicker,
+.status-meta-label {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+}
+
+.status-number {
+  margin: 0 0 6px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.status-note,
+.status-line,
+.status-timestamp {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.status-feed {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.status-card {
+  padding: 18px;
+}
+
+.status-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.status-card-head h4 {
+  margin: 0;
+}
+
+.status-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.status-line {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.status-line span {
+  color: #f0d9d4;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-timestamp {
+  margin-top: 14px;
+  font-size: 0.88rem;
+}
+
 .idea-list,
 .project-list,
 .progress-timeline {
@@ -681,7 +776,8 @@ th {
   .shell,
   .stats-grid,
   .two-column,
-  .kanban {
+  .kanban,
+  .status-feed {
     grid-template-columns: 1fr;
   }
 
@@ -710,7 +806,9 @@ th {
   .backlog-row,
   .queue-list li,
   .project-card,
-  .progress-step {
+  .progress-step,
+  .status-grid,
+  .status-meta-grid {
     grid-template-columns: 1fr;
   }
 

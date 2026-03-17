@@ -1,0 +1,38 @@
+{
+  "queuedJobs": 5,
+  "issues": [
+    {
+      "issueNumber": 344,
+      "issueTitle": "Remove Deprecated Node Backend Scaffold",
+      "overallStatus": "in_progress",
+      "currentStage": "review",
+      "queuedJobCount": 1,
+      "workflowNote": "Local cleanup landed; remote confirmation still pending.",
+      "latestExecutionSummary": "Removed the legacy Node backend scaffold and aligned docs around the C# backend path.",
+      "latestExecutionNotes": "execution notes: kept stronger same-artifact implementation and pruned weaker duplicates for repo cleanup follow-ups.",
+      "latestExecutionRecordedAt": "2026-03-17T09:24:00-05:00"
+    },
+    {
+      "issueNumber": 351,
+      "issueTitle": "Story Outcome Sync Notes",
+      "overallStatus": "in_progress",
+      "currentStage": "documentation",
+      "queuedJobCount": 2,
+      "workflowNote": "Artifact-aware operator summary queued after a multi-file implementation cycle.",
+      "latestExecutionSummary": "Expanded visibility so GitHub heartbeat comments show execution notes from the latest run.",
+      "latestExecutionNotes": "summary conflict resolution: pruned stale summarize_issue work because a newer same-artifact implement_issue is already queued.",
+      "latestExecutionRecordedAt": "2026-03-17T10:02:00-05:00"
+    },
+    {
+      "issueNumber": 352,
+      "issueTitle": "Recovery Story Closure Rules",
+      "overallStatus": "quarantined",
+      "currentStage": "test",
+      "queuedJobCount": 2,
+      "workflowNote": "Recovery path remains active until changed-path evidence validates a safe close.",
+      "latestExecutionSummary": "Held validated-close because meaningful implementation evidence was still ambiguous after recovery sync.",
+      "latestExecutionNotes": "implementation conflict resolution: kept newer or higher-specificity same-artifact implementation; superseded implementation issues: 349, 350.",
+      "latestExecutionRecordedAt": "2026-03-17T10:41:00-05:00"
+    }
+  ]
+}

@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
   </head>
   <body>
     <div class="shell">
@@ -117,15 +118,46 @@
             <p class="stat-meta">3 self-hosting, 2 client repos, 1 incubating</p>
           </article>
           <article class="stat-card accent-green">
-            <p class="stat-label">Stories Completed</p>
-            <p class="stat-value">41</p>
-            <p class="stat-meta">This week across all tracked projects</p>
+            <p class="stat-label">Tracked Issues</p>
+            <p class="stat-value" data-status-stat="issues">0</p>
+            <p class="stat-meta">Loaded from the backend status snapshot</p>
           </article>
           <article class="stat-card accent-red">
-            <p class="stat-label">Needs Attention</p>
-            <p class="stat-value">3</p>
-            <p class="stat-meta">Recovery paths active on 2 projects</p>
+            <p class="stat-label">Queued Jobs</p>
+            <p class="stat-value" data-status-stat="queued">0</p>
+            <p class="stat-meta">Live shape mirrors `dragon-backend status`</p>
           </article>
+        </section>
+
+        <section class="panel status-panel" id="status">
+          <div class="panel-head">
+            <div>
+              <p class="panel-label">Backend Status</p>
+              <h3>Current self-build loop snapshot</h3>
+            </div>
+            <span class="chip" id="status-chip">Loading sample snapshot</span>
+          </div>
+
+          <div class="status-grid">
+            <div class="status-summary">
+              <p class="status-kicker">Queue</p>
+              <p class="status-number" data-status-stat="queued">0</p>
+              <p class="status-note">Queued jobs across all tracked issue workflows.</p>
+            </div>
+            <div class="status-summary">
+              <p class="status-kicker">Tracked issues</p>
+              <p class="status-number" data-status-stat="issues">0</p>
+              <p class="status-note">Issues with workflow state or queued work.</p>
+            </div>
+          </div>
+
+          <div class="status-feed" id="status-feed">
+            <article class="status-card">
+              <p class="panel-label">Waiting for sample data</p>
+              <h4>Snapshot unavailable</h4>
+              <p>Open <span class="mono">sample-status.json</span> next to this page to preview the backend-shaped dashboard state.</p>
+            </article>
+          </div>
         </section>
 
         <section class="two-column" id="ideas">
