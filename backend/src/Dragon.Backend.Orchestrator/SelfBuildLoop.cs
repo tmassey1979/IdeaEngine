@@ -403,8 +403,9 @@ public sealed class SelfBuildLoop
             return;
         }
 
+        var summaryAgent = InferOperatorSummaryAgent(targetArtifact);
         if (followUps.Any(existing =>
-            string.Equals(existing.Agent, "feedback", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Agent, summaryAgent, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(existing.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
             string.Equals(existing.Metadata.GetValueOrDefault("targetArtifact"), targetArtifact, StringComparison.OrdinalIgnoreCase)))
         {
@@ -414,7 +415,7 @@ public sealed class SelfBuildLoop
         followUps.Add(CreateFollowUpJob(
             sourceJob,
             execution,
-            "feedback",
+            summaryAgent,
             "summarize_issue",
             execution.JobId,
             "high",
@@ -422,6 +423,14 @@ public sealed class SelfBuildLoop
             false,
             targetArtifact,
             "Summarize the broader operator impact of the targeted implementation."));
+    }
+
+    private static string InferOperatorSummaryAgent(string targetArtifact)
+    {
+        var preferredAgent = InferPreferredAgent(targetArtifact);
+        return string.Equals(preferredAgent, "documentation", StringComparison.OrdinalIgnoreCase)
+            ? "documentation"
+            : "feedback";
     }
 
     private static void DeferSummaryFollowUp(

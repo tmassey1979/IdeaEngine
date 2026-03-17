@@ -766,8 +766,79 @@ public sealed class AgentModelExecutionTests
         loop.CycleOnce(issues);
         var implementResult = loop.CycleOnce(issues);
 
+        var documentationFollowUp = Assert.Single(implementResult.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+        Assert.Equal("docs/generated/provider-notes.md", documentationFollowUp.Metadata["targetArtifact"]);
+        Assert.Equal("Summarize the broader operator impact of the targeted implementation.", documentationFollowUp.Metadata["targetOutcome"]);
+    }
+
+    [Fact]
+    public void CycleOnce_EnqueuesFeedbackOperatorSummary_ForCodeTargetedMultiArtifactImplementation()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "backend", "src", "Dragon.Backend.Orchestrator"));
+        Directory.CreateDirectory(Path.Combine(root, "backend", "tests", "Dragon.Backend.Tests"));
+        File.WriteAllText(
+            Path.Combine(root, "backend", "src", "Dragon.Backend.Orchestrator", "AgentPromptFactory.cs"),
+            "namespace Dragon.Backend.Orchestrator;\npublic static class AgentPromptFactory { }\n");
+        File.WriteAllText(
+            Path.Combine(root, "backend", "tests", "Dragon.Backend.Tests", "PromptFactoryTests.cs"),
+            "namespace Dragon.Backend.Tests;\npublic class PromptFactoryTests { }\n");
+
+        var provider = new SequencedFakeAgentModelProvider(
+            """
+            {
+              "summary": "Prompt factory reviewed.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                  "content": "namespace Dragon.Backend.Orchestrator;\npublic static class AgentPromptFactory { }\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Tighten prompt construction.",
+                  "targetArtifact": "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                  "targetOutcome": "Improve prompt construction clarity without changing behavior."
+                }
+              ]
+            }
+            """,
+            """
+            {
+              "summary": "Prompt factory clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                  "content": "namespace Dragon.Backend.Orchestrator;\npublic static class AgentPromptFactory\n{\n}\n"
+                },
+                {
+                  "type": "write_file",
+                  "path": "backend/tests/Dragon.Backend.Tests/PromptFactoryTests.cs",
+                  "content": "namespace Dragon.Backend.Tests;\npublic class PromptFactoryTests\n{\n}\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(446, "[Story] Dragon Idea Engine Master Codex: Refactor Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        var implementResult = loop.CycleOnce(issues);
+
         var feedbackFollowUp = Assert.Single(implementResult.FollowUps, job => job.Agent == "feedback" && job.Action == "summarize_issue");
-        Assert.Equal("docs/generated/provider-notes.md", feedbackFollowUp.Metadata["targetArtifact"]);
+        Assert.Equal("backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs", feedbackFollowUp.Metadata["targetArtifact"]);
         Assert.Equal("Summarize the broader operator impact of the targeted implementation.", feedbackFollowUp.Metadata["targetOutcome"]);
     }
 
