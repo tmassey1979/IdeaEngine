@@ -128,7 +128,9 @@ public sealed record AgentStructuredResult(
 
 public sealed record RequestedFollowUp(
     string Agent,
-    string Action
+    string Action,
+    string? Priority = null,
+    string? Reason = null
 );
 
 public sealed record AgentModelProviderDescriptor(

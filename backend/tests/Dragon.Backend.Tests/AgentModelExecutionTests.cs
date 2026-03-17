@@ -137,7 +137,9 @@ public sealed class AgentModelExecutionTests
               "followUps": [
                 {
                   "agent": "feedback",
-                  "action": "summarize_issue"
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Operator summary should be generated immediately."
                 }
               ]
             }
@@ -150,6 +152,8 @@ public sealed class AgentModelExecutionTests
         Assert.NotNull(result.RequestedFollowUps);
         Assert.Single(result.RequestedFollowUps!);
         Assert.Equal("feedback", result.RequestedFollowUps![0].Agent);
+        Assert.Equal("high", result.RequestedFollowUps[0].Priority);
+        Assert.Contains("Operator summary", result.RequestedFollowUps[0].Reason!, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -170,7 +174,9 @@ public sealed class AgentModelExecutionTests
               "followUps": [
                 {
                   "agent": "feedback",
-                  "action": "summarize_issue"
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Summarize the documentation change for operators."
                 }
               ]
             }
@@ -191,6 +197,9 @@ public sealed class AgentModelExecutionTests
         Assert.Contains(result.FollowUps, job => job.Agent == "review" && job.Action == "review_issue");
         Assert.Contains(result.FollowUps, job => job.Agent == "test" && job.Action == "test_issue");
         Assert.Contains(result.FollowUps, job => job.Agent == "feedback" && job.Action == "summarize_issue");
+        var feedbackFollowUp = Assert.Single(result.FollowUps, job => job.Agent == "feedback");
+        Assert.Equal("high", feedbackFollowUp.Metadata["requestedPriority"]);
+        Assert.Contains("documentation change", feedbackFollowUp.Metadata["requestedReason"], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -212,7 +221,9 @@ public sealed class AgentModelExecutionTests
               "followUps": [
                 {
                   "agent": "feedback",
-                  "action": "summarize_issue"
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Operators need a concise summary."
                 }
               ]
             }
@@ -228,6 +239,8 @@ public sealed class AgentModelExecutionTests
         Assert.Single(parsed.Operations!);
         Assert.NotNull(parsed.FollowUps);
         Assert.Single(parsed.FollowUps!);
+        Assert.Equal("high", parsed.FollowUps[0].Priority);
+        Assert.Contains("Operators need", parsed.FollowUps[0].Reason!, StringComparison.Ordinal);
     }
 
     [Fact]

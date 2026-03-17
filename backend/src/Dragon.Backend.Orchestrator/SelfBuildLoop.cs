@@ -299,7 +299,14 @@ public sealed class SelfBuildLoop
                 continue;
             }
 
-            followUps.Add(CreateFollowUpJob(job, execution, requestedFollowUp.Agent, requestedFollowUp.Action, execution.JobId));
+            followUps.Add(CreateFollowUpJob(
+                job,
+                execution,
+                requestedFollowUp.Agent,
+                requestedFollowUp.Action,
+                execution.JobId,
+                requestedFollowUp.Priority,
+                requestedFollowUp.Reason));
         }
 
         foreach (var followUp in followUps)
@@ -335,8 +342,34 @@ public sealed class SelfBuildLoop
         });
     }
 
-    private static SelfBuildJob CreateFollowUpJob(SelfBuildJob sourceJob, JobExecutionResult execution, string agent, string action, string parentJobId)
+    private static SelfBuildJob CreateFollowUpJob(
+        SelfBuildJob sourceJob,
+        JobExecutionResult execution,
+        string agent,
+        string action,
+        string parentJobId,
+        string? requestedPriority = null,
+        string? requestedReason = null)
     {
+        var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["requestedBy"] = "system",
+            ["source"] = "dragon-orchestrator-dotnet",
+            ["parentJobId"] = parentJobId,
+            ["parentIssue"] = sourceJob.Issue.ToString(),
+            ["changedPaths"] = string.Join("|", execution.ChangedPaths ?? [])
+        };
+
+        if (!string.IsNullOrWhiteSpace(requestedPriority))
+        {
+            metadata["requestedPriority"] = requestedPriority;
+        }
+
+        if (!string.IsNullOrWhiteSpace(requestedReason))
+        {
+            metadata["requestedReason"] = requestedReason;
+        }
+
         return new SelfBuildJob(
             agent,
             action,
@@ -350,14 +383,7 @@ public sealed class SelfBuildLoop
                 sourceJob.Payload.SourceFile,
                 null
             ),
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["requestedBy"] = "system",
-                ["source"] = "dragon-orchestrator-dotnet",
-                ["parentJobId"] = parentJobId,
-                ["parentIssue"] = sourceJob.Issue.ToString(),
-                ["changedPaths"] = string.Join("|", execution.ChangedPaths ?? [])
-            }
+            metadata
         );
     }
 
