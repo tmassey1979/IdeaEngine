@@ -286,6 +286,44 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_PrioritizesBlockingFollowUps_AheadOfOrdinaryBacklogWork()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "followUps": [
+                {
+                  "agent": "feedback",
+                  "action": "summarize_issue",
+                  "priority": "normal",
+                  "reason": "Operator summary must happen before new backlog work.",
+                  "blocking": true
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var firstIssue = new GithubIssue(425, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"]);
+        var secondIssue = new GithubIssue(426, "[Story] Dragon Idea Engine Master Codex: Repository Structure", "OPEN", ["story"]);
+
+        loop.CycleOnce([firstIssue]);
+        loop.SeedNext([secondIssue]);
+        loop.CycleOnce([firstIssue, secondIssue]);
+        loop.CycleOnce([firstIssue, secondIssue]);
+        loop.CycleOnce([firstIssue, secondIssue]);
+        var next = loop.CycleOnce([firstIssue, secondIssue]);
+
+        Assert.NotNull(next.Job);
+        Assert.Equal("feedback", next.Job!.Agent);
+        Assert.Equal("summarize_issue", next.Job.Action);
+        Assert.Equal("true", next.Job.Metadata["requestedBlocking"]);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReadsJsonAgentOutput()
     {
         var parsed = AgentStructuredResultParser.Parse(
@@ -306,7 +344,8 @@ public sealed class AgentModelExecutionTests
                   "agent": "feedback",
                   "action": "summarize_issue",
                   "priority": "high",
-                  "reason": "Operators need a concise summary."
+                  "reason": "Operators need a concise summary.",
+                  "blocking": true
                 }
               ]
             }
@@ -323,6 +362,7 @@ public sealed class AgentModelExecutionTests
         Assert.NotNull(parsed.FollowUps);
         Assert.Single(parsed.FollowUps!);
         Assert.Equal("high", parsed.FollowUps[0].Priority);
+        Assert.True(parsed.FollowUps[0].Blocking);
         Assert.Contains("Operators need", parsed.FollowUps[0].Reason!, StringComparison.Ordinal);
     }
 

@@ -309,7 +309,8 @@ public sealed class SelfBuildLoop
                 requestedFollowUp.Action,
                 execution.JobId,
                 requestedFollowUp.Priority,
-                requestedFollowUp.Reason));
+                requestedFollowUp.Reason,
+                requestedFollowUp.Blocking));
         }
 
         foreach (var followUp in followUps)
@@ -367,7 +368,8 @@ public sealed class SelfBuildLoop
         string action,
         string parentJobId,
         string? requestedPriority = null,
-        string? requestedReason = null)
+        string? requestedReason = null,
+        bool requestedBlocking = false)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -386,6 +388,11 @@ public sealed class SelfBuildLoop
         if (!string.IsNullOrWhiteSpace(requestedReason))
         {
             metadata["requestedReason"] = requestedReason;
+        }
+
+        if (requestedBlocking)
+        {
+            metadata["requestedBlocking"] = "true";
         }
 
         return new SelfBuildJob(

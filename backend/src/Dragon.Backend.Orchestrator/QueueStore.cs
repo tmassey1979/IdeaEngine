@@ -84,17 +84,22 @@ public sealed class QueueStore
             return 0;
         }
 
-        if (string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "high", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(job.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase))
         {
             return 1;
         }
 
-        if (string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "low", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "high", StringComparison.OrdinalIgnoreCase))
         {
-            return 3;
+            return 2;
         }
 
-        return 2;
+        if (string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "low", StringComparison.OrdinalIgnoreCase))
+        {
+            return 4;
+        }
+
+        return 3;
     }
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)
