@@ -1,9 +1,16 @@
+using System.Text.Json;
 using Dragon.Backend.Contracts;
 
 namespace Dragon.Backend.Orchestrator;
 
 public sealed class SelfBuildLoop
 {
+    private static readonly JsonSerializerOptions StatusSerializerOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly QueueStore queueStore;
     private readonly WorkflowStateStore workflowStateStore;
     private readonly ExecutionRecordStore executionRecordStore;
@@ -55,6 +62,19 @@ public sealed class SelfBuildLoop
             .ToArray();
 
         return new StatusSnapshot(queuedJobs.Count, issues);
+    }
+
+    public StatusSnapshot WriteStatus(string outputPath)
+    {
+        var snapshot = ReadStatus();
+        var directory = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
+        return snapshot;
     }
 
     public IReadOnlyList<GithubIssue> LoadGithubIssues(string owner, string repo) =>

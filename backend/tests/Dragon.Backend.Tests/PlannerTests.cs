@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Dragon.Backend.Contracts;
 using Dragon.Backend.Orchestrator;
 
@@ -241,6 +242,61 @@ public sealed class PlannerTests
         Assert.Equal("documentation", issue.CurrentStage);
         Assert.Equal("updated", issue.LatestExecutionSummary);
         Assert.Contains("Superseded implementation issues: 499", issue.LatestExecutionNotes, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WriteStatus_WritesBackendSnapshotJson()
+    {
+        var root = CreateTempRoot();
+        var outputPath = Path.Combine(root, "ui", "dragon-ui", "sample-status.json");
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            610,
+            new SelfBuildJobPayload("[Story] Dashboard Status", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "ui/dragon-ui/sample-status.json",
+                ["requestedPriority"] = "high"
+            }));
+
+        var store = new WorkflowStateStore(root);
+        store.Update(610, "Dashboard Status", "documentation", new JobExecutionResult("job-2", "documentation", "success", "synced", DateTimeOffset.UtcNow));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "documentation",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                610,
+                new SelfBuildJobPayload("[Story] Dashboard Status", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["summaryConflictResolution"] = "Pruned stale summarize_issue work because a stronger same-artifact implementation is already queued.",
+                    ["supersededSummaryIssues"] = "608"
+                }),
+            new JobExecutionResult("job-2", "documentation", "success", "synced", DateTimeOffset.UtcNow),
+            []);
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.WriteStatus(outputPath);
+
+        Assert.True(File.Exists(outputPath));
+        Assert.Equal(1, status.QueuedJobs);
+
+        using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var rootElement = document.RootElement;
+        Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
+
+        var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
+        Assert.Equal(610, issueElement.GetProperty("issueNumber").GetInt32());
+        Assert.Equal("documentation", issueElement.GetProperty("currentStage").GetString());
+        Assert.Contains("Superseded summary issues: 608", issueElement.GetProperty("latestExecutionNotes").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]

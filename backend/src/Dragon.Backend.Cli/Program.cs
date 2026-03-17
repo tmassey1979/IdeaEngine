@@ -113,7 +113,12 @@ static int RunStatus(IReadOnlyDictionary<string, string> options)
 {
     var root = GetString(options, "root", Directory.GetCurrentDirectory());
     var loop = new SelfBuildLoop(root);
-    PrintJson(loop.ReadStatus());
+    var outputPath = GetNullable(options, "out");
+    var snapshot = string.IsNullOrWhiteSpace(outputPath)
+        ? loop.ReadStatus()
+        : loop.WriteStatus(Path.GetFullPath(outputPath, root));
+
+    PrintJson(snapshot);
     return 0;
 }
 
@@ -225,7 +230,7 @@ static int ShowHelp()
           provider-describe [--provider openai-responses]
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
-          status [--root <repo-root>]
+          status [--root <repo-root>] [--out <path>]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>]
           run-until-idle [--max-cycles 100] [--root <repo-root>]
