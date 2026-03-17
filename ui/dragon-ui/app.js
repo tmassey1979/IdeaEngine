@@ -179,14 +179,17 @@ function workerNote(snapshot) {
   const cadenceLabel = snapshot.pollIntervalSeconds
     ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
     : null;
+  const idleStreakLabel = snapshot.idleStreak
+    ? ` Current idle streak: ${snapshot.idleStreak}.`
+    : "";
 
   if (state === "waiting") {
     return {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${idleStreakLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${idleStreakLabel}`,
     };
   }
 
@@ -386,6 +389,7 @@ function renderStatusSnapshot(snapshot) {
   const workerMode = document.getElementById("status-worker-mode");
   const workerState = document.getElementById("status-worker-state");
   const pollCadence = document.getElementById("status-poll-cadence");
+  const idleStreak = document.getElementById("status-idle-streak");
   const generatedAt = document.getElementById("status-generated-at");
   const freshness = document.getElementById("status-freshness");
   const nextPoll = document.getElementById("status-next-poll");
@@ -433,6 +437,7 @@ function renderStatusSnapshot(snapshot) {
   workerState.textContent = workerStateValue.label;
   workerState.className = `worker-state ${workerStateValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
+  idleStreak.textContent = String(snapshot.idleStreak ?? 0);
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
@@ -534,6 +539,7 @@ async function bootStatusMock() {
     const workerMode = document.getElementById("status-worker-mode");
     const workerState = document.getElementById("status-worker-state");
     const pollCadence = document.getElementById("status-poll-cadence");
+    const idleStreak = document.getElementById("status-idle-streak");
     const generatedAt = document.getElementById("status-generated-at");
     const freshness = document.getElementById("status-freshness");
     const nextPoll = document.getElementById("status-next-poll");
@@ -579,6 +585,7 @@ async function bootStatusMock() {
     workerState.textContent = "unavailable";
     workerState.className = "worker-state unavailable";
     pollCadence.textContent = "Unavailable";
+    idleStreak.textContent = "Unavailable";
     generatedAt.textContent = "Could not load sample payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
