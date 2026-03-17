@@ -328,6 +328,22 @@ button {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .status-activity.alert .status-activity-line {
+    animation: none;
+    box-shadow: 0 0 0 1px rgba(212, 20, 20, 0.08), 0 0 10px rgba(212, 20, 20, 0.08);
+  }
+
+  .status-card {
+    transition: none;
+  }
+
+  .status-card.primary,
+  .status-feed.deemphasized .status-card {
+    transform: none;
+  }
+}
+
 .status-activity-wide {
   grid-column: span 2;
 }
