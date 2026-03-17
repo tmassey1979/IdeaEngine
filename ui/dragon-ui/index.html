@@ -127,6 +127,11 @@
             <p class="stat-value" data-status-stat="queued">0</p>
             <p class="stat-meta">Live shape mirrors `dragon-backend status`</p>
           </article>
+          <article class="stat-card accent-red">
+            <p class="stat-label">Loop Health</p>
+            <p class="stat-value" data-status-stat="health">unknown</p>
+            <p class="stat-meta" id="status-attention-summary">Waiting for status snapshot</p>
+          </article>
         </section>
 
         <section class="panel status-panel" id="status">
@@ -139,6 +144,7 @@
           </div>
 
           <div class="status-banner">
+            <p class="status-banner-line"><span>Health</span><strong id="status-health">unknown</strong></p>
             <p class="status-banner-line"><span>Snapshot source</span><strong id="status-source">unknown</strong></p>
             <p class="status-banner-line"><span>Generated</span><strong id="status-generated-at">Waiting for sample payload</strong></p>
           </div>

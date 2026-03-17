@@ -68,13 +68,21 @@ function renderStatusSnapshot(snapshot) {
     node.textContent = String(snapshot.issues.length);
   });
 
+  document.querySelectorAll('[data-status-stat="health"]').forEach((node) => {
+    node.textContent = snapshot.health ?? "unknown";
+  });
+
   const chip = document.getElementById("status-chip");
   const feed = document.getElementById("status-feed");
+  const health = document.getElementById("status-health");
   const source = document.getElementById("status-source");
   const generatedAt = document.getElementById("status-generated-at");
+  const attentionSummary = document.getElementById("status-attention-summary");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
+  health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
+  attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -97,11 +105,15 @@ async function bootStatusMock() {
   } catch (error) {
     const chip = document.getElementById("status-chip");
     const feed = document.getElementById("status-feed");
+    const health = document.getElementById("status-health");
     const source = document.getElementById("status-source");
     const generatedAt = document.getElementById("status-generated-at");
+    const attentionSummary = document.getElementById("status-attention-summary");
     chip.textContent = "Sample snapshot unavailable";
+    health.textContent = "unavailable";
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
+    attentionSummary.textContent = "Could not load status summary";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>

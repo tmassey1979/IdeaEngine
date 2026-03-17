@@ -61,9 +61,14 @@ public sealed class SelfBuildLoop
             })
             .ToArray();
 
+        var health = DeriveStatusHealth(queuedJobs.Count, issues);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health);
+
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
             "status",
+            health,
+            attentionSummary,
             queuedJobs.Count,
             issues
         );
@@ -1049,6 +1054,41 @@ public sealed class SelfBuildLoop
 
         return string.Equals(parentWorkflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static string DeriveStatusHealth(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues)
+    {
+        if (issues.Any(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "blocked";
+        }
+
+        if (issues.Any(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "attention";
+        }
+
+        if (queuedJobs > 0 || issues.Any(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "healthy";
+        }
+
+        return "idle";
+    }
+
+    private static string BuildAttentionSummary(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues, string health)
+    {
+        var quarantined = issues.Count(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase));
+        var failed = issues.Count(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase));
+        var inProgress = issues.Count(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase));
+
+        return health switch
+        {
+            "blocked" => $"{quarantined} quarantined issue(s) need intervention.",
+            "attention" => $"{failed} failed issue(s) need review.",
+            "healthy" => $"{queuedJobs} queued job(s), {inProgress} issue(s) in progress.",
+            _ => "No queued work and no active issue workflows."
+        };
+    }
 }
 
 public sealed record CycleResult(
@@ -1071,6 +1111,8 @@ public sealed record RunUntilIdleResult(
 public sealed record StatusSnapshot(
     DateTimeOffset GeneratedAt,
     string Source,
+    string Health,
+    string AttentionSummary,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );

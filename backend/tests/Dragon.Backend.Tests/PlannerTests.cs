@@ -293,6 +293,8 @@ public sealed class PlannerTests
         var rootElement = document.RootElement;
         Assert.Equal("status", rootElement.GetProperty("source").GetString());
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
+        Assert.Equal("healthy", rootElement.GetProperty("health").GetString());
+        Assert.Contains("queued job", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -617,6 +619,8 @@ public sealed class PlannerTests
         var rootElement = document.RootElement;
         Assert.Equal("status", rootElement.GetProperty("source").GetString());
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
+        Assert.Equal("idle", rootElement.GetProperty("health").GetString());
+        Assert.Contains("No queued work", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
