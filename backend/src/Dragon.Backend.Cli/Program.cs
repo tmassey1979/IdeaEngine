@@ -10,6 +10,7 @@ return command switch
     "provider-describe" => RunProviderDescribe(options),
     "plan" => RunPlan(options),
     "plan-from-backlog" => RunPlanFromBacklog(options),
+    "status" => RunStatus(options),
     "queue" => RunQueue(options),
     "cycle-once" => RunCycleOnce(options),
     "run-until-idle" => RunUntilIdle(options),
@@ -105,6 +106,14 @@ static int RunQueue(IReadOnlyDictionary<string, string> options)
     var root = GetString(options, "root", Directory.GetCurrentDirectory());
     var loop = new SelfBuildLoop(root);
     PrintJson(loop.ReadQueue());
+    return 0;
+}
+
+static int RunStatus(IReadOnlyDictionary<string, string> options)
+{
+    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var loop = new SelfBuildLoop(root);
+    PrintJson(loop.ReadStatus());
     return 0;
 }
 
@@ -216,6 +225,7 @@ static int ShowHelp()
           provider-describe [--provider openai-responses]
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
+          status [--root <repo-root>]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>]
           run-until-idle [--max-cycles 100] [--root <repo-root>]

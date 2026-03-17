@@ -29,6 +29,34 @@ public sealed class SelfBuildLoop
 
     public IReadOnlyList<SelfBuildJob> ReadQueue() => queueStore.ReadAll();
 
+    public StatusSnapshot ReadStatus()
+    {
+        var queuedJobs = queueStore.ReadAll();
+        var issues = workflowStateStore.ReadAll().Values
+            .OrderBy(item => item.IssueNumber)
+            .Select(workflow =>
+            {
+                var latestExecution = executionRecordStore.Read(workflow.IssueNumber)
+                    .OrderByDescending(record => record.RecordedAt)
+                    .FirstOrDefault();
+
+                return new IssueStatusSnapshot(
+                    workflow.IssueNumber,
+                    workflow.IssueTitle,
+                    workflow.OverallStatus,
+                    InferCurrentStage(workflow),
+                    queuedJobs.Count(job => job.Issue == workflow.IssueNumber),
+                    workflow.Note,
+                    latestExecution?.Summary,
+                    latestExecution?.Notes,
+                    latestExecution?.RecordedAt
+                );
+            })
+            .ToArray();
+
+        return new StatusSnapshot(queuedJobs.Count, issues);
+    }
+
     public IReadOnlyList<GithubIssue> LoadGithubIssues(string owner, string repo) =>
         githubIssueService.ListStoryIssues(owner, repo, RootDirectory);
 
@@ -961,6 +989,15 @@ public sealed class SelfBuildLoop
         string.Equals(action, "implement_issue", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(action, "recover_issue", StringComparison.OrdinalIgnoreCase);
 
+    private static string InferCurrentStage(IssueWorkflowState workflow)
+    {
+        var latestObserved = workflow.Stages
+            .OrderByDescending(stage => stage.Value.ObservedAt)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(latestObserved.Key) ? "unknown" : latestObserved.Key;
+    }
+
     private static bool ShouldPrioritizeRecoveryIssue(
         GithubIssue issue,
         IReadOnlyDictionary<int, IssueWorkflowState> workflows)
@@ -1004,4 +1041,21 @@ public sealed record RunUntilIdleResult(
     IReadOnlyList<CycleResult> Cycles,
     bool ReachedIdle,
     bool ReachedMaxCycles
+);
+
+public sealed record StatusSnapshot(
+    int QueuedJobs,
+    IReadOnlyList<IssueStatusSnapshot> Issues
+);
+
+public sealed record IssueStatusSnapshot(
+    int IssueNumber,
+    string IssueTitle,
+    string OverallStatus,
+    string CurrentStage,
+    int QueuedJobCount,
+    string? WorkflowNote,
+    string? LatestExecutionSummary,
+    string? LatestExecutionNotes,
+    DateTimeOffset? LatestExecutionRecordedAt
 );

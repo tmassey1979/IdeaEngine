@@ -193,6 +193,57 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_IncludesQueuedCountsAndLatestExecutionNotes()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Story] Provider Notes", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["requestedPriority"] = "high"
+            }));
+
+        var store = new WorkflowStateStore(root);
+        store.Update(500, "Provider Notes", "documentation", new JobExecutionResult("job-1", "documentation", "success", "updated", DateTimeOffset.UtcNow));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "documentation",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                500,
+                new SelfBuildJobPayload("[Story] Provider Notes", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["implementationConflictResolution"] = "Kept newer or higher-specificity same-artifact implementation; pruned weaker duplicates.",
+                    ["supersededImplementationIssues"] = "499"
+                }),
+            new JobExecutionResult("job-1", "documentation", "success", "updated", DateTimeOffset.UtcNow),
+            []);
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus();
+
+        Assert.Equal(1, status.QueuedJobs);
+        var issue = Assert.Single(status.Issues);
+        Assert.Equal(500, issue.IssueNumber);
+        Assert.Equal(1, issue.QueuedJobCount);
+        Assert.Equal("in_progress", issue.OverallStatus);
+        Assert.Equal("documentation", issue.CurrentStage);
+        Assert.Equal("updated", issue.LatestExecutionSummary);
+        Assert.Contains("Superseded implementation issues: 499", issue.LatestExecutionNotes, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SeedNext_PrioritizesRecoveryIssuesOverOrdinaryStories()
     {
         var root = CreateTempRoot();
