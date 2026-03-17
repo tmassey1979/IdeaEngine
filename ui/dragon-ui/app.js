@@ -261,6 +261,10 @@ function passBudgetLabel(snapshot) {
   return String(snapshot.passBudgetRemaining);
 }
 
+function workerProgressLabel(snapshot) {
+  return `idle ${idleStreakLabel(snapshot)} · budget ${passBudgetLabel(snapshot)}`;
+}
+
 function latestPassOutcome(snapshot) {
   const latestPass = snapshot.latestPass;
   if (!latestPass) {
@@ -415,8 +419,7 @@ function renderStatusSnapshot(snapshot) {
   const workerMode = document.getElementById("status-worker-mode");
   const workerState = document.getElementById("status-worker-state");
   const pollCadence = document.getElementById("status-poll-cadence");
-  const idleStreak = document.getElementById("status-idle-streak");
-  const passBudget = document.getElementById("status-pass-budget");
+  const workerProgress = document.getElementById("status-worker-progress");
   const generatedAt = document.getElementById("status-generated-at");
   const freshness = document.getElementById("status-freshness");
   const nextPoll = document.getElementById("status-next-poll");
@@ -464,8 +467,7 @@ function renderStatusSnapshot(snapshot) {
   workerState.textContent = workerStateValue.label;
   workerState.className = `worker-state ${workerStateValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
-  idleStreak.textContent = idleStreakLabel(snapshot);
-  passBudget.textContent = passBudgetLabel(snapshot);
+  workerProgress.textContent = workerProgressLabel(snapshot);
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
@@ -567,8 +569,7 @@ async function bootStatusMock() {
     const workerMode = document.getElementById("status-worker-mode");
     const workerState = document.getElementById("status-worker-state");
     const pollCadence = document.getElementById("status-poll-cadence");
-    const idleStreak = document.getElementById("status-idle-streak");
-    const passBudget = document.getElementById("status-pass-budget");
+    const workerProgress = document.getElementById("status-worker-progress");
     const generatedAt = document.getElementById("status-generated-at");
     const freshness = document.getElementById("status-freshness");
     const nextPoll = document.getElementById("status-next-poll");
@@ -614,8 +615,7 @@ async function bootStatusMock() {
     workerState.textContent = "unavailable";
     workerState.className = "worker-state unavailable";
     pollCadence.textContent = "Unavailable";
-    idleStreak.textContent = "Unavailable";
-    passBudget.textContent = "Unavailable";
+    workerProgress.textContent = "Unavailable";
     generatedAt.textContent = "Could not load sample payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
