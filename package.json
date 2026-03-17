@@ -2,21 +2,9 @@
   "name": "dragon-idea-engine",
   "version": "0.1.0",
   "private": true,
-  "description": "Plugin-based autonomous software factory scaffold.",
-  "workspaces": [
-    "runner/*",
-    "agents/*",
-    "services/*",
-    "ui/*",
-    "sdk/*"
-  ],
+  "description": "C# autonomous software factory backend scaffold.",
   "scripts": {
-    "test": "node --test",
-    "test:backend": "dotnet test backend/Dragon.Backend.slnx",
-    "runner": "node runner/dragon-agent-runner/src/cli.js",
-    "orchestrator": "node services/dragon-orchestrator/src/cli.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "test": "dotnet test backend/Dragon.Backend.slnx",
+    "test:backend": "dotnet test backend/Dragon.Backend.slnx"
   }
 }
