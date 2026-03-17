@@ -937,6 +937,86 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_SkipsBroadOperatorSummary_WhenSameArtifactImplementationIsAlreadyQueued()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs", "generated"));
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "provider-notes.md"), "# Provider Notes\nInitial.\n");
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "provider-rollup.md"), "# Provider Rollup\nInitial.\n");
+
+        var provider = new SequencedFakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Tighten the provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Update the provider notes with clearer operator guidance."
+                }
+              ]
+            }
+            """,
+            """
+            {
+              "summary": "Provider notes clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nClearer operator guidance.\n"
+                },
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-rollup.md",
+                  "content": "# Provider Rollup\nUpdated alongside notes.\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(447, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            999,
+            new SelfBuildJobPayload("[Story] Pending provider note update", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Apply a newer provider-notes improvement."
+            }));
+
+        var implementResult = loop.CycleOnce(issues);
+
+        Assert.DoesNotContain(implementResult.FollowUps, job => job.Action == "summarize_issue" && job.Metadata.GetValueOrDefault("changedArtifactRollup") is not null);
+    }
+
+    [Fact]
     public void CycleOnce_ExecutesInferredDocumentationImplementFollowUp_AndAppliesOperations()
     {
         var root = CreateTempRoot();
