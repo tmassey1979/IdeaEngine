@@ -815,6 +815,40 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresValidatedLabelDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 601,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "Validated but stale label cleanup did not run yet.",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "validated" }
+            ]
+          },
+          {
+            "number": 602,
+            "title": "[Story] Dragon Idea Engine Master Codex: Autonomous Software Factory Loop",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(602, issue.Number);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresWaitingFollowUpStateAfterDuplicateMerge()
     {
         const string json = """
@@ -836,6 +870,39 @@ public sealed class PlannerTests
             "labels": [
               { "name": "story" },
               { "name": "waiting-follow-up" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void GithubIssueService_IgnoresValidatedStateAfterDuplicateMerge()
+    {
+        const string json = """
+        [
+          {
+            "number": 603,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 603,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "validated" }
             ]
           }
         ]
