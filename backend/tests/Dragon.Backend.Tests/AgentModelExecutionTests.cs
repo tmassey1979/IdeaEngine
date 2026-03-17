@@ -376,6 +376,46 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void QueueStore_PrefersMoreTargetedRequestedFollowUps_WhenPriorityIsEqual()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            431,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Architect Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["requestedReason"] = "Architecture summary is useful."
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            431,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Feedback Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["requestedReason"] = "Summarize the exact artifact change for operators.",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes."
+            }));
+
+        var next = queue.Dequeue();
+
+        Assert.NotNull(next);
+        Assert.Equal("feedback", next!.Agent);
+        Assert.Equal("docs/generated/provider-notes.md", next.Metadata["targetArtifact"]);
+        Assert.Equal("Produce an operator-facing summary of the provider notes.", next.Metadata["targetOutcome"]);
+    }
+
+    [Fact]
     public void CycleOnce_PrioritizesValidationAndHighPriorityFollowUps_AheadOfQueuedBacklogWork()
     {
         var root = CreateTempRoot();

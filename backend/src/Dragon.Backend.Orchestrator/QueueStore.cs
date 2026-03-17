@@ -53,6 +53,7 @@ public sealed class QueueStore
         var selectedIndex = jobs
             .Select((job, index) => new { job, index })
             .OrderBy(item => GetQueuePriorityRank(item.job))
+            .ThenBy(item => GetTargetingRank(item.job))
             .ThenBy(item => item.index)
             .First()
             .index;
@@ -100,6 +101,24 @@ public sealed class QueueStore
         }
 
         return 3;
+    }
+
+    private static int GetTargetingRank(SelfBuildJob job)
+    {
+        var hasTargetArtifact = !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact"));
+        var hasTargetOutcome = !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetOutcome"));
+
+        if (hasTargetArtifact && hasTargetOutcome)
+        {
+            return 0;
+        }
+
+        if (hasTargetArtifact || hasTargetOutcome)
+        {
+            return 1;
+        }
+
+        return 2;
     }
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)
