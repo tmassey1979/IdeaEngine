@@ -105,6 +105,7 @@ public sealed class SelfBuildLoop
                 leadJob.Agent,
                 leadJob.Action,
                 leadJob.Metadata.GetValueOrDefault("targetArtifact"),
+                leadJob.Metadata.GetValueOrDefault("targetOutcome"),
                 leadJob.Metadata.GetValueOrDefault("requestedPriority")),
             latestActivity,
             recentLoopSignal,
@@ -1457,6 +1458,7 @@ public sealed record LeadJobSnapshot(
     string Agent,
     string Action,
     string? TargetArtifact,
+    string? TargetOutcome,
     string? Priority
 );
 

@@ -210,6 +210,7 @@ public sealed class PlannerTests
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "refresh provider notes summary",
                 ["requestedPriority"] = "high"
             }));
 
@@ -242,6 +243,7 @@ public sealed class PlannerTests
         Assert.Equal("documentation", status.LeadJob.Agent);
         Assert.Equal("implement_issue", status.LeadJob.Action);
         Assert.Equal("docs/generated/provider-notes.md", status.LeadJob.TargetArtifact);
+        Assert.Equal("refresh provider notes summary", status.LeadJob.TargetOutcome);
         Assert.Equal("high", status.LeadJob.Priority);
         var issue = Assert.Single(status.Issues);
         Assert.Equal(500, issue.IssueNumber);
@@ -268,6 +270,7 @@ public sealed class PlannerTests
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["targetArtifact"] = "ui/dragon-ui/sample-status.json",
+                ["targetOutcome"] = "refresh dashboard status snapshot",
                 ["requestedPriority"] = "high"
             }));
 
@@ -314,6 +317,7 @@ public sealed class PlannerTests
         Assert.Equal("documentation", rootElement.GetProperty("leadJob").GetProperty("agent").GetString());
         Assert.Equal("implement_issue", rootElement.GetProperty("leadJob").GetProperty("action").GetString());
         Assert.Equal("ui/dragon-ui/sample-status.json", rootElement.GetProperty("leadJob").GetProperty("targetArtifact").GetString());
+        Assert.Equal("refresh dashboard status snapshot", rootElement.GetProperty("leadJob").GetProperty("targetOutcome").GetString());
         Assert.Equal("high", rootElement.GetProperty("leadJob").GetProperty("priority").GetString());
         Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
@@ -869,7 +873,7 @@ public sealed class PlannerTests
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
-            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "high"),
+            new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "refresh provider notes summary", "high"),
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",
@@ -901,6 +905,7 @@ public sealed class PlannerTests
         Assert.NotNull(annotated.LeadJob);
         Assert.Equal(500, annotated.LeadJob!.IssueNumber);
         Assert.Equal("docs/generated/provider-notes.md", annotated.LeadJob.TargetArtifact);
+        Assert.Equal("refresh provider notes summary", annotated.LeadJob.TargetOutcome);
         Assert.Equal("high", annotated.LeadJob.Priority);
     }
 
