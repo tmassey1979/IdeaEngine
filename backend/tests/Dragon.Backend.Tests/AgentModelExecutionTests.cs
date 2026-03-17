@@ -934,6 +934,8 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("implement_issue", result.Job.Action);
         Assert.Equal("1001", result.Job.Metadata["supersededSummaryIssues"]);
         Assert.Contains("summary", result.Job.Metadata["summaryConflictResolution"], StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(result.ExecutionRecord);
+        Assert.Contains("Superseded summary issues: 1001", result.ExecutionRecord!.Notes, StringComparison.Ordinal);
         Assert.DoesNotContain(loop.ReadQueue(), job => job.Issue == 1001 && job.Action == "summarize_issue");
     }
 
