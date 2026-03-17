@@ -508,6 +508,12 @@ button {
   justify-content: flex-end;
 }
 
+.status-card-badges .chip {
+  background: rgba(255, 91, 46, 0.16);
+  color: #ffd7c9;
+  border: 1px solid rgba(255, 91, 46, 0.24);
+}
+
 .status-card-head h4 {
   margin: 0;
 }
