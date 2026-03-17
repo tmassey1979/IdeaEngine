@@ -83,6 +83,43 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_AppliesStructuredOperations_FromModelBackedAgent()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        var issue = new GithubIssue(
+            419,
+            "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "documentation", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "artifacts": ["docs/generated/provider-notes.md"],
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nAPI-first execution enabled.\n"
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+
+        var result = executor.Execute(root, job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Equal("Documentation updated.", result.Summary);
+        Assert.Equal(["docs/generated/provider-notes.md"], result.ChangedPaths);
+        Assert.Contains("API-first execution enabled.", File.ReadAllText(Path.Combine(root, "docs", "generated", "provider-notes.md")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReadsJsonAgentOutput()
     {
         var parsed = AgentStructuredResultParser.Parse(
@@ -90,7 +127,14 @@ public sealed class AgentModelExecutionTests
             {
               "summary": "Architecture direction updated.",
               "recommendation": "Use API-backed providers first.",
-              "artifacts": ["docs/ARCHITECTURE.md"]
+              "artifacts": ["docs/ARCHITECTURE.md"],
+              "operations": [
+                {
+                  "type": "append_text",
+                  "path": "docs/ARCHITECTURE.md",
+                  "content": "\nUpdated."
+                }
+              ]
             }
             """
         );
@@ -100,6 +144,8 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("Use API-backed providers first.", parsed.Recommendation);
         Assert.NotNull(parsed.Artifacts);
         Assert.Single(parsed.Artifacts!);
+        Assert.NotNull(parsed.Operations);
+        Assert.Single(parsed.Operations!);
     }
 
     [Fact]

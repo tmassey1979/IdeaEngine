@@ -79,12 +79,29 @@ public sealed class LocalJobExecutor
             ? $"{job.Agent} completed through {response.Provider}."
             : response.OutputText.Trim();
 
+        if (structuredResult?.Operations?.Count > 0)
+        {
+            var changedPaths = ApplyOperations(rootDirectory, structuredResult.Operations);
+            return new ExecutionOutcome(summary, changedPaths);
+        }
+
         return ExecutionOutcome.FromSummary(summary);
     }
 
     private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
     {
-        var operations = job.Payload.Operations ?? [];
+        var touchedPaths = ApplyOperations(rootDirectory, job.Payload.Operations ?? []);
+
+        return new ExecutionOutcome(
+            touchedPaths.Count > 0
+                ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
+                : "Developer job contained no operations.",
+            touchedPaths
+        );
+    }
+
+    private static IReadOnlyList<string> ApplyOperations(string rootDirectory, IReadOnlyList<DeveloperOperation> operations)
+    {
         var touchedPaths = new List<string>();
 
         foreach (var operation in operations)
@@ -116,12 +133,7 @@ public sealed class LocalJobExecutor
             touchedPaths.Add(operation.Path);
         }
 
-        return new ExecutionOutcome(
-            touchedPaths.Count > 0
-                ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
-                : "Developer job contained no operations.",
-            touchedPaths
-        );
+        return touchedPaths;
     }
 
     private string ExecuteReview(string rootDirectory, SelfBuildJob job)

@@ -120,7 +120,8 @@ public sealed record AgentModelResponse(
 public sealed record AgentStructuredResult(
     string Summary,
     string? Recommendation = null,
-    IReadOnlyList<string>? Artifacts = null
+    IReadOnlyList<string>? Artifacts = null,
+    IReadOnlyList<DeveloperOperation>? Operations = null
 );
 
 public sealed record AgentModelProviderDescriptor(
