@@ -292,6 +292,7 @@ public sealed class PlannerTests
         using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
         var rootElement = document.RootElement;
         Assert.Equal("status", rootElement.GetProperty("source").GetString());
+        Assert.Equal("status", rootElement.GetProperty("workerMode").GetString());
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal("healthy", rootElement.GetProperty("health").GetString());
         Assert.Contains("queued job", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
@@ -809,6 +810,7 @@ public sealed class PlannerTests
         var previous = new StatusSnapshot(
             DateTimeOffset.UtcNow.AddMinutes(-5),
             "status",
+            "status",
             "healthy",
             "previous",
             new StatusRollup(0, 0, 1, 0),
@@ -823,6 +825,7 @@ public sealed class PlannerTests
         var current = new StatusSnapshot(
             DateTimeOffset.UtcNow,
             "status",
+            "watch",
             "healthy",
             "current",
             new StatusRollup(1, 0, 0, 1),
@@ -843,6 +846,7 @@ public sealed class PlannerTests
         Assert.Equal(1, annotated.RollupDelta.FailedIssues);
         Assert.Equal(-1, annotated.RollupDelta.InProgressIssues);
         Assert.Equal(1, annotated.RollupDelta.ValidatedIssues);
+        Assert.Equal("watch", annotated.WorkerMode);
     }
 
     [Fact]
@@ -853,12 +857,14 @@ public sealed class PlannerTests
         var loop = new SelfBuildLoop(root);
         var latestPass = new LatestPassSummary(2, 4, 1, 3, true, false);
 
-        var snapshot = loop.WriteStatus(outputPath, latestPass);
+        var snapshot = loop.WriteStatus(outputPath, "polling", latestPass);
 
         Assert.NotNull(snapshot.LatestPass);
         Assert.Equal(2, snapshot.LatestPass!.PassNumber);
+        Assert.Equal("polling", snapshot.WorkerMode);
 
         using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
+        Assert.Equal("polling", document.RootElement.GetProperty("workerMode").GetString());
         var latestPassElement = document.RootElement.GetProperty("latestPass");
         Assert.Equal(2, latestPassElement.GetProperty("passNumber").GetInt32());
         Assert.Equal(4, latestPassElement.GetProperty("cycleCount").GetInt32());

@@ -119,8 +119,8 @@ static int RunStatus(IReadOnlyDictionary<string, string> options)
     var loop = new SelfBuildLoop(root);
     var outputPath = GetNullable(options, "out");
     var snapshot = string.IsNullOrWhiteSpace(outputPath)
-        ? loop.ReadStatus()
-        : loop.WriteStatus(Path.GetFullPath(outputPath, root));
+        ? loop.ReadStatus("status")
+        : loop.WriteStatus(Path.GetFullPath(outputPath, root), "status");
 
     PrintJson(snapshot);
     return 0;
@@ -346,7 +346,7 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     return (passNumber, result) =>
     {
         var latestPass = initialLatestPass ?? SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
-        var snapshot = loop.ReadStatus(latestPass) with
+        var snapshot = loop.ReadStatus(source, latestPass) with
         {
             Source = source
         };
