@@ -61,6 +61,7 @@ public sealed class SelfBuildLoop
             return stalledWorkflow;
         }
 
+        var competingImplementationArtifacts = GetCompetingImplementationArtifacts();
         RemoveSupersededRecoveryJobs(issues);
         RemoveSupersededSummaryJobs();
         RemoveSupersededImplementationJobs();
@@ -74,7 +75,7 @@ public sealed class SelfBuildLoop
         var job = queueStore.Dequeue()!;
         var execution = jobExecutor.Execute(RootDirectory, job);
         var workflow = workflowStateStore.Update(job, execution);
-        var followUps = PublishFollowUps(job, execution);
+        var followUps = PublishFollowUps(job, execution, competingImplementationArtifacts);
         var executionRecord = executionRecordStore.Append(job, execution, followUps);
         var failureDisposition = ApplyFailurePolicy(job.Issue, workflow);
         if (failureDisposition?.Quarantined == true)
@@ -270,7 +271,10 @@ public sealed class SelfBuildLoop
         return null;
     }
 
-    private IReadOnlyList<SelfBuildJob> PublishFollowUps(SelfBuildJob job, JobExecutionResult execution)
+    private IReadOnlyList<SelfBuildJob> PublishFollowUps(
+        SelfBuildJob job,
+        JobExecutionResult execution,
+        ISet<string>? competingImplementationArtifacts = null)
     {
         if (!string.Equals(execution.Status, "success", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(job.Agent, "review", StringComparison.OrdinalIgnoreCase) ||
@@ -288,7 +292,7 @@ public sealed class SelfBuildLoop
         };
 
         EnqueueDeferredSummaryFollowUp(job, execution, followUps);
-        EnqueueOperatorSummaryFollowUp(job, execution, followUps);
+        EnqueueOperatorSummaryFollowUp(job, execution, followUps, competingImplementationArtifacts);
 
         foreach (var requestedFollowUp in requestedFollowUps
             .OrderBy(GetRequestedFollowUpPriorityRank)
@@ -395,10 +399,16 @@ public sealed class SelfBuildLoop
     private void EnqueueOperatorSummaryFollowUp(
         SelfBuildJob sourceJob,
         JobExecutionResult execution,
-        List<SelfBuildJob> followUps)
+        List<SelfBuildJob> followUps,
+        ISet<string>? competingImplementationArtifacts = null)
     {
         var targetArtifact = sourceJob.Metadata.GetValueOrDefault("targetArtifact");
         if (string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            return;
+        }
+
+        if (competingImplementationArtifacts?.Contains(targetArtifact) == true)
         {
             return;
         }
@@ -597,7 +607,11 @@ public sealed class SelfBuildLoop
             .GroupBy(job => job.Metadata.GetValueOrDefault("targetArtifact")!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
-                group => group.Min(job => GetImplementationPriorityRank(job)),
+                group => group
+                    .OrderBy(job => GetImplementationPriorityRank(job))
+                    .ThenByDescending(job => job.Issue)
+                    .ThenByDescending(GetImplementationSpecificityRank)
+                    .First(),
                 StringComparer.OrdinalIgnoreCase);
 
         if (strongestPriorityByArtifact.Count == 0)
@@ -614,10 +628,21 @@ public sealed class SelfBuildLoop
 
             var targetArtifact = job.Metadata.GetValueOrDefault("targetArtifact");
             return !string.IsNullOrWhiteSpace(targetArtifact) &&
-                strongestPriorityByArtifact.TryGetValue(targetArtifact, out var strongestPriority) &&
-                GetImplementationPriorityRank(job) > strongestPriority;
+                strongestPriorityByArtifact.TryGetValue(targetArtifact, out var strongestJob) &&
+                !ReferenceEquals(job, strongestJob) &&
+                !AreEquivalentImplementationCandidates(job, strongestJob);
         });
     }
+
+    private HashSet<string> GetCompetingImplementationArtifacts() =>
+        queueStore.ReadAll()
+            .Where(job => string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+            .Select(job => job.Metadata.GetValueOrDefault("targetArtifact"))
+            .Where(targetArtifact => !string.IsNullOrWhiteSpace(targetArtifact))
+            .GroupBy(targetArtifact => targetArtifact!, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static int GetImplementationPriorityRank(SelfBuildJob job)
     {
@@ -634,6 +659,24 @@ public sealed class SelfBuildLoop
 
         return 1;
     }
+
+    private static int GetImplementationSpecificityRank(SelfBuildJob job)
+    {
+        var outcome = job.Metadata.GetValueOrDefault("targetOutcome");
+        if (string.IsNullOrWhiteSpace(outcome))
+        {
+            return 0;
+        }
+
+        return outcome.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
+    }
+
+    private static bool AreEquivalentImplementationCandidates(SelfBuildJob left, SelfBuildJob right) =>
+        string.Equals(left.Agent, right.Agent, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Action, right.Action, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("requestedPriority"), right.Metadata.GetValueOrDefault("requestedPriority"), StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("targetArtifact"), right.Metadata.GetValueOrDefault("targetArtifact"), StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("targetOutcome"), right.Metadata.GetValueOrDefault("targetOutcome"), StringComparison.OrdinalIgnoreCase);
 
     private static SelfBuildJob CreateFollowUpJob(
         SelfBuildJob sourceJob,
