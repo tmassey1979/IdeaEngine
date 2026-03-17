@@ -957,6 +957,34 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresUnexpectedLabelNameTypesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 808,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": 123 },
+              { "name": true },
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(808, issue.Number);
+        Assert.Single(issue.Labels);
+        Assert.Equal("story", issue.Labels[0]);
+    }
+
+    [Fact]
     public void GithubIssueService_DeduplicatesMixedCaseLabelsDuringBacklogDiscovery()
     {
         const string json = """
