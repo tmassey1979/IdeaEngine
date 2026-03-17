@@ -486,6 +486,12 @@ button {
   transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease;
 }
 
+.status-card.primary {
+  border-color: rgba(255, 91, 46, 0.22);
+  background: linear-gradient(180deg, rgba(255, 91, 46, 0.08), rgba(255, 255, 255, 0.03));
+  transform: translateY(-2px);
+}
+
 .status-card-head {
   display: flex;
   justify-content: space-between;

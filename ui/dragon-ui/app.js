@@ -95,9 +95,10 @@ function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
   const notes = issue.latestExecutionNotes ?? "none";
+  const cardClass = issue.isPrimary ? "status-card primary" : "status-card";
 
   return `
-    <article class="status-card">
+    <article class="${cardClass}">
       <div class="status-card-head">
         <div>
           <p class="panel-label">Issue #${issue.issueNumber}</p>
@@ -211,7 +212,12 @@ function renderStatusSnapshot(snapshot) {
     return;
   }
 
-  feed.innerHTML = snapshot.issues.map(renderIssueCard).join("");
+  feed.innerHTML = snapshot.issues
+    .map((issue, index) => renderIssueCard({
+      ...issue,
+      isPrimary: index === 0 && snapshot.recentLoopSignal?.mode !== "failing" && snapshot.recentLoopSignal?.mode !== "blocked",
+    }))
+    .join("");
 }
 
 async function bootStatusMock() {
