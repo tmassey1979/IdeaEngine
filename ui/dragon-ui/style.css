@@ -407,8 +407,26 @@ button {
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.03);
   color: var(--muted);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
   font-size: 0.88rem;
   line-height: 1.5;
+}
+
+.status-compare-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .status-compare-note.backend {
@@ -427,6 +445,24 @@ button {
   color: #f2c0c0;
   background: rgba(212, 20, 20, 0.12);
   border-color: rgba(212, 20, 20, 0.22);
+}
+
+.status-compare-note.backend .status-compare-label {
+  color: #d8f4e6;
+  border-color: rgba(79, 181, 127, 0.2);
+  background: rgba(79, 181, 127, 0.12);
+}
+
+.status-compare-note.fallback .status-compare-label {
+  color: #f4d8bf;
+  border-color: rgba(214, 139, 42, 0.24);
+  background: rgba(214, 139, 42, 0.14);
+}
+
+.status-compare-note.unavailable .status-compare-label {
+  color: #f2c0c0;
+  border-color: rgba(212, 20, 20, 0.24);
+  background: rgba(212, 20, 20, 0.16);
 }
 
 .comparison-mode {
