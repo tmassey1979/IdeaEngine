@@ -70,7 +70,11 @@ function renderStatusSnapshot(snapshot) {
 
   const chip = document.getElementById("status-chip");
   const feed = document.getElementById("status-feed");
+  const source = document.getElementById("status-source");
+  const generatedAt = document.getElementById("status-generated-at");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
+  source.textContent = snapshot.source ?? "unknown";
+  generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -93,7 +97,11 @@ async function bootStatusMock() {
   } catch (error) {
     const chip = document.getElementById("status-chip");
     const feed = document.getElementById("status-feed");
+    const source = document.getElementById("status-source");
+    const generatedAt = document.getElementById("status-generated-at");
     chip.textContent = "Sample snapshot unavailable";
+    source.textContent = "unavailable";
+    generatedAt.textContent = "Could not load sample payload";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>

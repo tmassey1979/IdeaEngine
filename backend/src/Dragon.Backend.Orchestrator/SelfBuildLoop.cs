@@ -61,7 +61,12 @@ public sealed class SelfBuildLoop
             })
             .ToArray();
 
-        return new StatusSnapshot(queuedJobs.Count, issues);
+        return new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            queuedJobs.Count,
+            issues
+        );
     }
 
     public StatusSnapshot WriteStatus(string outputPath)
@@ -1064,6 +1069,8 @@ public sealed record RunUntilIdleResult(
 );
 
 public sealed record StatusSnapshot(
+    DateTimeOffset GeneratedAt,
+    string Source,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );

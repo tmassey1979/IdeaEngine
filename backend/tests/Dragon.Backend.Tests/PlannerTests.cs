@@ -291,6 +291,8 @@ public sealed class PlannerTests
 
         using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
         var rootElement = document.RootElement;
+        Assert.Equal("status", rootElement.GetProperty("source").GetString());
+        Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -613,6 +615,8 @@ public sealed class PlannerTests
 
         using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
         var rootElement = document.RootElement;
+        Assert.Equal("status", rootElement.GetProperty("source").GetString());
+        Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());

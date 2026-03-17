@@ -128,7 +128,7 @@ static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
     var stories = BacklogStoryCatalog.LoadStories(root);
     var loop = new SelfBuildLoop(root);
     var result = loop.CycleOnce(stories);
-    ExportStatusIfRequested(loop, root, options);
+    ExportStatusIfRequested(loop, root, options, "cycle-once");
     PrintJson(result);
     return 0;
 }
@@ -142,7 +142,7 @@ static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
         stories,
         maxCycles: GetInt(options, "max-cycles", 100)
     );
-    ExportStatusIfRequested(loop, root, options);
+    ExportStatusIfRequested(loop, root, options, "run-until-idle");
     PrintJson(result);
     return 0;
 }
@@ -170,7 +170,7 @@ static int RunGithubCycleOnce(IReadOnlyDictionary<string, string> options)
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
     var result = loop.CycleOnceFromGithub(owner!, repo!, syncValidatedWorkflows: GetBoolean(options, "sync-github"));
-    ExportStatusIfRequested(loop, root, options);
+    ExportStatusIfRequested(loop, root, options, "github-cycle-once");
     PrintJson(result);
     return 0;
 }
@@ -190,7 +190,7 @@ static int RunGithubRunUntilIdle(IReadOnlyDictionary<string, string> options)
         syncValidatedWorkflows: GetBoolean(options, "sync-github"),
         maxCycles: GetInt(options, "max-cycles", 100)
     );
-    ExportStatusIfRequested(loop, root, options);
+    ExportStatusIfRequested(loop, root, options, "github-run-until-idle");
     PrintJson(result);
     return 0;
 }
@@ -215,7 +215,7 @@ static int RunSyncWorkflow(IReadOnlyDictionary<string, string> options)
     return 0;
 }
 
-static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDictionary<string, string> options)
+static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDictionary<string, string> options, string source)
 {
     var outputPath = GetNullable(options, "status-out");
     if (string.IsNullOrWhiteSpace(outputPath))
@@ -223,7 +223,27 @@ static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDi
         return;
     }
 
-    loop.WriteStatus(Path.GetFullPath(outputPath, root));
+    var resolvedOutputPath = Path.GetFullPath(outputPath, root);
+    var snapshot = loop.ReadStatus() with
+    {
+        Source = source
+    };
+    WriteStatusSnapshot(resolvedOutputPath, snapshot);
+}
+
+static void WriteStatusSnapshot(string outputPath, StatusSnapshot snapshot)
+{
+    var directory = Path.GetDirectoryName(outputPath);
+    if (!string.IsNullOrWhiteSpace(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
+
+    File.WriteAllText(outputPath, JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    }));
 }
 
 static void PrintJson<TValue>(TValue value)
