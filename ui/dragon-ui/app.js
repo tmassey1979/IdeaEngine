@@ -176,12 +176,17 @@ function workerStateInfo(snapshot) {
 function workerNote(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
   const nextPollLabel = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "the next scheduled interval";
+  const cadenceLabel = snapshot.pollIntervalSeconds
+    ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
+    : null;
 
   if (state === "waiting") {
     return {
       label: "Waiting",
       state: "waiting",
-      text: `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.`,
+      text: cadenceLabel
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.`,
     };
   }
 

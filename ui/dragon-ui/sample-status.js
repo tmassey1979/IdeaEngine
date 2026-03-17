@@ -5,6 +5,7 @@ globalThis.__DRAGON_STATUS__ = {
   "workerMode": "watch",
   "workerState": "waiting",
   "nextPollAt": "2026-03-17T18:27:32.6650205+00:00",
+  "pollIntervalSeconds": 30,
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
   "rollup": {
