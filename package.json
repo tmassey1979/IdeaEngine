@@ -4,8 +4,8 @@
   "private": true,
   "description": "C# autonomous software factory backend scaffold.",
   "scripts": {
-    "status:ui": "dotnet run --project backend/src/Dragon.Backend.Cli -- status --root . --out ui/dragon-ui/sample-status.json",
-    "run:ui": "dotnet run --project backend/src/Dragon.Backend.Cli -- run-until-idle --root . --status-out ui/dragon-ui/sample-status.json",
+    "status:ui": "node scripts/refresh-ui-status.mjs status",
+    "run:ui": "node scripts/refresh-ui-status.mjs run",
     "test": "dotnet test backend/Dragon.Backend.slnx",
     "test:backend": "dotnet test backend/Dragon.Backend.slnx"
   }
