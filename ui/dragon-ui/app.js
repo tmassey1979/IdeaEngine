@@ -205,6 +205,7 @@ function renderStatusSnapshot(snapshot) {
   const freshness = document.getElementById("status-freshness");
   const queueDirection = document.getElementById("status-queue-direction");
   const queueComparedAt = document.getElementById("status-queue-compared-at");
+  const compareAge = document.getElementById("status-compare-age");
   const comparisonMode = document.getElementById("status-comparison-mode");
   const compareNote = document.getElementById("status-compare-note");
   const compareLabel = document.querySelector(".status-compare-label");
@@ -236,6 +237,9 @@ function renderStatusSnapshot(snapshot) {
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueDirection.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
+  const compareAgeState = freshnessInfo(snapshot.queueComparedAt);
+  compareAge.textContent = snapshot.queueComparedAt ? compareAgeState.label : "n/a";
+  compareAge.className = `snapshot-freshness ${snapshot.queueComparedAt ? compareAgeState.state : "unknown"}`;
   comparisonMode.textContent = snapshot.comparisonMode ?? "backend";
   comparisonMode.className = `comparison-mode ${snapshot.comparisonMode ?? "backend"}`;
   compareLabel.textContent = comparisonLabel(snapshot);
@@ -306,6 +310,7 @@ async function bootStatusMock() {
     const freshness = document.getElementById("status-freshness");
     const queueDirection = document.getElementById("status-queue-direction");
     const queueComparedAt = document.getElementById("status-queue-compared-at");
+    const compareAge = document.getElementById("status-compare-age");
     const comparisonMode = document.getElementById("status-comparison-mode");
     const compareNote = document.getElementById("status-compare-note");
     const compareLabel = document.querySelector(".status-compare-label");
@@ -336,6 +341,8 @@ async function bootStatusMock() {
     queueDirection.textContent = "unavailable";
     queueDirection.className = "queue-trend unavailable";
     queueComparedAt.textContent = "Unavailable";
+    compareAge.textContent = "unavailable";
+    compareAge.className = "snapshot-freshness unavailable";
     comparisonMode.textContent = "unavailable";
     comparisonMode.className = "comparison-mode unavailable";
     compareLabel.textContent = "Unavailable";
