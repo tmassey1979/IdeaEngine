@@ -59,29 +59,31 @@ public sealed class GithubIssueService
                 .GroupBy(issue => issue.Number)
                 .Select(group =>
                 {
-                    var selected = group
+                    var orderedGroup = group
                         .OrderByDescending(CalculateIssueCompleteness)
                         .ThenByDescending(issue => issue.Labels.Count)
                         .ThenByDescending(issue => issue.Title.Length)
                         .ThenByDescending(issue => issue.Body.Length)
                         .ThenBy(issue => issue.Title, StringComparer.Ordinal)
                         .ThenBy(issue => issue.Body, StringComparer.Ordinal)
-                        .First();
+                        .ToArray();
 
-                    var mergedLabels = group
+                    var selected = orderedGroup[0];
+
+                    var mergedLabels = orderedGroup
                         .SelectMany(issue => issue.Labels)
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToArray();
 
-                    var mergedSourceIssueNumber = group
+                    var mergedSourceIssueNumber = orderedGroup
                         .Select(issue => issue.SourceIssueNumber)
                         .FirstOrDefault(value => value is not null);
 
-                    var mergedHeading = group
+                    var mergedHeading = orderedGroup
                         .Select(issue => issue.Heading)
                         .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-                    var mergedSourceFile = group
+                    var mergedSourceFile = orderedGroup
                         .Select(issue => issue.SourceFile)
                         .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 

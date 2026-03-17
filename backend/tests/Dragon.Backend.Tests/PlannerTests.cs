@@ -1098,6 +1098,79 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_PreservesDeterministicRecoverySourceAcrossDuplicateIssues()
+    {
+        const string json = """
+        [
+          {
+            "number": 812,
+            "title": "[Recovery] Issue #999: Core System Principles",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          },
+          {
+            "number": 812,
+            "title": "[Recovery] Issue #22: Core System Principles",
+            "body": "Recovery story for quarantined issue #22.\n\nContext:\n- source issue: #22",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(812, issue.Number);
+        Assert.Equal("[Recovery] Issue #22: Core System Principles", issue.Title);
+        Assert.Equal(22, issue.SourceIssueNumber);
+    }
+
+    [Fact]
+    public void GithubIssueService_PreservesDeterministicBacklogMetadataAcrossDuplicateIssues()
+    {
+        const string json = """
+        [
+          {
+            "number": 813,
+            "title": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+            "body": "",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          },
+          {
+            "number": 813,
+            "title": "[Story] Dragon Idea Engine Master Codex Addendum: AGENT JOB SCHEMA",
+            "body": "Richer duplicate entry",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(813, issue.Number);
+        Assert.Equal("[Story] Dragon Idea Engine Master Codex Addendum: AGENT JOB SCHEMA", issue.Title);
+        Assert.Equal("AGENT_JOB_SCHEMA", issue.Heading);
+        Assert.Contains("02-dragon-idea-engine-master-codex-addendum", issue.SourceFile, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GithubIssueService_UsesDeterministicTieBreakForEquallyCompleteDuplicates()
     {
         const string json = """
