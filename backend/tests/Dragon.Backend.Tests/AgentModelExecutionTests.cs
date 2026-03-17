@@ -119,6 +119,34 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void BuildPrompt_StrengthensRefactorInstructions_ForTargetedFollowUpJobs()
+    {
+        var job = new SelfBuildJob(
+            "refactor",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            430,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Refactor Agent",
+                ["story"],
+                "Refactor Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                ["targetOutcome"] = "Improve prompt-construction clarity without changing behavior."
+            }
+        );
+
+        var request = AgentPromptFactory.Build(job);
+
+        Assert.Contains("treat that scoped artifact and outcome as the primary refactor surface", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Execute_UsesModelProviderForArchitectJobs()
     {
         var issue = new GithubIssue(

@@ -53,6 +53,12 @@ public static class AgentPromptFactory
             return $"{baseInstruction} When a target artifact or target outcome is provided, treat that scoped artifact and outcome as the primary documentation surface before broader updates.";
         }
 
+        if (string.Equals(job.Agent, "refactor", StringComparison.OrdinalIgnoreCase) &&
+            (HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome")))
+        {
+            return $"{baseInstruction} When a target artifact or target outcome is provided, treat that scoped artifact and outcome as the primary refactor surface before broader cleanups.";
+        }
+
         return baseInstruction;
     }
 
