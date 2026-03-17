@@ -154,6 +154,7 @@ function renderStatusSnapshot(snapshot) {
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
   comparisonMode.textContent = snapshot.comparisonMode ?? "backend";
+  comparisonMode.className = `comparison-mode ${snapshot.comparisonMode ?? "backend"}`;
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -224,6 +225,7 @@ async function bootStatusMock() {
     queueDirection.textContent = "unavailable";
     queueComparedAt.textContent = "Unavailable";
     comparisonMode.textContent = "unavailable";
+    comparisonMode.className = "comparison-mode unavailable";
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";
