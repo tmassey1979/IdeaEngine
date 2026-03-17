@@ -1641,6 +1641,12 @@ public sealed class PlannerTests
                 return """
                 [
                   {
+                    "number": "bad",
+                    "title": 123,
+                    "body": [],
+                    "labels": "broken"
+                  },
+                  {
                     "number": 500,
                     "title": "[Recovery] Issue #22: Core",
                     "body": "Recovery story for quarantined issue #22.\n\nContext:\n- source issue: #22",
@@ -1826,6 +1832,11 @@ public sealed class PlannerTests
             {
                 return """
                 [
+                  {
+                    "number": "bad",
+                    "title": "[Recovery] Issue #22: Core",
+                    "labels": "broken"
+                  },
                   {
                     "number": 321,
                     "title": "[Recovery] Issue #22: Core",

@@ -603,24 +603,41 @@ public sealed class GithubIssueService
             rootDirectory
         );
 
-        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        using (document)
+        {
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
         foreach (var entry in document.RootElement.EnumerateArray())
         {
-            var issueTitle = entry.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() ?? string.Empty : string.Empty;
+            if (!TryReadIssueNumber(entry, out var issueNumber) || !TryReadLabels(entry, out var labels))
+            {
+                continue;
+            }
+
+            var issueTitle = ReadTextProperty(entry, "title");
             if (!string.Equals(issueTitle, title, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            var labels = entry.GetProperty("labels")
-                .EnumerateArray()
-                .Select(label => label.GetProperty("name").GetString())
-                .OfType<string>()
-                .ToArray();
             if (labels.Contains("recovery", StringComparer.OrdinalIgnoreCase))
             {
-                return entry.GetProperty("number").GetInt32();
+                return issueNumber;
             }
+        }
         }
 
         return null;
@@ -663,17 +680,33 @@ public sealed class GithubIssueService
             rootDirectory
         );
 
-        using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+
+        using (document)
+        {
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
         var issues = new List<GithubIssue>();
         foreach (var entry in document.RootElement.EnumerateArray())
         {
-            var labels = entry.GetProperty("labels")
-                .EnumerateArray()
-                .Select(label => label.GetProperty("name").GetString())
-                .OfType<string>()
-                .ToArray();
-            var title = entry.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() ?? string.Empty : string.Empty;
-            var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
+            if (!TryReadIssueNumber(entry, out var issueNumber) || !TryReadLabels(entry, out var labels))
+            {
+                continue;
+            }
+
+            var title = ReadTextProperty(entry, "title");
+            var body = ReadTextProperty(entry, "body");
 
             if (!labels.Contains("recovery", StringComparer.OrdinalIgnoreCase))
             {
@@ -686,7 +719,7 @@ public sealed class GithubIssueService
             }
 
             issues.Add(new GithubIssue(
-                entry.GetProperty("number").GetInt32(),
+                issueNumber,
                 title,
                 "OPEN",
                 labels,
@@ -696,6 +729,42 @@ public sealed class GithubIssueService
         }
 
         return issues.OrderBy(issue => issue.Number).ToArray();
+        }
+    }
+
+    private static string ReadTextProperty(JsonElement entry, string name) =>
+        entry.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString() ?? string.Empty
+            : string.Empty;
+
+    private static bool TryReadIssueNumber(JsonElement entry, out int issueNumber)
+    {
+        issueNumber = 0;
+        return entry.TryGetProperty("number", out var numberProperty) &&
+            numberProperty.ValueKind == JsonValueKind.Number &&
+            numberProperty.TryGetInt32(out issueNumber);
+    }
+
+    private static bool TryReadLabels(JsonElement entry, out string[] labels)
+    {
+        labels = [];
+        if (!entry.TryGetProperty("labels", out var labelsProperty) || labelsProperty.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        labels = labelsProperty
+            .EnumerateArray()
+            .Where(label =>
+                label.ValueKind == JsonValueKind.Object &&
+                label.TryGetProperty("name", out var nameProperty) &&
+                nameProperty.ValueKind == JsonValueKind.String)
+            .Select(label => label.GetProperty("name").GetString())
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return true;
     }
 
     private static string BuildRecoveryRetiredComment(int sourceIssueNumber) =>
