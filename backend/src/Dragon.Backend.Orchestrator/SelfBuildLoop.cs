@@ -285,6 +285,8 @@ public sealed class SelfBuildLoop
             CreateFollowUpJob(job, execution, "test", "test_issue", execution.JobId)
         };
 
+        EnqueueDeferredSummaryFollowUp(job, execution, followUps);
+
         foreach (var requestedFollowUp in requestedFollowUps
             .OrderBy(GetRequestedFollowUpPriorityRank)
             .ThenBy(GetRequestedFollowUpActionRank)
@@ -312,6 +314,7 @@ public sealed class SelfBuildLoop
 
             if (IsRedundantSummaryFollowUp(followUps, followUpAgent, followUpAction, requestedFollowUp.TargetArtifact))
             {
+                DeferSummaryFollowUp(followUps, followUpAgent, requestedFollowUp);
                 continue;
             }
 
@@ -334,6 +337,84 @@ public sealed class SelfBuildLoop
         }
 
         return followUps;
+    }
+
+    private static void EnqueueDeferredSummaryFollowUp(
+        SelfBuildJob sourceJob,
+        JobExecutionResult execution,
+        List<SelfBuildJob> followUps)
+    {
+        if (!sourceJob.Metadata.TryGetValue("deferredSummaryAgent", out var deferredAgent) ||
+            !sourceJob.Metadata.TryGetValue("deferredSummaryAction", out var deferredAction) ||
+            string.IsNullOrWhiteSpace(deferredAgent) ||
+            string.IsNullOrWhiteSpace(deferredAction))
+        {
+            return;
+        }
+
+        if (followUps.Any(existing =>
+            string.Equals(existing.Agent, deferredAgent, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Action, deferredAction, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        followUps.Add(CreateFollowUpJob(
+            sourceJob,
+            execution,
+            deferredAgent,
+            deferredAction,
+            execution.JobId,
+            sourceJob.Metadata.GetValueOrDefault("deferredSummaryPriority"),
+            sourceJob.Metadata.GetValueOrDefault("deferredSummaryReason"),
+            false,
+            sourceJob.Metadata.GetValueOrDefault("deferredSummaryTargetArtifact"),
+            sourceJob.Metadata.GetValueOrDefault("deferredSummaryTargetOutcome")));
+    }
+
+    private static void DeferSummaryFollowUp(
+        List<SelfBuildJob> followUps,
+        string followUpAgent,
+        RequestedFollowUp requestedFollowUp)
+    {
+        var index = followUps.FindIndex(existing =>
+            string.Equals(existing.Agent, followUpAgent, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Action, "implement_issue", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Metadata.GetValueOrDefault("targetArtifact"), requestedFollowUp.TargetArtifact, StringComparison.OrdinalIgnoreCase));
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        var implementationFollowUp = followUps[index];
+        var metadata = new Dictionary<string, string>(implementationFollowUp.Metadata, StringComparer.Ordinal)
+        {
+            ["deferredSummaryAgent"] = followUpAgent,
+            ["deferredSummaryAction"] = "summarize_issue"
+        };
+
+        if (!string.IsNullOrWhiteSpace(requestedFollowUp.Priority))
+        {
+            metadata["deferredSummaryPriority"] = requestedFollowUp.Priority;
+        }
+
+        if (!string.IsNullOrWhiteSpace(requestedFollowUp.Reason))
+        {
+            metadata["deferredSummaryReason"] = requestedFollowUp.Reason;
+        }
+
+        if (!string.IsNullOrWhiteSpace(requestedFollowUp.TargetArtifact))
+        {
+            metadata["deferredSummaryTargetArtifact"] = requestedFollowUp.TargetArtifact;
+        }
+
+        if (!string.IsNullOrWhiteSpace(requestedFollowUp.TargetOutcome))
+        {
+            metadata["deferredSummaryTargetOutcome"] = requestedFollowUp.TargetOutcome;
+        }
+
+        followUps[index] = implementationFollowUp with { Metadata = metadata };
     }
 
     private static bool IsRedundantSummaryFollowUp(

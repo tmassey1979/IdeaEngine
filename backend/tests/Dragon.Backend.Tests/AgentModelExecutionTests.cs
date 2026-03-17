@@ -568,8 +568,76 @@ public sealed class AgentModelExecutionTests
         Assert.Equal(3, result.FollowUps.Count);
         Assert.Contains(result.FollowUps, job => job.Agent == "review" && job.Action == "review_issue");
         Assert.Contains(result.FollowUps, job => job.Agent == "test" && job.Action == "test_issue");
-        Assert.Contains(result.FollowUps, job => job.Agent == "documentation" && job.Action == "implement_issue");
+        var implementationFollowUp = Assert.Single(result.FollowUps, job => job.Agent == "documentation" && job.Action == "implement_issue");
+        Assert.Equal("docs/generated/provider-notes.md", implementationFollowUp.Metadata["deferredSummaryTargetArtifact"]);
         Assert.DoesNotContain(result.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+    }
+
+    [Fact]
+    public void CycleOnce_RequeuesDeferredTargetedSummary_AfterImplementationSucceeds()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs", "generated"));
+        File.WriteAllText(Path.Combine(root, "docs", "generated", "provider-notes.md"), "# Provider Notes\nInitial.\n");
+
+        var provider = new SequencedFakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Summarize the updated provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider notes."
+                },
+                {
+                  "priority": "high",
+                  "reason": "Tighten the provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Update the provider notes with clearer operator guidance."
+                }
+              ]
+            }
+            """,
+            """
+            {
+              "summary": "Provider notes clarified.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nClearer operator guidance.\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(443, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        loop.CycleOnce(issues);
+        var implementResult = loop.CycleOnce(issues);
+
+        Assert.Contains(implementResult.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+        var summaryFollowUp = Assert.Single(implementResult.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+        Assert.Equal("docs/generated/provider-notes.md", summaryFollowUp.Metadata["targetArtifact"]);
+        Assert.Equal("Produce an operator-facing summary of the provider notes.", summaryFollowUp.Metadata["targetOutcome"]);
     }
 
     [Fact]
