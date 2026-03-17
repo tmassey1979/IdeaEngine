@@ -152,8 +152,12 @@ public sealed class GithubIssueService
             return false;
         }
 
-        var title = entry.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() ?? string.Empty : string.Empty;
-        var body = entry.TryGetProperty("body", out var bodyProperty) ? bodyProperty.GetString() ?? string.Empty : string.Empty;
+        var title = entry.TryGetProperty("title", out var titleProperty) && titleProperty.ValueKind == JsonValueKind.String
+            ? titleProperty.GetString() ?? string.Empty
+            : string.Empty;
+        var body = entry.TryGetProperty("body", out var bodyProperty) && bodyProperty.ValueKind == JsonValueKind.String
+            ? bodyProperty.GetString() ?? string.Empty
+            : string.Empty;
         backlogIndex.TryGetValue(title, out var metadata);
 
         issue = new GithubIssue(

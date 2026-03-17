@@ -880,6 +880,33 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_NormalizesUnexpectedTitleAndBodyTypesDuringBacklogDiscovery()
+    {
+        const string json = """
+        [
+          {
+            "number": 806,
+            "title": 123,
+            "body": { "text": "not a string" },
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Equal(806, issue.Number);
+        Assert.Equal(string.Empty, issue.Title);
+        Assert.Equal(string.Empty, issue.Body);
+        Assert.Null(issue.Heading);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresMalformedLabelEntriesDuringBacklogDiscovery()
     {
         const string json = """
