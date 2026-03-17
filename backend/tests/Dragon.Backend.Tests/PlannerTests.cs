@@ -1748,7 +1748,7 @@ public sealed class PlannerTests
 
         var records = new[]
         {
-            new ExecutionRecord(104, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, [" docs/ARCHITECTURE.md ", "docs/ARCHITECTURE.md", "DOCS/ARCHITECTURE.md", "docs\\ARCHITECTURE.md", "./docs/ARCHITECTURE.md", "docs//ARCHITECTURE.md", "docs/./ARCHITECTURE.md", "docs/../docs/ARCHITECTURE.md", "./docs/../docs/ARCHITECTURE.md", "docs/ARCHITECTURE.md/.", "docs/ARCHITECTURE.md/", "/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", "C:/code/Playground/IdeaEngine/docs/ARCHITECTURE.md"], ["review"]),
+            new ExecutionRecord(104, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, [" docs/ARCHITECTURE.md ", "docs/ARCHITECTURE.md", "DOCS/ARCHITECTURE.md", "docs\\ARCHITECTURE.md", "./docs/ARCHITECTURE.md", "docs//ARCHITECTURE.md", "docs/./ARCHITECTURE.md", "docs/../docs/ARCHITECTURE.md", "./docs/../docs/ARCHITECTURE.md", "../outside.txt", "./docs/../../outside.txt", "/etc/passwd", "D:/elsewhere/outside.txt", "docs/ARCHITECTURE.md/.", "docs/ARCHITECTURE.md/", "/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", "C:/code/Playground/IdeaEngine/docs/ARCHITECTURE.md"], ["review"]),
             new ExecutionRecord(104, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
             new ExecutionRecord(104, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
         };
@@ -1774,10 +1774,53 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("docs/./ARCHITECTURE.md", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs/../docs/ARCHITECTURE.md", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("./docs/../docs/ARCHITECTURE.md", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("../outside.txt", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("./docs/../../outside.txt", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("/etc/passwd", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("D:/elsewhere/outside.txt", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs/ARCHITECTURE.md/.", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs/ARCHITECTURE.md/", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("C:/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncValidatedWorkflow_DoesNotCloseIssueWhenChangedPathsEscapeRepo()
+    {
+        var root = FindRepoRoot();
+        var workflow = new IssueWorkflowState(
+            105,
+            "System Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-dev", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-review", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-test", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(105, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, ["../outside.txt", "./docs/../../outside.txt", "/etc/passwd", "D:/elsewhere/outside.txt"], ["review"]),
+            new ExecutionRecord(105, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
+            new ExecutionRecord(105, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 105", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("auto-close: deferred because no execution-backed changed paths were recorded", StringComparison.Ordinal));
     }
 
     [Fact]

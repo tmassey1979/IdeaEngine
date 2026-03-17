@@ -291,6 +291,7 @@ public sealed class GithubIssueService
             .Select(NormalizeRelativePathSegments)
             .Select(path => path.EndsWith("/.", StringComparison.Ordinal) ? path[..^2] : path)
             .Select(path => path.EndsWith("/", StringComparison.Ordinal) ? path[..^1] : path)
+            .Where(IsRepoRelativeChangedPath)
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -926,6 +927,27 @@ public sealed class GithubIssueService
         }
 
         return string.Join("/", normalized);
+    }
+
+    private static bool IsRepoRelativeChangedPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        if (path.StartsWith("/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (Regex.IsMatch(path, "^[a-zA-Z]:/"))
+        {
+            return false;
+        }
+
+        return !string.Equals(path, "..", StringComparison.Ordinal) &&
+            !path.StartsWith("../", StringComparison.Ordinal);
     }
 
     private static int? ParseIssueNumber(string result)
