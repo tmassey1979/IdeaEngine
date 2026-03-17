@@ -155,6 +155,15 @@ function comparisonLabel(snapshot) {
   return "Backend";
 }
 
+function workerModeInfo(snapshot) {
+  const mode = snapshot.workerMode ?? "status";
+
+  return {
+    label: mode,
+    state: mode,
+  };
+}
+
 function latestPassOutcome(snapshot) {
   const latestPass = snapshot.latestPass;
   if (!latestPass) {
@@ -226,6 +235,7 @@ function renderStatusSnapshot(snapshot) {
   const feed = document.getElementById("status-feed");
   const health = document.getElementById("status-health");
   const source = document.getElementById("status-source");
+  const workerMode = document.getElementById("status-worker-mode");
   const generatedAt = document.getElementById("status-generated-at");
   const freshness = document.getElementById("status-freshness");
   const queueDirection = document.getElementById("status-queue-direction");
@@ -259,6 +269,9 @@ function renderStatusSnapshot(snapshot) {
   feed.className = "status-feed";
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
+  const workerModeState = workerModeInfo(snapshot);
+  workerMode.textContent = workerModeState.label;
+  workerMode.className = `worker-mode ${workerModeState.state}`;
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
@@ -343,6 +356,7 @@ async function bootStatusMock() {
     const feed = document.getElementById("status-feed");
     const health = document.getElementById("status-health");
     const source = document.getElementById("status-source");
+    const workerMode = document.getElementById("status-worker-mode");
     const generatedAt = document.getElementById("status-generated-at");
     const freshness = document.getElementById("status-freshness");
     const queueDirection = document.getElementById("status-queue-direction");
@@ -376,6 +390,8 @@ async function bootStatusMock() {
     feed.className = "status-feed";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
+    workerMode.textContent = "unavailable";
+    workerMode.className = "worker-mode unavailable";
     generatedAt.textContent = "Could not load sample payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
