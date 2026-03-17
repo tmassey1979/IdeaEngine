@@ -34,3 +34,9 @@ npm run status:ui
 ```
 
 That refreshes [ui/dragon-ui/sample-status.json](/mnt/c/code/Playground/IdeaEngine/ui/dragon-ui/sample-status.json) from the live backend `status` snapshot so the mock dashboard reflects current queue and workflow state without editing the sample file by hand.
+
+To run the local self-build loop and refresh the dashboard snapshot in one step:
+
+```bash
+npm run run:ui
+```

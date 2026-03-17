@@ -124,23 +124,25 @@ static int RunStatus(IReadOnlyDictionary<string, string> options)
 
 static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
 {
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var stories = BacklogStoryCatalog.LoadStories(root);
     var loop = new SelfBuildLoop(root);
     var result = loop.CycleOnce(stories);
+    ExportStatusIfRequested(loop, root, options);
     PrintJson(result);
     return 0;
 }
 
 static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
 {
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var stories = BacklogStoryCatalog.LoadStories(root);
     var loop = new SelfBuildLoop(root);
     var result = loop.RunUntilIdle(
         stories,
         maxCycles: GetInt(options, "max-cycles", 100)
     );
+    ExportStatusIfRequested(loop, root, options);
     PrintJson(result);
     return 0;
 }
@@ -152,7 +154,7 @@ static int RunGithubIssues(IReadOnlyDictionary<string, string> options)
         return 1;
     }
 
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
     PrintJson(loop.LoadGithubIssues(owner!, repo!));
     return 0;
@@ -165,9 +167,11 @@ static int RunGithubCycleOnce(IReadOnlyDictionary<string, string> options)
         return 1;
     }
 
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
-    PrintJson(loop.CycleOnceFromGithub(owner!, repo!, syncValidatedWorkflows: GetBoolean(options, "sync-github")));
+    var result = loop.CycleOnceFromGithub(owner!, repo!, syncValidatedWorkflows: GetBoolean(options, "sync-github"));
+    ExportStatusIfRequested(loop, root, options);
+    PrintJson(result);
     return 0;
 }
 
@@ -178,14 +182,16 @@ static int RunGithubRunUntilIdle(IReadOnlyDictionary<string, string> options)
         return 1;
     }
 
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
-    PrintJson(loop.RunUntilIdleFromGithub(
+    var result = loop.RunUntilIdleFromGithub(
         owner!,
         repo!,
         syncValidatedWorkflows: GetBoolean(options, "sync-github"),
         maxCycles: GetInt(options, "max-cycles", 100)
-    ));
+    );
+    ExportStatusIfRequested(loop, root, options);
+    PrintJson(result);
     return 0;
 }
 
@@ -203,10 +209,21 @@ static int RunSyncWorkflow(IReadOnlyDictionary<string, string> options)
         return 1;
     }
 
-    var root = GetString(options, "root", Directory.GetCurrentDirectory());
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var loop = new SelfBuildLoop(root);
     PrintJson(loop.SyncValidatedWorkflow(owner!, repo!, issueNumber));
     return 0;
+}
+
+static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDictionary<string, string> options)
+{
+    var outputPath = GetNullable(options, "status-out");
+    if (string.IsNullOrWhiteSpace(outputPath))
+    {
+        return;
+    }
+
+    loop.WriteStatus(Path.GetFullPath(outputPath, root));
 }
 
 static void PrintJson<TValue>(TValue value)
@@ -232,11 +249,11 @@ static int ShowHelp()
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           status [--root <repo-root>] [--out <path>]
           queue [--root <repo-root>]
-          cycle-once [--root <repo-root>]
-          run-until-idle [--max-cycles 100] [--root <repo-root>]
+          cycle-once [--root <repo-root>] [--status-out <path>]
+          run-until-idle [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           github-issues --owner <owner> --repo <repo> [--root <repo-root>]
-          github-cycle-once --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>]
-          github-run-until-idle --owner <owner> --repo <repo> [--sync-github] [--max-cycles 100] [--root <repo-root>]
+          github-cycle-once --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>] [--status-out <path>]
+          github-run-until-idle --owner <owner> --repo <repo> [--sync-github] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           sync-workflow --owner <owner> --repo <repo> --issue <number> [--root <repo-root>]
         """
     );

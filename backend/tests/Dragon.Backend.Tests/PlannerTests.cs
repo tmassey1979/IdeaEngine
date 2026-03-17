@@ -581,6 +581,46 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunUntilIdle_CanExportFreshStatusSnapshotAfterCompletion()
+    {
+        var root = CreateTempRoot();
+        var outputPath = Path.Combine(root, "ui", "dragon-ui", "sample-status.json");
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(
+                22,
+                "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                "OPEN",
+                ["story"],
+                "",
+                "Core System Principles",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        };
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        var result = loop.RunUntilIdle(stories, maxCycles: 10);
+        var snapshot = loop.WriteStatus(outputPath);
+
+        Assert.True(result.ReachedIdle);
+        Assert.True(File.Exists(outputPath));
+        Assert.Empty(loop.ReadQueue());
+        Assert.Equal(0, snapshot.QueuedJobs);
+
+        using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var rootElement = document.RootElement;
+        Assert.Equal(0, rootElement.GetProperty("queuedJobs").GetInt32());
+
+        var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
+        Assert.Equal(22, issueElement.GetProperty("issueNumber").GetInt32());
+        Assert.Equal("validated", issueElement.GetProperty("overallStatus").GetString());
+    }
+
+    [Fact]
     public void RunUntilIdleFromGithub_RefreshesIssueListBetweenCycles()
     {
         var root = CreateTempRoot();

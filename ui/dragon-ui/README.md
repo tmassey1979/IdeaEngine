@@ -15,3 +15,9 @@ To refresh that payload from the repo root, run:
 ```bash
 npm run status:ui
 ```
+
+To run the local loop and refresh the payload at the end of the run:
+
+```bash
+npm run run:ui
+```
