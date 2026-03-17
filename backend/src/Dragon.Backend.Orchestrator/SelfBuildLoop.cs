@@ -285,7 +285,10 @@ public sealed class SelfBuildLoop
             CreateFollowUpJob(job, execution, "test", "test_issue", execution.JobId)
         };
 
-        foreach (var requestedFollowUp in requestedFollowUps)
+        foreach (var requestedFollowUp in requestedFollowUps
+            .OrderBy(GetRequestedFollowUpPriorityRank)
+            .ThenBy(followUp => followUp.Agent, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(followUp => followUp.Action, StringComparer.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(requestedFollowUp.Agent) || string.IsNullOrWhiteSpace(requestedFollowUp.Action))
             {
@@ -315,6 +318,21 @@ public sealed class SelfBuildLoop
         }
 
         return followUps;
+    }
+
+    private static int GetRequestedFollowUpPriorityRank(RequestedFollowUp followUp)
+    {
+        if (string.Equals(followUp.Priority, "high", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (string.Equals(followUp.Priority, "low", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        return 1;
     }
 
     private void RemoveSupersededRecoveryJobs(IReadOnlyList<GithubIssue> issues)

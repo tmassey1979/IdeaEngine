@@ -203,6 +203,55 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_OrdersRequestedModelFollowUps_ByPriorityAfterReviewAndTest()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "followUps": [
+                {
+                  "agent": "repository-manager",
+                  "action": "summarize_issue",
+                  "priority": "low",
+                  "reason": "Repository note can wait."
+                },
+                {
+                  "agent": "feedback",
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Operator summary should run first."
+                },
+                {
+                  "agent": "architect",
+                  "action": "summarize_issue",
+                  "priority": "normal",
+                  "reason": "Architecture summary is useful but not urgent."
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(422, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        var result = loop.CycleOnce(issues);
+
+        Assert.Equal(
+            ["review", "test", "feedback", "architect", "repository-manager"],
+            result.FollowUps.Select(job => job.Agent).ToArray());
+        Assert.Equal("high", result.FollowUps[2].Metadata["requestedPriority"]);
+        Assert.Equal("normal", result.FollowUps[3].Metadata["requestedPriority"]);
+        Assert.Equal("low", result.FollowUps[4].Metadata["requestedPriority"]);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReadsJsonAgentOutput()
     {
         var parsed = AgentStructuredResultParser.Parse(
