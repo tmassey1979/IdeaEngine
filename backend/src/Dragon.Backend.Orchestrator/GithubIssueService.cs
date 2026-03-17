@@ -289,6 +289,7 @@ public sealed class GithubIssueService
             .Select(path => Regex.Replace(path, "/{2,}", "/"))
             .Select(path => path.Replace("/./", "/", StringComparison.Ordinal))
             .Select(NormalizeRelativePathSegments)
+            .Select(DecodeHtmlEntities)
             .Select(StripQueryAndFragment)
             .Select(UnwrapMarkdownPathReference)
             .Select(DecodePercentEncoding)
@@ -947,6 +948,16 @@ public sealed class GithubIssueService
             fragmentIndex;
 
         return cutIndex >= 0 ? path[..cutIndex] : path;
+    }
+
+    private static string DecodeHtmlEntities(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !path.Contains('&', StringComparison.Ordinal))
+        {
+            return path;
+        }
+
+        return System.Net.WebUtility.HtmlDecode(path);
     }
 
     private static string UnwrapMarkdownPathReference(string path)
