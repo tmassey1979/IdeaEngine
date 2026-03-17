@@ -274,6 +274,23 @@ function latestPassMix(snapshot) {
   return latestPass.seededCycles > latestPass.consumedCycles ? "Seed-leaning" : "Consume-leaning";
 }
 
+function latestPassMixState(label) {
+  switch (label) {
+    case "Seed-heavy":
+    case "Seed-leaning":
+      return "seed";
+    case "Consume-heavy":
+    case "Consume-leaning":
+      return "consume";
+    case "Balanced":
+      return "balanced";
+    case "Idle":
+      return "idle";
+    default:
+      return "unknown";
+  }
+}
+
 function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
@@ -426,7 +443,9 @@ function renderStatusSnapshot(snapshot) {
   latestPassWork.textContent = snapshot.latestPass
     ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 seed, 0 consume";
-  latestPassMixNode.textContent = latestPassMix(snapshot);
+  const latestPassMixLabel = latestPassMix(snapshot);
+  latestPassMixNode.textContent = latestPassMixLabel;
+  latestPassMixNode.className = `pass-mix ${latestPassMixState(latestPassMixLabel)}`;
   latestPassOutcomeNode.textContent = latestPassOutcome(snapshot);
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
@@ -560,6 +579,7 @@ async function bootStatusMock() {
     latestPassCycles.textContent = "Unavailable";
     latestPassWork.textContent = "Unavailable";
     latestPassMixNode.textContent = "Unavailable";
+    latestPassMixNode.className = "pass-mix unavailable";
     latestPassOutcomeNode.textContent = "Could not load pass summary";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
