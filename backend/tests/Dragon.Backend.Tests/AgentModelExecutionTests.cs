@@ -69,6 +69,24 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("documentation", job.Agent);
     }
 
+    [Fact]
+    public void CreateDefault_LeavesModelBackedAgentsInBootstrapModeWithoutApiKey()
+    {
+        var issue = new GithubIssue(
+            310,
+            "[Story] Dragon Idea Engine Master Codex: Architect Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "architect", "IdeaEngine", "DragonIdeaEngine");
+        var executor = LocalJobExecutor.CreateDefault(_ => null, (_, _, _) => new CommandResult(0, "ok", string.Empty));
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Contains("No model provider configured", result.Summary, StringComparison.Ordinal);
+    }
+
     private static string CreateTempRoot()
     {
         var root = Path.Combine(Path.GetTempPath(), $"dragon-agent-model-tests-{Guid.NewGuid():N}");

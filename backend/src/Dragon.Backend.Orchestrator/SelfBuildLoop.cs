@@ -14,13 +14,14 @@ public sealed class SelfBuildLoop
         string rootDirectory,
         string queueName = "dragon.jobs",
         GithubIssueService? githubIssueService = null,
-        LocalJobExecutor? jobExecutor = null)
+        LocalJobExecutor? jobExecutor = null,
+        Func<string, string?>? environmentReader = null)
     {
         RootDirectory = rootDirectory;
         queueStore = new QueueStore(rootDirectory, queueName);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
-        this.jobExecutor = jobExecutor ?? new LocalJobExecutor();
+        this.jobExecutor = jobExecutor ?? LocalJobExecutor.CreateDefault(environmentReader ?? Environment.GetEnvironmentVariable);
         this.githubIssueService = githubIssueService ?? new GithubIssueService();
     }
 

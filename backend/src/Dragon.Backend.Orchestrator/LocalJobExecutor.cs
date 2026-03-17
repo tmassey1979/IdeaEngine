@@ -24,6 +24,22 @@ public sealed class LocalJobExecutor
         this.modelProvider = modelProvider;
     }
 
+    public static LocalJobExecutor CreateDefault(Func<string, string?> environmentReader, LocalCommandRunner? commandRunner = null)
+    {
+        IAgentModelProvider? provider = null;
+
+        try
+        {
+            provider = new OpenAiResponsesProvider(OpenAiResponsesOptions.FromEnvironment(environmentReader));
+        }
+        catch (InvalidOperationException)
+        {
+            provider = null;
+        }
+
+        return new LocalJobExecutor(commandRunner, provider);
+    }
+
     public JobExecutionResult Execute(string rootDirectory, SelfBuildJob job)
     {
         var jobId = $"{job.Agent}-{job.Issue}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
