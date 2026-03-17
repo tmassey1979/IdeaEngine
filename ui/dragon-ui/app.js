@@ -541,6 +541,7 @@ function renderStatusSnapshot(snapshot) {
   const leadJobIssue = document.getElementById("status-lead-job-issue");
   const leadJobAgent = document.getElementById("status-lead-job-agent");
   const leadJobAction = document.getElementById("status-lead-job-action");
+  const leadJobBlocking = document.getElementById("status-lead-job-blocking");
   const leadJobTarget = document.getElementById("status-lead-job-target");
   const leadJobOutcome = document.getElementById("status-lead-job-outcome");
   const leadJobPriority = document.getElementById("status-lead-job-priority");
@@ -611,6 +612,7 @@ function renderStatusSnapshot(snapshot) {
     : "No queued work";
   leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
   leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
+  leadJobBlocking.textContent = snapshot.leadJob?.blocking ? "yes" : "no";
   leadJobTarget.textContent = snapshot.leadJob?.targetArtifact ?? "none";
   leadJobOutcome.textContent = snapshot.leadJob?.targetOutcome ?? "none";
   leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
@@ -712,6 +714,7 @@ async function bootStatusMock() {
     const leadJobIssue = document.getElementById("status-lead-job-issue");
     const leadJobAgent = document.getElementById("status-lead-job-agent");
     const leadJobAction = document.getElementById("status-lead-job-action");
+    const leadJobBlocking = document.getElementById("status-lead-job-blocking");
     const leadJobTarget = document.getElementById("status-lead-job-target");
     const leadJobOutcome = document.getElementById("status-lead-job-outcome");
     const leadJobPriority = document.getElementById("status-lead-job-priority");
@@ -774,6 +777,7 @@ async function bootStatusMock() {
     leadJobIssue.textContent = "No queued work";
     leadJobAgent.textContent = "unavailable";
     leadJobAction.textContent = "unavailable";
+    leadJobBlocking.textContent = "unavailable";
     leadJobTarget.textContent = "unavailable";
     leadJobOutcome.textContent = "unavailable";
     leadJobPriority.textContent = "unavailable";
