@@ -278,11 +278,29 @@ public sealed class SelfBuildLoop
             return [];
         }
 
-        var followUps = new[]
+        var requestedFollowUps = execution.RequestedFollowUps ?? [];
+        var followUps = new List<SelfBuildJob>
         {
             CreateFollowUpJob(job, execution, "review", "review_issue", execution.JobId),
             CreateFollowUpJob(job, execution, "test", "test_issue", execution.JobId)
         };
+
+        foreach (var requestedFollowUp in requestedFollowUps)
+        {
+            if (string.IsNullOrWhiteSpace(requestedFollowUp.Agent) || string.IsNullOrWhiteSpace(requestedFollowUp.Action))
+            {
+                continue;
+            }
+
+            if (followUps.Any(existing =>
+                string.Equals(existing.Agent, requestedFollowUp.Agent, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.Action, requestedFollowUp.Action, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            followUps.Add(CreateFollowUpJob(job, execution, requestedFollowUp.Agent, requestedFollowUp.Action, execution.JobId));
+        }
 
         foreach (var followUp in followUps)
         {

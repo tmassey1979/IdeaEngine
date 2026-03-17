@@ -55,7 +55,7 @@ public sealed class LocalJobExecutor
                 _ => ExecutionOutcome.FromSummary($"No local executor is registered for {job.Agent}; marked complete for bootstrap flow.")
             };
 
-            return new JobExecutionResult(jobId, job.Agent, "success", outcome.Summary, DateTimeOffset.UtcNow, outcome.ChangedPaths);
+            return new JobExecutionResult(jobId, job.Agent, "success", outcome.Summary, DateTimeOffset.UtcNow, outcome.ChangedPaths, outcome.RequestedFollowUps);
         }
         catch (Exception exception)
         {
@@ -82,10 +82,10 @@ public sealed class LocalJobExecutor
         if (structuredResult?.Operations?.Count > 0)
         {
             var changedPaths = ApplyOperations(rootDirectory, structuredResult.Operations);
-            return new ExecutionOutcome(summary, changedPaths);
+            return new ExecutionOutcome(summary, changedPaths, structuredResult.FollowUps ?? []);
         }
 
-        return ExecutionOutcome.FromSummary(summary);
+        return new ExecutionOutcome(summary, [], structuredResult?.FollowUps ?? []);
     }
 
     private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
@@ -96,7 +96,8 @@ public sealed class LocalJobExecutor
             touchedPaths.Count > 0
                 ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
                 : "Developer job contained no operations.",
-            touchedPaths
+            touchedPaths,
+            []
         );
     }
 
@@ -303,9 +304,12 @@ public sealed class LocalJobExecutor
         return new CommandResult(process.ExitCode, stdout, stderr);
     }
 
-    private sealed record ExecutionOutcome(string Summary, IReadOnlyList<string> ChangedPaths)
+    private sealed record ExecutionOutcome(
+        string Summary,
+        IReadOnlyList<string> ChangedPaths,
+        IReadOnlyList<RequestedFollowUp> RequestedFollowUps)
     {
-        public static ExecutionOutcome FromSummary(string summary) => new(summary, []);
+        public static ExecutionOutcome FromSummary(string summary) => new(summary, [], []);
     }
 
     private static bool IsModelBackedAgent(string agent) => agent switch

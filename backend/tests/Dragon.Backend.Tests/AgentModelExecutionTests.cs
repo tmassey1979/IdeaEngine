@@ -120,6 +120,80 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_CarriesStructuredFollowUpRequests_FromModelBackedAgent()
+    {
+        var root = CreateTempRoot();
+        var issue = new GithubIssue(
+            420,
+            "[Story] Dragon Idea Engine Master Codex: Documentation Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "documentation", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "followUps": [
+                {
+                  "agent": "feedback",
+                  "action": "summarize_issue"
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+
+        var result = executor.Execute(root, job);
+
+        Assert.NotNull(result.RequestedFollowUps);
+        Assert.Single(result.RequestedFollowUps!);
+        Assert.Equal("feedback", result.RequestedFollowUps![0].Agent);
+    }
+
+    [Fact]
+    public void CycleOnce_QueuesRequestedModelFollowUps_AlongsideReviewAndTest()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "agent": "feedback",
+                  "action": "summarize_issue"
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(421, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        var result = loop.CycleOnce(issues);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.Equal(3, result.FollowUps.Count);
+        Assert.Contains(result.FollowUps, job => job.Agent == "review" && job.Action == "review_issue");
+        Assert.Contains(result.FollowUps, job => job.Agent == "test" && job.Action == "test_issue");
+        Assert.Contains(result.FollowUps, job => job.Agent == "feedback" && job.Action == "summarize_issue");
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReadsJsonAgentOutput()
     {
         var parsed = AgentStructuredResultParser.Parse(
@@ -134,6 +208,12 @@ public sealed class AgentModelExecutionTests
                   "path": "docs/ARCHITECTURE.md",
                   "content": "\nUpdated."
                 }
+              ],
+              "followUps": [
+                {
+                  "agent": "feedback",
+                  "action": "summarize_issue"
+                }
               ]
             }
             """
@@ -146,6 +226,8 @@ public sealed class AgentModelExecutionTests
         Assert.Single(parsed.Artifacts!);
         Assert.NotNull(parsed.Operations);
         Assert.Single(parsed.Operations!);
+        Assert.NotNull(parsed.FollowUps);
+        Assert.Single(parsed.FollowUps!);
     }
 
     [Fact]

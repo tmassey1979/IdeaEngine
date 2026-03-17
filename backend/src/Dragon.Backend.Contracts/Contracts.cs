@@ -49,7 +49,8 @@ public sealed record JobExecutionResult(
     string Status,
     string Summary,
     DateTimeOffset ObservedAt,
-    IReadOnlyList<string>? ChangedPaths = null
+    IReadOnlyList<string>? ChangedPaths = null,
+    IReadOnlyList<RequestedFollowUp>? RequestedFollowUps = null
 );
 
 public sealed record WorkflowStageState(
@@ -121,7 +122,13 @@ public sealed record AgentStructuredResult(
     string Summary,
     string? Recommendation = null,
     IReadOnlyList<string>? Artifacts = null,
-    IReadOnlyList<DeveloperOperation>? Operations = null
+    IReadOnlyList<DeveloperOperation>? Operations = null,
+    IReadOnlyList<RequestedFollowUp>? FollowUps = null
+);
+
+public sealed record RequestedFollowUp(
+    string Agent,
+    string Action
 );
 
 public sealed record AgentModelProviderDescriptor(
