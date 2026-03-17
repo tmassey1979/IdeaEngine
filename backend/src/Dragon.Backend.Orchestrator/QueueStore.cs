@@ -55,6 +55,7 @@ public sealed class QueueStore
             .OrderBy(item => GetQueuePriorityRank(item.job))
             .ThenBy(item => GetTargetingRank(item.job))
             .ThenBy(item => GetRoleAlignmentRank(item.job))
+            .ThenBy(item => GetActionRank(item.job))
             .ThenBy(item => item.index)
             .First()
             .index;
@@ -154,6 +155,13 @@ public sealed class QueueStore
              artifact.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
              artifact.EndsWith(".js", StringComparison.OrdinalIgnoreCase));
     }
+
+    private static int GetActionRank(SelfBuildJob job) => job.Action.ToLowerInvariant() switch
+    {
+        "implement_issue" => 0,
+        "summarize_issue" => 1,
+        _ => 2
+    };
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)
     {

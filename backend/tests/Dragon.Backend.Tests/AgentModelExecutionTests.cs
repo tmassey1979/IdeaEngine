@@ -819,6 +819,46 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void QueueStore_PrefersImplementIssueOverSummaries_ForEquallyTargetedRequestedWork()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            441,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Documentation Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes.",
+                ["preferredAgent"] = "documentation"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            441,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Documentation Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Update the provider notes with clearer operator guidance.",
+                ["preferredAgent"] = "documentation"
+            }));
+
+        var next = queue.Dequeue();
+
+        Assert.NotNull(next);
+        Assert.Equal("implement_issue", next!.Action);
+    }
+
+    [Fact]
     public void QueueStore_UsesPreferredAgentMetadata_ForRoleAlignment()
     {
         var root = CreateTempRoot();
