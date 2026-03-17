@@ -454,6 +454,44 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void QueueStore_UsesArtifactPathToPreferRefactorForCodeTargets()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            434,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Documentation Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                ["targetOutcome"] = "Improve prompt construction clarity without changing behavior."
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            434,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Refactor Agent", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "normal",
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/AgentPromptFactory.cs",
+                ["targetOutcome"] = "Improve prompt construction clarity without changing behavior."
+            }));
+
+        var next = queue.Dequeue();
+
+        Assert.NotNull(next);
+        Assert.Equal("refactor", next!.Agent);
+    }
+
+    [Fact]
     public void CycleOnce_PrioritizesValidationAndHighPriorityFollowUps_AheadOfQueuedBacklogWork()
     {
         var root = CreateTempRoot();

@@ -124,11 +124,32 @@ public sealed class QueueStore
 
     private static int GetRoleAlignmentRank(SelfBuildJob job) => job.Agent.ToLowerInvariant() switch
     {
+        var agent when IsDocumentationArtifact(job) && string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) => 0,
+        var agent when IsDocumentationArtifact(job) && string.Equals(agent, "feedback", StringComparison.OrdinalIgnoreCase) => 1,
+        var agent when IsCodeArtifact(job) && string.Equals(agent, "refactor", StringComparison.OrdinalIgnoreCase) => 0,
+        var agent when IsCodeArtifact(job) && string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) => 1,
         "documentation" => 0,
         "refactor" => 1,
         "feedback" => 2,
         _ => 3
     };
+
+    private static bool IsDocumentationArtifact(SelfBuildJob job)
+    {
+        var artifact = job.Metadata.GetValueOrDefault("targetArtifact");
+        return !string.IsNullOrWhiteSpace(artifact) &&
+            (artifact.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) ||
+             artifact.EndsWith(".md", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsCodeArtifact(SelfBuildJob job)
+    {
+        var artifact = job.Metadata.GetValueOrDefault("targetArtifact");
+        return !string.IsNullOrWhiteSpace(artifact) &&
+            (artifact.StartsWith("backend/", StringComparison.OrdinalIgnoreCase) ||
+             artifact.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
+             artifact.EndsWith(".js", StringComparison.OrdinalIgnoreCase));
+    }
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)
     {
