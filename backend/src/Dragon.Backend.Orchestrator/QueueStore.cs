@@ -56,6 +56,7 @@ public sealed class QueueStore
             .ThenBy(item => GetTargetingRank(item.job))
             .ThenBy(item => GetRoleAlignmentRank(item.job))
             .ThenBy(item => GetActionRank(item.job))
+            .ThenBy(item => GetRollupBreadthRank(item.job))
             .ThenBy(item => item.index)
             .First()
             .index;
@@ -162,6 +163,18 @@ public sealed class QueueStore
         "summarize_issue" => 1,
         _ => 2
     };
+
+    private static int GetRollupBreadthRank(SelfBuildJob job)
+    {
+        if (!job.Metadata.TryGetValue("changedArtifactRollup", out var rollup) || string.IsNullOrWhiteSpace(rollup))
+        {
+            return 0;
+        }
+
+        return rollup.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length > 1
+            ? 1
+            : 0;
+    }
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)
     {

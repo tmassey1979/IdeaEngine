@@ -1311,6 +1311,48 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void QueueStore_PrefersNarrowTargetedSummariesOverBroadRollupSummaries_WhenOtherRankingIsEqual()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            501,
+            new SelfBuildJobPayload("[Story] Broad summary", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Summarize the broader operator impact of the targeted implementation.",
+                ["preferredAgent"] = "documentation",
+                ["changedArtifactRollup"] = "docs/generated/provider-notes.md|docs/generated/provider-rollup.md"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            502,
+            new SelfBuildJobPayload("[Story] Narrow summary", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["targetArtifact"] = "docs/generated/provider-notes.md",
+                ["targetOutcome"] = "Produce an operator-facing summary of the provider notes.",
+                ["preferredAgent"] = "documentation"
+            }));
+
+        var next = queue.Dequeue();
+
+        Assert.NotNull(next);
+        Assert.Equal(502, next!.Issue);
+        Assert.Equal("summarize_issue", next.Action);
+    }
+
+    [Fact]
     public void CycleOnce_PrioritizesValidationAndHighPriorityFollowUps_AheadOfQueuedBacklogWork()
     {
         var root = CreateTempRoot();
