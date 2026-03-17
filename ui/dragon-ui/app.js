@@ -249,6 +249,21 @@ function latestPassOutcome(snapshot) {
   return "Pass completed with remaining work";
 }
 
+function latestPassOutcomeState(label) {
+  switch (label) {
+    case "Pass reached idle":
+      return "idle";
+    case "Pass completed with remaining work":
+      return "active";
+    case "Pass hit max cycle cap":
+      return "capped";
+    case "Could not load pass summary":
+      return "unavailable";
+    default:
+      return "unknown";
+  }
+}
+
 function latestPassMix(snapshot) {
   const latestPass = snapshot.latestPass;
   if (!latestPass) {
@@ -446,7 +461,9 @@ function renderStatusSnapshot(snapshot) {
   const latestPassMixLabel = latestPassMix(snapshot);
   latestPassMixNode.textContent = latestPassMixLabel;
   latestPassMixNode.className = `pass-mix ${latestPassMixState(latestPassMixLabel)}`;
-  latestPassOutcomeNode.textContent = latestPassOutcome(snapshot);
+  const latestPassOutcomeLabel = latestPassOutcome(snapshot);
+  latestPassOutcomeNode.textContent = latestPassOutcomeLabel;
+  latestPassOutcomeNode.className = `pass-outcome ${latestPassOutcomeState(latestPassOutcomeLabel)}`;
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
     latestPassGroup.classList.add("alert");
@@ -581,6 +598,7 @@ async function bootStatusMock() {
     latestPassMixNode.textContent = "Unavailable";
     latestPassMixNode.className = "pass-mix unavailable";
     latestPassOutcomeNode.textContent = "Could not load pass summary";
+    latestPassOutcomeNode.className = "pass-outcome unavailable";
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
     queueDelta.textContent = "0";
