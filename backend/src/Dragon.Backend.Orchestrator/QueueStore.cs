@@ -50,8 +50,15 @@ public sealed class QueueStore
             return null;
         }
 
-        var next = jobs[0];
-        jobs.RemoveAt(0);
+        var selectedIndex = jobs
+            .Select((job, index) => new { job, index })
+            .OrderBy(item => GetQueuePriorityRank(item.job))
+            .ThenBy(item => item.index)
+            .First()
+            .index;
+
+        var next = jobs[selectedIndex];
+        jobs.RemoveAt(selectedIndex);
 
         if (jobs.Count == 0)
         {
@@ -67,6 +74,27 @@ public sealed class QueueStore
         }
 
         return next;
+    }
+
+    private static int GetQueuePriorityRank(SelfBuildJob job)
+    {
+        if (string.Equals(job.Agent, "review", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Agent, "test", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "high", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        if (string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "low", StringComparison.OrdinalIgnoreCase))
+        {
+            return 3;
+        }
+
+        return 2;
     }
 
     public int RemoveAll(Func<SelfBuildJob, bool> predicate)

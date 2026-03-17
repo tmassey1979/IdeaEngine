@@ -252,6 +252,40 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_PrioritizesValidationAndHighPriorityFollowUps_AheadOfQueuedBacklogWork()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "followUps": [
+                {
+                  "agent": "feedback",
+                  "action": "summarize_issue",
+                  "priority": "high",
+                  "reason": "Operator summary should run before other backlog work."
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var firstIssue = new GithubIssue(423, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"]);
+        var secondIssue = new GithubIssue(424, "[Story] Dragon Idea Engine Master Codex: Repository Structure", "OPEN", ["story"]);
+
+        loop.CycleOnce([firstIssue]);
+        loop.SeedNext([secondIssue]);
+        loop.CycleOnce([firstIssue, secondIssue]);
+        var next = loop.CycleOnce([firstIssue, secondIssue]);
+
+        Assert.NotNull(next.Job);
+        Assert.Equal("review", next.Job!.Agent);
+        Assert.Equal("review_issue", next.Job.Action);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReadsJsonAgentOutput()
     {
         var parsed = AgentStructuredResultParser.Parse(
