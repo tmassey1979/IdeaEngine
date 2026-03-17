@@ -419,6 +419,8 @@ public sealed class GithubIssueService
             RemoveLabel(owner, repo, issueNumber, "in-progress", rootDirectory);
             RemoveLabel(owner, repo, issueNumber, "quarantined", rootDirectory);
             RemoveLabel(owner, repo, issueNumber, "stalled", rootDirectory);
+            RemoveLabel(owner, repo, issueNumber, "validated", rootDirectory);
+            RemoveLabel(owner, repo, issueNumber, "waiting-follow-up", rootDirectory);
             AddLabel(owner, repo, issueNumber, "superseded", rootDirectory);
             UpsertMarkedComment(owner, repo, issueNumber, SupersededMarker, commentBody, rootDirectory);
         }
@@ -502,6 +504,8 @@ public sealed class GithubIssueService
             RemoveLabel(owner, repo, recoveryIssue.Number, "in-progress", rootDirectory);
             RemoveLabel(owner, repo, recoveryIssue.Number, "quarantined", rootDirectory);
             RemoveLabel(owner, repo, recoveryIssue.Number, "stalled", rootDirectory);
+            RemoveLabel(owner, repo, recoveryIssue.Number, "validated", rootDirectory);
+            RemoveLabel(owner, repo, recoveryIssue.Number, "waiting-follow-up", rootDirectory);
             RemoveLabel(owner, repo, recoveryIssue.Number, "superseded", rootDirectory);
             commandRunner(
                 $"issue close {recoveryIssue.Number} --repo {owner}/{repo} --comment \"{EscapeForDoubleQuotes(BuildRecoveryRetiredComment(workflow.IssueNumber))}\"",

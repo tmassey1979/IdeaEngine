@@ -892,6 +892,8 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("issue close 500", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("retired recovery issues: #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery hold: released; parent returned to active flow", StringComparison.Ordinal));
@@ -1115,6 +1117,8 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("label create superseded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("add-label superseded", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label validated", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("api repos/tmassey1979/IdeaEngine/issues/500/comments", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-superseded", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue edit 501", StringComparison.Ordinal) && command.Contains("add-label superseded", StringComparison.Ordinal));
