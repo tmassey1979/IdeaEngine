@@ -65,6 +65,7 @@ public sealed class SelfBuildLoop
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health);
         var rollup = BuildStatusRollup(issues);
         var latestActivity = BuildLatestActivity(issues);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -73,6 +74,7 @@ public sealed class SelfBuildLoop
             attentionSummary,
             rollup,
             latestActivity,
+            recentLoopSignal,
             queuedJobs.Count,
             issues
         );
@@ -1120,6 +1122,31 @@ public sealed class SelfBuildLoop
             latest.LatestExecutionRecordedAt!.Value
         );
     }
+
+    private static RecentLoopSignalSnapshot BuildRecentLoopSignal(int queuedJobs, string health, LatestActivitySnapshot? latestActivity)
+    {
+        if (latestActivity is null)
+        {
+            return new RecentLoopSignalSnapshot("idle", "No recorded executions yet.");
+        }
+
+        if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase))
+        {
+            return new RecentLoopSignalSnapshot("blocked", $"Loop is blocked after activity on issue #{latestActivity.IssueNumber}.");
+        }
+
+        if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase))
+        {
+            return new RecentLoopSignalSnapshot("failing", $"Recent activity needs review after issue #{latestActivity.IssueNumber}.");
+        }
+
+        if (queuedJobs > 0)
+        {
+            return new RecentLoopSignalSnapshot("draining", $"Loop is actively draining queued work after issue #{latestActivity.IssueNumber}.");
+        }
+
+        return new RecentLoopSignalSnapshot("idle", $"Loop reached idle after issue #{latestActivity.IssueNumber}.");
+    }
 }
 
 public sealed record CycleResult(
@@ -1146,6 +1173,7 @@ public sealed record StatusSnapshot(
     string AttentionSummary,
     StatusRollup Rollup,
     LatestActivitySnapshot? LatestActivity,
+    RecentLoopSignalSnapshot RecentLoopSignal,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues
 );
@@ -1163,6 +1191,11 @@ public sealed record LatestActivitySnapshot(
     string CurrentStage,
     string? Summary,
     DateTimeOffset RecordedAt
+);
+
+public sealed record RecentLoopSignalSnapshot(
+    string Mode,
+    string Summary
 );
 
 public sealed record IssueStatusSnapshot(

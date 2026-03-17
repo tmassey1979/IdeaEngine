@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-17T17:01:09.6141317+00:00",
+  "generatedAt": "2026-03-17T17:03:49.1992797+00:00",
   "source": "status",
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
@@ -15,6 +15,10 @@
     "currentStage": "review",
     "summary": "Review completed for implementation stage architect with no changed paths supplied.",
     "recordedAt": "2026-03-16T22:16:05.8700824+00:00"
+  },
+  "recentLoopSignal": {
+    "mode": "failing",
+    "summary": "Recent activity needs review after issue #23."
   },
   "queuedJobs": 1,
   "issues": [

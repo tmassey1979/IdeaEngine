@@ -305,6 +305,10 @@ button {
   letter-spacing: 0.1em;
 }
 
+.status-activity-wide {
+  grid-column: span 2;
+}
+
 .status-rollup-card {
   padding: 14px 16px;
   border-radius: 16px;

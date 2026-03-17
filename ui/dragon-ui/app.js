@@ -85,6 +85,8 @@ function renderStatusSnapshot(snapshot) {
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
   const latestSummary = document.getElementById("status-latest-summary");
+  const loopMode = document.getElementById("status-loop-mode");
+  const loopSummary = document.getElementById("status-loop-summary");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
@@ -99,6 +101,8 @@ function renderStatusSnapshot(snapshot) {
     : "No recent execution";
   latestStage.textContent = snapshot.latestActivity?.currentStage ?? "unknown";
   latestSummary.textContent = snapshot.latestActivity?.summary ?? "No recent execution summary";
+  loopMode.textContent = snapshot.recentLoopSignal?.mode ?? "unknown";
+  loopSummary.textContent = snapshot.recentLoopSignal?.summary ?? "No recent loop summary";
 
   if (!snapshot.issues.length) {
     feed.innerHTML = `
@@ -132,6 +136,8 @@ async function bootStatusMock() {
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
     const latestSummary = document.getElementById("status-latest-summary");
+    const loopMode = document.getElementById("status-loop-mode");
+    const loopSummary = document.getElementById("status-loop-summary");
     chip.textContent = "Sample snapshot unavailable";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
@@ -144,6 +150,8 @@ async function bootStatusMock() {
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";
+    loopMode.textContent = "unavailable";
+    loopSummary.textContent = "Could not load loop summary";
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>
