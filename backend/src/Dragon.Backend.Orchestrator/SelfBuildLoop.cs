@@ -106,7 +106,8 @@ public sealed class SelfBuildLoop
                 leadJob.Action,
                 leadJob.Metadata.GetValueOrDefault("targetArtifact"),
                 leadJob.Metadata.GetValueOrDefault("targetOutcome"),
-                leadJob.Metadata.GetValueOrDefault("requestedPriority")),
+                leadJob.Metadata.GetValueOrDefault("requestedPriority"),
+                string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase)),
             latestActivity,
             recentLoopSignal,
             "unknown",
@@ -1459,7 +1460,8 @@ public sealed record LeadJobSnapshot(
     string Action,
     string? TargetArtifact,
     string? TargetOutcome,
-    string? Priority
+    string? Priority,
+    bool Blocking
 );
 
 public sealed record LatestActivitySnapshot(
