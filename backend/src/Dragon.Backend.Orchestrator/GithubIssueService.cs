@@ -288,6 +288,7 @@ public sealed class GithubIssueService
             .Select(path => path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path)
             .Select(path => Regex.Replace(path, "/{2,}", "/"))
             .Select(path => path.Replace("/./", "/", StringComparison.Ordinal))
+            .Select(NormalizeRelativePathSegments)
             .Select(path => path.EndsWith("/.", StringComparison.Ordinal) ? path[..^2] : path)
             .Select(path => path.EndsWith("/", StringComparison.Ordinal) ? path[..^1] : path)
             .Where(path => !string.IsNullOrWhiteSpace(path))
@@ -890,6 +891,41 @@ public sealed class GithubIssueService
         }
 
         return $"/mnt/{match.Groups["drive"].Value.ToLowerInvariant()}/{match.Groups["rest"].Value}";
+    }
+
+    private static string NormalizeRelativePathSegments(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !path.Contains("..", StringComparison.Ordinal))
+        {
+            return path;
+        }
+
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var normalized = new List<string>(segments.Length);
+
+        foreach (var segment in segments)
+        {
+            if (string.Equals(segment, ".", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(segment, "..", StringComparison.Ordinal))
+            {
+                if (normalized.Count == 0 || string.Equals(normalized[^1], "..", StringComparison.Ordinal))
+                {
+                    normalized.Add(segment);
+                    continue;
+                }
+
+                normalized.RemoveAt(normalized.Count - 1);
+                continue;
+            }
+
+            normalized.Add(segment);
+        }
+
+        return string.Join("/", normalized);
     }
 
     private static int? ParseIssueNumber(string result)

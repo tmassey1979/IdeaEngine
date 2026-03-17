@@ -1748,7 +1748,7 @@ public sealed class PlannerTests
 
         var records = new[]
         {
-            new ExecutionRecord(104, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, [" docs/ARCHITECTURE.md ", "docs/ARCHITECTURE.md", "DOCS/ARCHITECTURE.md", "docs\\ARCHITECTURE.md", "./docs/ARCHITECTURE.md", "docs//ARCHITECTURE.md", "docs/./ARCHITECTURE.md", "docs/ARCHITECTURE.md/.", "docs/ARCHITECTURE.md/", "/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", "C:/code/Playground/IdeaEngine/docs/ARCHITECTURE.md"], ["review"]),
+            new ExecutionRecord(104, "System Architecture", "developer", "implement_issue", "job-dev", "success", "done", DateTimeOffset.UtcNow, [" docs/ARCHITECTURE.md ", "docs/ARCHITECTURE.md", "DOCS/ARCHITECTURE.md", "docs\\ARCHITECTURE.md", "./docs/ARCHITECTURE.md", "docs//ARCHITECTURE.md", "docs/./ARCHITECTURE.md", "docs/../docs/ARCHITECTURE.md", "./docs/../docs/ARCHITECTURE.md", "docs/ARCHITECTURE.md/.", "docs/ARCHITECTURE.md/", "/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", "C:/code/Playground/IdeaEngine/docs/ARCHITECTURE.md"], ["review"]),
             new ExecutionRecord(104, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
             new ExecutionRecord(104, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
         };
@@ -1772,6 +1772,8 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("./docs/ARCHITECTURE.md", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs//ARCHITECTURE.md", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs/./ARCHITECTURE.md", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("docs/../docs/ARCHITECTURE.md", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("./docs/../docs/ARCHITECTURE.md", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs/ARCHITECTURE.md/.", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("docs/ARCHITECTURE.md/", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md", StringComparison.Ordinal));
