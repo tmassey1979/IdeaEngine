@@ -735,15 +735,17 @@ public sealed class GithubIssueService
     private static int? InferSourceIssueNumber(string title, string body)
     {
         var titleMatch = Regex.Match(title, @"\[Recovery\]\s+Issue\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
-        if (titleMatch.Success)
+        if (titleMatch.Success &&
+            int.TryParse(titleMatch.Groups["number"].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var titleNumber))
         {
-            return int.Parse(titleMatch.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            return titleNumber;
         }
 
         var bodyMatch = Regex.Match(body, @"source issue:\s+#(?<number>\d+)", RegexOptions.IgnoreCase);
-        if (bodyMatch.Success)
+        if (bodyMatch.Success &&
+            int.TryParse(bodyMatch.Groups["number"].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var bodyNumber))
         {
-            return int.Parse(bodyMatch.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            return bodyNumber;
         }
 
         return null;

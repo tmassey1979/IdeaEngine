@@ -644,6 +644,31 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GithubIssueService_IgnoresInvalidRecoverySourceIssueNumbers()
+    {
+        const string json = """
+        [
+          {
+            "number": 500,
+            "title": "[Recovery] Issue #999999999999999999999: Core System Principles",
+            "body": "Recovery story for quarantined issue.\n\nContext:\n- source issue: #999999999999999999999",
+            "state": "OPEN",
+            "labels": [
+              { "name": "story" },
+              { "name": "recovery" }
+            ]
+          }
+        ]
+        """;
+
+        var service = new GithubIssueService((_, _) => json);
+        var issues = service.ListStoryIssues("tmassey1979", "IdeaEngine", FindRepoRoot());
+
+        var issue = Assert.Single(issues);
+        Assert.Null(issue.SourceIssueNumber);
+    }
+
+    [Fact]
     public void GithubIssueService_IgnoresSupersededRecoveryIssuesDuringBacklogDiscovery()
     {
         const string json = """
