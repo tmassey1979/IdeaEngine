@@ -202,4 +202,20 @@ public sealed class QueueStore
 
         return removed;
     }
+
+    public void ReplaceAll(IReadOnlyList<SelfBuildJob> jobs)
+    {
+        if (jobs.Count == 0)
+        {
+            if (File.Exists(QueuePath))
+            {
+                File.Delete(QueuePath);
+            }
+
+            return;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(QueuePath)!);
+        File.WriteAllLines(QueuePath, jobs.Select(job => JsonSerializer.Serialize(job, serializerOptions)));
+    }
 }

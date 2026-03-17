@@ -1054,6 +1054,8 @@ public sealed class AgentModelExecutionTests
         Assert.NotNull(result.Job);
         Assert.Equal(1006, result.Job!.Issue);
         Assert.Equal("implement_issue", result.Job.Action);
+        Assert.Equal("1005", result.Job.Metadata["supersededImplementationIssues"]);
+        Assert.Contains("specificity", result.Job.Metadata["implementationConflictResolution"], StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(loop.ReadQueue(), job => job.Issue == 1005 && job.Action == "implement_issue");
     }
 

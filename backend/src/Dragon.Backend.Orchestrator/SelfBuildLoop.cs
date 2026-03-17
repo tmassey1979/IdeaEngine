@@ -601,7 +601,8 @@ public sealed class SelfBuildLoop
 
     private void RemoveSupersededImplementationJobs()
     {
-        var strongestPriorityByArtifact = queueStore.ReadAll()
+        var jobs = queueStore.ReadAll().ToList();
+        var strongestPriorityByArtifact = jobs
             .Where(job => string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
             .Where(job => !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")))
             .GroupBy(job => job.Metadata.GetValueOrDefault("targetArtifact")!, StringComparer.OrdinalIgnoreCase)
@@ -619,19 +620,59 @@ public sealed class SelfBuildLoop
             return;
         }
 
-        queueStore.RemoveAll(job =>
+        var removalsByWinnerIssue = new Dictionary<int, List<int>>();
+        var keptJobs = new List<SelfBuildJob>();
+        foreach (var job in jobs)
         {
             if (!string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
             {
-                return false;
+                keptJobs.Add(job);
+                continue;
             }
 
             var targetArtifact = job.Metadata.GetValueOrDefault("targetArtifact");
-            return !string.IsNullOrWhiteSpace(targetArtifact) &&
-                strongestPriorityByArtifact.TryGetValue(targetArtifact, out var strongestJob) &&
-                !ReferenceEquals(job, strongestJob) &&
-                !AreEquivalentImplementationCandidates(job, strongestJob);
-        });
+            if (string.IsNullOrWhiteSpace(targetArtifact) ||
+                !strongestPriorityByArtifact.TryGetValue(targetArtifact, out var strongestJob) ||
+                AreEquivalentImplementationCandidates(job, strongestJob))
+            {
+                keptJobs.Add(job);
+                continue;
+            }
+
+            if (job.Issue == strongestJob.Issue)
+            {
+                keptJobs.Add(job);
+                continue;
+            }
+
+            if (!removalsByWinnerIssue.TryGetValue(strongestJob.Issue, out var removedIssues))
+            {
+                removedIssues = [];
+                removalsByWinnerIssue[strongestJob.Issue] = removedIssues;
+            }
+
+            removedIssues.Add(job.Issue);
+        }
+
+        var updatedJobs = keptJobs
+            .Select(job =>
+            {
+                if (!removalsByWinnerIssue.TryGetValue(job.Issue, out var removedIssues) || removedIssues.Count == 0)
+                {
+                    return job;
+                }
+
+                var metadata = new Dictionary<string, string>(job.Metadata, StringComparer.Ordinal)
+                {
+                    ["supersededImplementationIssues"] = string.Join("|", removedIssues.OrderBy(issue => issue)),
+                    ["implementationConflictResolution"] = "Kept newer or higher-specificity same-artifact implementation; pruned weaker duplicates."
+                };
+
+                return job with { Metadata = metadata };
+            })
+            .ToList();
+
+        queueStore.ReplaceAll(updatedJobs);
     }
 
     private HashSet<string> GetCompetingImplementationArtifacts() =>
