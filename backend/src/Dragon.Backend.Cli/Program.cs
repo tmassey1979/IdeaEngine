@@ -146,7 +146,12 @@ static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
         stories,
         maxCycles: GetInt(options, "max-cycles", 100)
     );
-    ExportStatusIfRequested(loop, root, options, "run-until-idle");
+    ExportStatusIfRequested(
+        loop,
+        root,
+        options,
+        "run-until-idle",
+        SelfBuildLoop.BuildLatestPassSummary(1, result));
     PrintJson(result);
     return 0;
 }
@@ -230,7 +235,12 @@ static int RunGithubRunUntilIdle(IReadOnlyDictionary<string, string> options)
         syncValidatedWorkflows: GetBoolean(options, "sync-github"),
         maxCycles: GetInt(options, "max-cycles", 100)
     );
-    ExportStatusIfRequested(loop, root, options, "github-run-until-idle");
+    ExportStatusIfRequested(
+        loop,
+        root,
+        options,
+        "github-run-until-idle",
+        SelfBuildLoop.BuildLatestPassSummary(1, result));
     PrintJson(result);
     return 0;
 }
@@ -303,9 +313,14 @@ static int RunSyncWorkflow(IReadOnlyDictionary<string, string> options)
     return 0;
 }
 
-static void ExportStatusIfRequested(SelfBuildLoop loop, string root, IReadOnlyDictionary<string, string> options, string source)
+static void ExportStatusIfRequested(
+    SelfBuildLoop loop,
+    string root,
+    IReadOnlyDictionary<string, string> options,
+    string source,
+    LatestPassSummary? latestPass = null)
 {
-    var exporter = CreateStatusExporter(loop, root, options, source);
+    var exporter = CreateStatusExporter(loop, root, options, source, latestPass);
     if (exporter is null)
     {
         return;
@@ -318,7 +333,8 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     SelfBuildLoop loop,
     string root,
     IReadOnlyDictionary<string, string> options,
-    string source)
+    string source,
+    LatestPassSummary? initialLatestPass = null)
 {
     var outputPath = GetNullable(options, "status-out");
     if (string.IsNullOrWhiteSpace(outputPath))
@@ -329,14 +345,10 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     var resolvedOutputPath = Path.GetFullPath(outputPath, root);
     return (passNumber, result) =>
     {
-        var snapshot = loop.ReadStatus() with
+        var latestPass = initialLatestPass ?? SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
+        var snapshot = loop.ReadStatus(latestPass) with
         {
             Source = source
-        };
-        var latestPass = SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
-        snapshot = snapshot with
-        {
-            LatestPass = latestPass
         };
         WriteStatusSnapshot(resolvedOutputPath, snapshot);
     };
