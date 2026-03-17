@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dragon UI Mockup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">D</div>
+          <div>
+            <p class="eyebrow">Dragon Idea Engine</p>
+            <h1>Control Plane</h1>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <a class="nav-link active" href="#overview">Overview</a>
+          <a class="nav-link" href="#workflows">Workflows</a>
+          <a class="nav-link" href="#backlog">Backlog</a>
+          <a class="nav-link" href="#recovery">Recovery</a>
+          <a class="nav-link" href="#repositories">Repositories</a>
+        </nav>
+
+        <section class="sidebar-panel">
+          <p class="panel-label">System Pulse</p>
+          <div class="pulse-row">
+            <span class="dot good"></span>
+            <span>GitHub sync healthy</span>
+          </div>
+          <div class="pulse-row">
+            <span class="dot warn"></span>
+            <span>1 stalled story</span>
+          </div>
+          <div class="pulse-row">
+            <span class="dot good"></span>
+            <span>Queue drain in 03m</span>
+          </div>
+        </section>
+
+        <section class="sidebar-panel">
+          <p class="panel-label">Today</p>
+          <ul class="mini-list">
+            <li>8 stories validated</li>
+            <li>2 quarantines auto-triaged</li>
+            <li>1 recovery chain reopened</li>
+          </ul>
+        </section>
+      </aside>
+
+      <main class="content">
+        <header class="hero" id="overview">
+          <div>
+            <p class="eyebrow">Autonomous Software Factory</p>
+            <h2>Build, validate, recover, and resume from one operator view.</h2>
+            <p class="hero-copy">
+              This mockup focuses on the real system we have been building: a C#
+              orchestrator that reads GitHub stories, runs implementation loops,
+              syncs workflow state, and manages recovery paths when work stalls.
+            </p>
+          </div>
+
+          <div class="hero-actions">
+            <button class="primary">Run Until Idle</button>
+            <button class="secondary">Inspect Queue</button>
+          </div>
+        </header>
+
+        <section class="stats-grid">
+          <article class="stat-card accent-orange">
+            <p class="stat-label">Open Runnable Stories</p>
+            <p class="stat-value">27</p>
+            <p class="stat-meta">5 newly eligible after recovery release</p>
+          </article>
+          <article class="stat-card accent-blue">
+            <p class="stat-label">Active Workflows</p>
+            <p class="stat-value">9</p>
+            <p class="stat-meta">Developer 4, Review 3, Test 2</p>
+          </article>
+          <article class="stat-card accent-green">
+            <p class="stat-label">Validated This Week</p>
+            <p class="stat-value">41</p>
+            <p class="stat-meta">34 auto-closed, 7 waiting follow-up</p>
+          </article>
+          <article class="stat-card accent-red">
+            <p class="stat-label">Quarantined</p>
+            <p class="stat-value">3</p>
+            <p class="stat-meta">2 with active recovery children</p>
+          </article>
+        </section>
+
+        <section class="two-column" id="workflows">
+          <article class="panel panel-large">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Live Workflow Board</p>
+                <h3>Current issue flow</h3>
+              </div>
+              <span class="chip">Synced 18s ago</span>
+            </div>
+
+            <div class="kanban">
+              <div class="lane">
+                <div class="lane-head">
+                  <h4>Developer</h4>
+                  <span>4</span>
+                </div>
+                <article class="ticket">
+                  <p class="ticket-id">#344</p>
+                  <h5>Remove Deprecated Node Backend Scaffold</h5>
+                  <p>Cleanup landed locally, awaiting remote push confirmation.</p>
+                </article>
+                <article class="ticket">
+                  <p class="ticket-id">#351</p>
+                  <h5>Story Outcome Sync Notes</h5>
+                  <p>Heartbeat body being refined for real GitHub runs.</p>
+                </article>
+              </div>
+
+              <div class="lane">
+                <div class="lane-head">
+                  <h4>Review</h4>
+                  <span>3</span>
+                </div>
+                <article class="ticket warning">
+                  <p class="ticket-id">#352</p>
+                  <h5>Recovery Story Closure Rules</h5>
+                  <p>Waiting on changed-path evidence from latest execution.</p>
+                </article>
+                <article class="ticket">
+                  <p class="ticket-id">#347</p>
+                  <h5>Scheduler Resume Semantics</h5>
+                  <p>Parent issue resumed after recovery release.</p>
+                </article>
+              </div>
+
+              <div class="lane">
+                <div class="lane-head">
+                  <h4>Test</h4>
+                  <span>2</span>
+                </div>
+                <article class="ticket success">
+                  <p class="ticket-id">#339</p>
+                  <h5>Changed-Path Canonicalization</h5>
+                  <p>87 backend tests passed, awaiting validated sync.</p>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Queue Snapshot</p>
+                <h3>Next jobs</h3>
+              </div>
+            </div>
+
+            <ul class="queue-list">
+              <li>
+                <span class="mono">developer</span>
+                <strong>#351</strong>
+                <span>Plan real story completion notes</span>
+              </li>
+              <li>
+                <span class="mono">review</span>
+                <strong>#344</strong>
+                <span>Confirm remote state and issue closure</span>
+              </li>
+              <li>
+                <span class="mono">test</span>
+                <strong>#352</strong>
+                <span>Run backend suite after sync-path change</span>
+              </li>
+            </ul>
+
+            <div class="terminal">
+              <p class="terminal-title">Last command</p>
+              <code>github-run-until-idle --owner tmassey1979 --repo IdeaEngine</code>
+              <p class="terminal-result">cycle 4: validated #339, deferred-close #351, quarantined #352</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="two-column" id="backlog">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Backlog Health</p>
+                <h3>Slice by state</h3>
+              </div>
+            </div>
+
+            <div class="backlog-list">
+              <div class="backlog-row">
+                <span>Runnable stories</span>
+                <div class="bar"><div class="fill fill-orange" style="width: 68%"></div></div>
+                <strong>27</strong>
+              </div>
+              <div class="backlog-row">
+                <span>In progress</span>
+                <div class="bar"><div class="fill fill-blue" style="width: 24%"></div></div>
+                <strong>9</strong>
+              </div>
+              <div class="backlog-row">
+                <span>Waiting follow-up</span>
+                <div class="bar"><div class="fill fill-gold" style="width: 18%"></div></div>
+                <strong>7</strong>
+              </div>
+              <div class="backlog-row">
+                <span>Quarantined</span>
+                <div class="bar"><div class="fill fill-red" style="width: 8%"></div></div>
+                <strong>3</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel" id="recovery">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Recovery Chain</p>
+                <h3>Focused remediation</h3>
+              </div>
+            </div>
+
+            <div class="chain">
+              <div class="chain-node">
+                <span class="chain-kind">Parent</span>
+                <h4>#352 Story Outcome Sync Notes</h4>
+                <p>Held open while recovery path validates changed-path evidence.</p>
+              </div>
+              <div class="chain-link"></div>
+              <div class="chain-node active">
+                <span class="chain-kind">Recovery</span>
+                <h4>#353 Recovery: Sync Evidence Filter</h4>
+                <p>Preferred active path, auto-prioritized ahead of general backlog.</p>
+              </div>
+              <div class="chain-link short"></div>
+              <div class="chain-node muted">
+                <span class="chain-kind">Superseded</span>
+                <h4>#349 Recovery: Old Sync Heuristic</h4>
+                <p>Closed and retained for audit only.</p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel repositories" id="repositories">
+          <div class="panel-head">
+            <div>
+              <p class="panel-label">Repository Signals</p>
+              <h3>What the system changed</h3>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th>Last validated story</th>
+                <th>Changed paths</th>
+                <th>Runtime signal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>IdeaEngine</td>
+                <td>#339 Changed-Path Canonicalization</td>
+                <td class="mono">backend/.../GithubIssueService.cs</td>
+                <td><span class="badge good">healthy</span></td>
+              </tr>
+              <tr>
+                <td>IdeaEngine</td>
+                <td>#344 Remove Deprecated Node Backend Scaffold</td>
+                <td class="mono">agents/, runner/, services/, sdk/</td>
+                <td><span class="badge warn">awaiting push</span></td>
+              </tr>
+              <tr>
+                <td>Dragon CRM</td>
+                <td>#118 Recovery Resume Policy</td>
+                <td class="mono">docs/ARCHITECTURE.md</td>
+                <td><span class="badge muted">planned</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </body>
+  </html>
