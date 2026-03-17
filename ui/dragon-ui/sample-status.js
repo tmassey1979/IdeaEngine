@@ -1,6 +1,10 @@
 globalThis.__DRAGON_STATUS__ = {
   "generatedAt": "2026-03-17T18:27:02.6650205+00:00",
   "source": "status",
+  "lastCommand": "github-run-watch",
+  "workerMode": "watch",
+  "workerState": "waiting",
+  "nextPollAt": "2026-03-17T18:27:32.6650205+00:00",
   "health": "attention",
   "attentionSummary": "1 failed issue(s) need review.",
   "rollup": {
@@ -28,6 +32,14 @@ globalThis.__DRAGON_STATUS__ = {
     "quarantinedIssues": 0,
     "inProgressIssues": 0,
     "validatedIssues": 0
+  },
+  "latestPass": {
+    "passNumber": 4,
+    "cycleCount": 3,
+    "seededCycles": 1,
+    "consumedCycles": 2,
+    "reachedIdle": false,
+    "reachedMaxCycles": false
   },
   "queuedJobs": 1,
   "issues": [

@@ -244,6 +244,7 @@ function renderStatusSnapshot(snapshot) {
   const feed = document.getElementById("status-feed");
   const health = document.getElementById("status-health");
   const source = document.getElementById("status-source");
+  const lastCommand = document.getElementById("status-last-command");
   const workerMode = document.getElementById("status-worker-mode");
   const workerState = document.getElementById("status-worker-state");
   const generatedAt = document.getElementById("status-generated-at");
@@ -280,6 +281,7 @@ function renderStatusSnapshot(snapshot) {
   feed.className = "status-feed";
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
+  lastCommand.textContent = snapshot.lastCommand ?? snapshot.source ?? "unknown";
   const workerModeState = workerModeInfo(snapshot);
   workerMode.textContent = workerModeState.label;
   workerMode.className = `worker-mode ${workerModeState.state}`;
@@ -371,6 +373,7 @@ async function bootStatusMock() {
     const feed = document.getElementById("status-feed");
     const health = document.getElementById("status-health");
     const source = document.getElementById("status-source");
+    const lastCommand = document.getElementById("status-last-command");
     const workerMode = document.getElementById("status-worker-mode");
     const workerState = document.getElementById("status-worker-state");
     const generatedAt = document.getElementById("status-generated-at");
@@ -407,6 +410,7 @@ async function bootStatusMock() {
     feed.className = "status-feed";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
+    lastCommand.textContent = "unavailable";
     workerMode.textContent = "unavailable";
     workerMode.className = "worker-mode unavailable";
     workerState.textContent = "unavailable";
