@@ -152,6 +152,7 @@ function renderStatusSnapshot(snapshot) {
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
+  queueDirection.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
   comparisonMode.textContent = snapshot.comparisonMode ?? "backend";
   comparisonMode.className = `comparison-mode ${snapshot.comparisonMode ?? "backend"}`;
@@ -223,6 +224,7 @@ async function bootStatusMock() {
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
     queueDirection.textContent = "unavailable";
+    queueDirection.className = "queue-trend unavailable";
     queueComparedAt.textContent = "Unavailable";
     comparisonMode.textContent = "unavailable";
     comparisonMode.className = "comparison-mode unavailable";
