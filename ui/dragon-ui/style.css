@@ -483,6 +483,7 @@ button {
 
 .status-card {
   padding: 18px;
+  transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease;
 }
 
 .status-card-head {
@@ -495,6 +496,11 @@ button {
 
 .status-card-head h4 {
   margin: 0;
+}
+
+.status-feed.deemphasized .status-card {
+  opacity: 0.82;
+  transform: scale(0.995);
 }
 
 .status-meta-grid {

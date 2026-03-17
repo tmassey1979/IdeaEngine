@@ -161,6 +161,7 @@ function renderStatusSnapshot(snapshot) {
   const loopSummary = document.getElementById("status-loop-summary");
   const queueDelta = document.getElementById("status-queue-delta");
   chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
+  feed.className = "status-feed";
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
@@ -190,6 +191,7 @@ function renderStatusSnapshot(snapshot) {
   latestActivityGroup.className = "status-activity";
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
+    feed.classList.add("deemphasized");
   } else if (snapshot.recentLoopSignal?.mode === "draining") {
     latestActivityGroup.classList.add("caution");
   }
@@ -245,6 +247,7 @@ async function bootStatusMock() {
     const loopSummary = document.getElementById("status-loop-summary");
     const queueDelta = document.getElementById("status-queue-delta");
     chip.textContent = "Sample snapshot unavailable";
+    feed.className = "status-feed";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
     generatedAt.textContent = "Could not load sample payload";
