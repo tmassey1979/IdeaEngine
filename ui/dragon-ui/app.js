@@ -164,6 +164,15 @@ function workerModeInfo(snapshot) {
   };
 }
 
+function workerStateInfo(snapshot) {
+  const state = snapshot.workerState ?? "snapshot";
+
+  return {
+    label: state,
+    state,
+  };
+}
+
 function latestPassOutcome(snapshot) {
   const latestPass = snapshot.latestPass;
   if (!latestPass) {
@@ -236,8 +245,10 @@ function renderStatusSnapshot(snapshot) {
   const health = document.getElementById("status-health");
   const source = document.getElementById("status-source");
   const workerMode = document.getElementById("status-worker-mode");
+  const workerState = document.getElementById("status-worker-state");
   const generatedAt = document.getElementById("status-generated-at");
   const freshness = document.getElementById("status-freshness");
+  const nextPoll = document.getElementById("status-next-poll");
   const queueDirection = document.getElementById("status-queue-direction");
   const queueComparedAt = document.getElementById("status-queue-compared-at");
   const compareAge = document.getElementById("status-compare-age");
@@ -272,10 +283,14 @@ function renderStatusSnapshot(snapshot) {
   const workerModeState = workerModeInfo(snapshot);
   workerMode.textContent = workerModeState.label;
   workerMode.className = `worker-mode ${workerModeState.state}`;
+  const workerStateValue = workerStateInfo(snapshot);
+  workerState.textContent = workerStateValue.label;
+  workerState.className = `worker-state ${workerStateValue.state}`;
   generatedAt.textContent = formatTimestamp(snapshot.generatedAt);
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
   freshness.className = `snapshot-freshness ${freshnessState.state}`;
+  nextPoll.textContent = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "No next poll scheduled";
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueDirection.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
@@ -357,8 +372,10 @@ async function bootStatusMock() {
     const health = document.getElementById("status-health");
     const source = document.getElementById("status-source");
     const workerMode = document.getElementById("status-worker-mode");
+    const workerState = document.getElementById("status-worker-state");
     const generatedAt = document.getElementById("status-generated-at");
     const freshness = document.getElementById("status-freshness");
+    const nextPoll = document.getElementById("status-next-poll");
     const queueDirection = document.getElementById("status-queue-direction");
     const queueComparedAt = document.getElementById("status-queue-compared-at");
     const compareAge = document.getElementById("status-compare-age");
@@ -392,9 +409,12 @@ async function bootStatusMock() {
     source.textContent = "unavailable";
     workerMode.textContent = "unavailable";
     workerMode.className = "worker-mode unavailable";
+    workerState.textContent = "unavailable";
+    workerState.className = "worker-state unavailable";
     generatedAt.textContent = "Could not load sample payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
+    nextPoll.textContent = "Unavailable";
     queueDirection.textContent = "unavailable";
     queueDirection.className = "queue-trend unavailable";
     queueComparedAt.textContent = "Unavailable";
