@@ -96,6 +96,7 @@ function renderIssueCard(issue) {
   const summary = issue.latestExecutionSummary ?? "none";
   const notes = issue.latestExecutionNotes ?? "none";
   const cardClass = issue.isPrimary ? "status-card primary" : "status-card";
+  const leadBadge = issue.isPrimary ? '<span class="chip">Lead issue</span>' : "";
 
   return `
     <article class="${cardClass}">
@@ -104,7 +105,10 @@ function renderIssueCard(issue) {
           <p class="panel-label">Issue #${issue.issueNumber}</p>
           <h4>${issue.issueTitle}</h4>
         </div>
-        <span class="badge ${badgeClassForStatus(issue.overallStatus)}">${issue.overallStatus}</span>
+        <div class="status-card-badges">
+          ${leadBadge}
+          <span class="badge ${badgeClassForStatus(issue.overallStatus)}">${issue.overallStatus}</span>
+        </div>
       </div>
       <div class="status-meta-grid">
         <div>

@@ -500,6 +500,14 @@ button {
   margin-bottom: 14px;
 }
 
+.status-card-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .status-card-head h4 {
   margin: 0;
 }
