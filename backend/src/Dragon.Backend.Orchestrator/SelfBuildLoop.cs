@@ -287,6 +287,7 @@ public sealed class SelfBuildLoop
 
         foreach (var requestedFollowUp in requestedFollowUps
             .OrderBy(GetRequestedFollowUpPriorityRank)
+            .ThenBy(GetRequestedFollowUpActionRank)
             .ThenBy(followUp => followUp.Agent ?? string.Empty, StringComparer.OrdinalIgnoreCase)
             .ThenBy(followUp => followUp.Action ?? string.Empty, StringComparer.OrdinalIgnoreCase))
         {
@@ -305,6 +306,11 @@ public sealed class SelfBuildLoop
             if (followUps.Any(existing =>
                 string.Equals(existing.Agent, followUpAgent, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(existing.Action, followUpAction, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (IsRedundantSummaryFollowUp(followUps, followUpAgent, followUpAction, requestedFollowUp.TargetArtifact))
             {
                 continue;
             }
@@ -330,6 +336,24 @@ public sealed class SelfBuildLoop
         return followUps;
     }
 
+    private static bool IsRedundantSummaryFollowUp(
+        IReadOnlyList<SelfBuildJob> existingFollowUps,
+        string followUpAgent,
+        string followUpAction,
+        string? targetArtifact)
+    {
+        if (!string.Equals(followUpAction, "summarize_issue", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            return false;
+        }
+
+        return existingFollowUps.Any(existing =>
+            string.Equals(existing.Agent, followUpAgent, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Action, "implement_issue", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Metadata.GetValueOrDefault("targetArtifact"), targetArtifact, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static int GetRequestedFollowUpPriorityRank(RequestedFollowUp followUp)
     {
         if (string.Equals(followUp.Priority, "high", StringComparison.OrdinalIgnoreCase))
@@ -343,6 +367,20 @@ public sealed class SelfBuildLoop
         }
 
         return 1;
+    }
+
+    private static int GetRequestedFollowUpActionRank(RequestedFollowUp followUp)
+    {
+        var action = string.IsNullOrWhiteSpace(followUp.Action)
+            ? InferFollowUpAction(followUp)
+            : followUp.Action;
+
+        return action?.ToLowerInvariant() switch
+        {
+            "implement_issue" => 0,
+            "summarize_issue" => 1,
+            _ => 2
+        };
     }
 
     private void RemoveSupersededRecoveryJobs(IReadOnlyList<GithubIssue> issues)

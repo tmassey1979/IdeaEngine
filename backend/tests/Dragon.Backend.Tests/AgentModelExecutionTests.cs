@@ -524,6 +524,55 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_DropsEquivalentTargetedSummary_WhenTargetedImplementationExists()
+    {
+        var root = CreateTempRoot();
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Documentation updated.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "docs/generated/provider-notes.md",
+                  "content": "# Provider Notes\nQueued extra follow-up.\n"
+                }
+              ],
+              "followUps": [
+                {
+                  "priority": "high",
+                  "reason": "Summarize the updated provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Produce an operator-facing summary of the provider notes."
+                },
+                {
+                  "priority": "high",
+                  "reason": "Tighten the provider notes.",
+                  "targetArtifact": "docs/generated/provider-notes.md",
+                  "targetOutcome": "Update the provider notes with clearer operator guidance."
+                }
+              ]
+            }
+            """
+        );
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var issues = new[]
+        {
+            new GithubIssue(442, "[Story] Dragon Idea Engine Master Codex: Documentation Agent", "OPEN", ["story"])
+        };
+
+        loop.CycleOnce(issues);
+        var result = loop.CycleOnce(issues);
+
+        Assert.Equal(3, result.FollowUps.Count);
+        Assert.Contains(result.FollowUps, job => job.Agent == "review" && job.Action == "review_issue");
+        Assert.Contains(result.FollowUps, job => job.Agent == "test" && job.Action == "test_issue");
+        Assert.Contains(result.FollowUps, job => job.Agent == "documentation" && job.Action == "implement_issue");
+        Assert.DoesNotContain(result.FollowUps, job => job.Agent == "documentation" && job.Action == "summarize_issue");
+    }
+
+    [Fact]
     public void CycleOnce_ExecutesInferredDocumentationImplementFollowUp_AndAppliesOperations()
     {
         var root = CreateTempRoot();
