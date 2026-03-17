@@ -970,7 +970,11 @@ public sealed class GithubIssueService
         var markdownLinkMatch = Regex.Match(path, @"^\[[^\]]*\]\((?<path>.+)\)$");
         if (markdownLinkMatch.Success)
         {
-            return markdownLinkMatch.Groups["path"].Value.Trim();
+            var linkTarget = markdownLinkMatch.Groups["path"].Value.Trim();
+            var titleMatch = Regex.Match(linkTarget, "^(?<path>.+?)\\s+(?:\"[^\"]*\"|'[^']*')$");
+            return titleMatch.Success
+                ? titleMatch.Groups["path"].Value.Trim()
+                : linkTarget;
         }
 
         if ((path[0], path[^1]) is ('`', '`') or ('[', ']') or ('(', ')') or ('"', '"') or ('\'', '\''))
