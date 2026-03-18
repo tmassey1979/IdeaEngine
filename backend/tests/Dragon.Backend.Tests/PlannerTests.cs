@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Net.Sockets;
 using System.Text.Json;
 using Dragon.Backend.Contracts;
 using Dragon.Backend.Orchestrator;
@@ -341,6 +344,61 @@ public sealed class PlannerTests
         Assert.Equal(610, issueElement.GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", issueElement.GetProperty("currentStage").GetString());
         Assert.Contains("Superseded summary issues: 608", issueElement.GetProperty("latestExecutionNotes").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_ServesLiveStatusSnapshot()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            710,
+            new SelfBuildJobPayload("[Story] Live Status", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "ui/dragon-ui/sample-status.json",
+                ["targetOutcome"] = "serve a live dashboard snapshot",
+                ["requestedPriority"] = "high",
+                ["requestedBlocking"] = "true",
+                ["workType"] = "story"
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var snapshot = await client.GetFromJsonAsync<StatusSnapshot>($"{prefix}status");
+        await serveTask;
+
+        Assert.NotNull(snapshot);
+        Assert.Equal("status-http", snapshot!.Source);
+        Assert.Equal("serve-status", snapshot.LastCommand);
+        Assert.Equal(1, snapshot.QueuedJobs);
+        Assert.NotNull(snapshot.LeadJob);
+        Assert.Equal(710, snapshot.LeadJob!.IssueNumber);
+        Assert.Equal("ui/dragon-ui/sample-status.json", snapshot.LeadJob.TargetArtifact);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_ReturnsNotFoundForUnknownRoute()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var response = await client.GetAsync($"{prefix}missing");
+        await serveTask;
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -3655,5 +3713,14 @@ public sealed class PlannerTests
         var path = Path.Combine(Path.GetTempPath(), $"dragon-backend-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private static string CreateLocalHttpPrefix()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return $"http://127.0.0.1:{port}/";
     }
 }

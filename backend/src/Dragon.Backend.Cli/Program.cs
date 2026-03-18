@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Dragon.Backend.Contracts;
 using Dragon.Backend.Orchestrator;
@@ -11,6 +12,7 @@ return command switch
     "plan" => RunPlan(options),
     "plan-from-backlog" => RunPlanFromBacklog(options),
     "status" => RunStatus(options),
+    "serve-status" => RunServeStatus(options),
     "queue" => RunQueue(options),
     "cycle-once" => RunCycleOnce(options),
     "run-until-idle" => RunUntilIdle(options),
@@ -124,6 +126,39 @@ static int RunStatus(IReadOnlyDictionary<string, string> options)
 
     PrintJson(snapshot);
     return 0;
+}
+
+static int RunServeStatus(IReadOnlyDictionary<string, string> options)
+{
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
+    var prefix = GetString(options, "prefix", "http://127.0.0.1:5078/");
+    using var cancellation = new CancellationTokenSource();
+    ConsoleCancelEventHandler? handler = null;
+    handler = (_, eventArgs) =>
+    {
+        eventArgs.Cancel = true;
+        cancellation.Cancel();
+    };
+
+    Console.CancelKeyPress += handler;
+
+    try
+    {
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        Console.WriteLine($"Serving status on {prefix}");
+        server.ServeUntilCancelledAsync(prefix, cancellation.Token).GetAwaiter().GetResult();
+        return 0;
+    }
+    catch (HttpListenerException exception)
+    {
+        Console.Error.WriteLine(exception.Message);
+        return 1;
+    }
+    finally
+    {
+        Console.CancelKeyPress -= handler;
+    }
 }
 
 static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
@@ -492,6 +527,7 @@ static int ShowHelp()
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           status [--root <repo-root>] [--out <path>]
+          serve-status [--root <repo-root>] [--prefix http://127.0.0.1:5078/]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>] [--status-out <path>]
           run-until-idle [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
