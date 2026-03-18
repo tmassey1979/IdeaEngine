@@ -23,6 +23,23 @@ The mock UI now uses that previous snapshot as a client-side fallback for trend
 comparison when the freshly exported snapshot does not yet carry a backend
 comparison baseline.
 
+When available, the dashboard now prefers a live backend status endpoint before
+falling back to the local sample payloads. It tries:
+
+```text
+/status
+http://127.0.0.1:5078/status
+http://localhost:5078/status
+```
+
+If none of those respond, it falls back to the generated sample snapshot files.
+
+To run the lightweight local status server from the repo root:
+
+```bash
+dotnet run --project backend/src/Dragon.Backend.Cli -- serve-status --root . --prefix http://127.0.0.1:5078/
+```
+
 To refresh that payload from the repo root, run:
 
 ```bash

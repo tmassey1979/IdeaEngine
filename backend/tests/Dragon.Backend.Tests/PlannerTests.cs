@@ -386,6 +386,23 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public async Task StatusHttpServer_IncludesCorsHeadersOnStatusResponses()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        using var response = await client.GetAsync($"{prefix}status");
+        await serveTask;
+
+        Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values));
+        Assert.Contains("*", values);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_ReturnsNotFoundForUnknownRoute()
     {
         var root = CreateTempRoot();

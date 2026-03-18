@@ -1,14 +1,70 @@
+const LIVE_STATUS_ENDPOINTS = buildLiveStatusEndpoints();
+
+function buildLiveStatusEndpoints() {
+  const endpoints = [];
+
+  if (globalThis.location?.protocol === "http:" || globalThis.location?.protocol === "https:") {
+    endpoints.push(new URL("/status", globalThis.location.href).toString());
+  }
+
+  endpoints.push("http://127.0.0.1:5078/status", "http://localhost:5078/status");
+  return [...new Set(endpoints)];
+}
+
+async function fetchJsonWithTimeout(url, timeoutMs = 1500) {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unable to load status (${response.status})`);
+    }
+
+    return response.json();
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
+
+async function loadLiveStatusSnapshot() {
+  for (const endpoint of LIVE_STATUS_ENDPOINTS) {
+    try {
+      const snapshot = await fetchJsonWithTimeout(endpoint);
+      return { snapshot, endpoint };
+    } catch {
+    }
+  }
+
+  return null;
+}
+
 async function loadStatusSnapshot() {
+  const liveStatus = await loadLiveStatusSnapshot();
+  if (liveStatus) {
+    return {
+      ...liveStatus.snapshot,
+      uiPayloadSource: "live-http",
+      uiStatusEndpoint: liveStatus.endpoint,
+    };
+  }
+
   if (globalThis.__DRAGON_STATUS__) {
-    return globalThis.__DRAGON_STATUS__;
+    return {
+      ...globalThis.__DRAGON_STATUS__,
+      uiPayloadSource: "sample-script",
+    };
   }
 
-  const response = await fetch("sample-status.json");
-  if (!response.ok) {
-    throw new Error(`Unable to load sample status (${response.status})`);
-  }
-
-  return response.json();
+  const snapshot = await fetchJsonWithTimeout("sample-status.json");
+  return {
+    ...snapshot,
+    uiPayloadSource: "sample-json",
+  };
 }
 
 async function loadPreviousStatusSnapshot() {
@@ -141,6 +197,19 @@ function comparisonNote(snapshot) {
   }
 
   return "Comparison data is coming directly from the exported backend snapshot.";
+}
+
+function statusChipLabel(snapshot) {
+  switch (snapshot.uiPayloadSource) {
+    case "live-http":
+      return `Live snapshot from ${snapshot.uiStatusEndpoint ?? "/status"}`;
+    case "sample-script":
+      return `${snapshot.issues.length} issues loaded from local sample script`;
+    case "sample-json":
+      return `${snapshot.issues.length} issues loaded from sample-status.json`;
+    default:
+      return `${snapshot.issues.length} issues loaded`;
+  }
 }
 
 function comparisonLabel(snapshot) {
@@ -558,7 +627,7 @@ function renderStatusSnapshot(snapshot) {
   const loopMode = document.getElementById("status-loop-mode");
   const loopSummary = document.getElementById("status-loop-summary");
   const queueDelta = document.getElementById("status-queue-delta");
-  chip.textContent = `${snapshot.issues.length} issues loaded from sample-status.json`;
+  chip.textContent = statusChipLabel(snapshot);
   feed.className = "status-feed";
   health.textContent = snapshot.health ?? "unknown";
   source.textContent = snapshot.source ?? "unknown";
@@ -733,7 +802,7 @@ async function bootStatusMock() {
     const loopMode = document.getElementById("status-loop-mode");
     const loopSummary = document.getElementById("status-loop-summary");
     const queueDelta = document.getElementById("status-queue-delta");
-    chip.textContent = "Sample snapshot unavailable";
+    chip.textContent = "Status snapshot unavailable";
     feed.className = "status-feed";
     health.textContent = "unavailable";
     source.textContent = "unavailable";
@@ -747,7 +816,7 @@ async function bootStatusMock() {
     pollCadence.textContent = "Unavailable";
     workerProgress.textContent = "Unavailable";
     workerProgress.className = "worker-progress unavailable";
-    generatedAt.textContent = "Could not load sample payload";
+    generatedAt.textContent = "Could not load status payload";
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
     nextPoll.textContent = "Unavailable";
@@ -806,7 +875,7 @@ async function bootStatusMock() {
     feed.innerHTML = `
       <article class="status-card">
         <p class="panel-label">Status load failed</p>
-        <h4>Could not load sample status</h4>
+        <h4>Could not load status snapshot</h4>
         <p>${error instanceof Error ? error.message : "Unknown error"}</p>
       </article>
     `;

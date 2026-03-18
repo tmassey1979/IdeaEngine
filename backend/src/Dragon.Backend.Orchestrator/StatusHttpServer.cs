@@ -79,7 +79,14 @@ public sealed class StatusHttpServer
     {
         try
         {
+            ApplyCorsHeaders(context.Response);
             var path = NormalizePath(context.Request.Url?.AbsolutePath);
+            if (string.Equals(context.Request.HttpMethod, "OPTIONS", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+                return;
+            }
+
             if (!string.Equals(context.Request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
@@ -128,6 +135,13 @@ public sealed class StatusHttpServer
         }
 
         return path;
+    }
+
+    private static void ApplyCorsHeaders(HttpListenerResponse response)
+    {
+        response.Headers["Access-Control-Allow-Origin"] = "*";
+        response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+        response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
     }
 
     private static async Task WriteJsonAsync(HttpListenerResponse response, object payload, CancellationToken cancellationToken)
