@@ -57,3 +57,20 @@ To keep the local runner alive between passes with a controlled poll interval:
 ```bash
 npm run run:watch
 ```
+
+Docker stack:
+
+```bash
+cp .env.docker.example .env
+npm run docker:up
+```
+
+That now boots:
+
+- the backend worker container
+- Postgres
+- RabbitMQ
+- a bundled observability stack
+
+The backend status endpoint is exposed at `http://127.0.0.1:5078/status`, which
+matches the live-first dashboard path.

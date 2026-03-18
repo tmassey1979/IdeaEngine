@@ -44,6 +44,46 @@ GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Back
 dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tmassey1979 --repo IdeaEngine --issue 23 --root .
 ```
 
+Docker runtime:
+
+```bash
+cp .env.docker.example .env
+docker compose up --build
+```
+
+That stack now includes:
+
+- `dragon-backend`: published CLI worker container running the status server and watch loop together
+- `postgres`: default relational store for future persistence work
+- `rabbitmq`: default message broker for future queue/event wiring
+- `lgtm`: bundled observability stack with Grafana + OTLP endpoints
+
+The backend container currently still uses the repo's file-backed state under
+`/workspace/.dragon`, but the compose stack brings up the surrounding server
+resources now so the runtime can grow into them without reworking deployment.
+
+Useful ports:
+
+- backend status: `http://127.0.0.1:5078/status`
+- backend health: `http://127.0.0.1:5078/health`
+- Postgres: `127.0.0.1:5432`
+- RabbitMQ AMQP: `127.0.0.1:5672`
+- RabbitMQ management: `http://127.0.0.1:15672`
+- Grafana / LGTM: `http://127.0.0.1:3000`
+
+Useful environment overrides:
+
+- `DRAGON_RUN_MODE=watch|polling|idle|github-watch|github-polling|github-idle`
+- `DRAGON_POLL_SECONDS`
+- `DRAGON_MAX_PASSES`
+- `DRAGON_IDLE_PASSES`
+- `DRAGON_MAX_CYCLES`
+- `DRAGON_GITHUB_OWNER`
+- `DRAGON_GITHUB_REPO`
+- `DRAGON_SYNC_GITHUB=true`
+- `OPENAI_API_KEY`
+- `GITHUB_TOKEN` / `GH_TOKEN`
+
 Provider direction:
 
 - `IAgentModelProvider` is the backend abstraction boundary
