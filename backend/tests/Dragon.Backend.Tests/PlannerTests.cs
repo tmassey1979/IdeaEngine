@@ -386,6 +386,44 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public async Task StatusHttpServer_PrefersRuntimeSnapshotFile_WhenProvided()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var snapshotPath = Path.Combine(root, ".dragon", "status", "runtime-status.json");
+        loop.WriteStatus(
+            snapshotPath,
+            "run-watch",
+            "watch",
+            "waiting",
+            null,
+            DateTimeOffset.UtcNow.AddSeconds(30),
+            30,
+            1,
+            2,
+            1,
+            4,
+            SelfBuildLoop.BuildLatestPassSummary(1, new RunUntilIdleResult([], true, false)),
+            1,
+            4);
+
+        var server = new StatusHttpServer(loop, snapshotPath);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var snapshot = await client.GetFromJsonAsync<StatusSnapshot>($"{prefix}status");
+        await serveTask;
+
+        Assert.NotNull(snapshot);
+        Assert.Equal("status-http", snapshot!.Source);
+        Assert.Equal("run-watch", snapshot.LastCommand);
+        Assert.Equal("watch", snapshot.WorkerMode);
+        Assert.Equal("waiting", snapshot.WorkerState);
+        Assert.Equal(30, snapshot.PollIntervalSeconds);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_IncludesCorsHeadersOnStatusResponses()
     {
         var root = CreateTempRoot();
@@ -2285,6 +2323,53 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_ToleratesLabelMutationPermissionFailure()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            102,
+            "System Architecture",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["architect"] = new("success", "job-architect", DateTimeOffset.UtcNow, "done"),
+                ["review"] = new("success", "job-review", DateTimeOffset.UtcNow, "done"),
+                ["test"] = new("success", "job-test", DateTimeOffset.UtcNow, "done")
+            },
+            DateTimeOffset.UtcNow
+        );
+
+        var records = new[]
+        {
+            new ExecutionRecord(102, "System Architecture", "architect", "implement_issue", "job-architect", "success", "done", DateTimeOffset.UtcNow, [], ["review"]),
+            new ExecutionRecord(102, "System Architecture", "review", "review_issue", "job-review", "success", "done", DateTimeOffset.UtcNow, [], ["test"]),
+            new ExecutionRecord(102, "System Architecture", "test", "test_issue", "job-test", "success", "done", DateTimeOffset.UtcNow, [], [])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label waiting-follow-up", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("gh command failed: failed to update https://github.com/tmassey1979/IdeaEngine/issues/102: GraphQL: Resource not accessible by personal access token (addLabelsToLabelable)");
+            }
+
+            return arguments.Contains("issues/102/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("issue edit 102 --repo tmassey1979/IdeaEngine --add-label waiting-follow-up", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("issue close 102", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncWorkflow_HeartbeatIncludesExecutionConflictNotes()
     {
         var root = CreateTempRoot();
@@ -3030,6 +3115,60 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncQuarantinedWorkflow_RetriesRecoveryIssueCreationWithoutRecoveryLabel_WhenLabelIsMissing()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures."
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal) &&
+                arguments.Contains("--label recovery", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("gh command failed: could not add label: 'recovery' not found");
+            }
+
+            if (arguments.Contains("issue create --repo", StringComparison.Ordinal))
+            {
+                return "https://github.com/tmassey1979/IdeaEngine/issues/999";
+            }
+
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("--label recovery", StringComparison.Ordinal));
+        Assert.Contains(commands, command =>
+            command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal) &&
+            command.Contains("--label story", StringComparison.Ordinal) &&
+            command.Contains("--label backlog", StringComparison.Ordinal) &&
+            !command.Contains("--label recovery", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: #999", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncQuarantinedWorkflow_OmitsBlankChangedPathsFromRecoveryTrail()
     {
         var root = CreateTempRoot();
@@ -3135,6 +3274,54 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("--method PATCH", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("blocked stage: developer", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: #321", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncQuarantinedWorkflow_RecognizesExistingRecoveryIssueByTitleWithoutRecoveryLabel()
+    {
+        var root = CreateTempRoot();
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures."
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return """
+                [
+                  {
+                    "number": 321,
+                    "title": "[Recovery] Issue #22: Core",
+                    "labels": [
+                      { "name": "story" }
+                    ]
+                  }
+                ]
+                """;
+            }
+
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: #321", StringComparison.Ordinal));
     }
 
@@ -3705,6 +3892,56 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void CycleOnce_ToleratesGithubSyncFailure()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"], "", "Core System Principles", "codex/sections/01-dragon-idea-engine-master-codex.md"),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var commands = new List<string>();
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issues/22/comments", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("gh command failed: gh: Resource not accessible by personal access token (HTTP 403)");
+            }
+
+            return string.Empty;
+        });
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(1, string.Empty, "forced failure"));
+        var loop = new SelfBuildLoop(root, githubIssueService: github, jobExecutor: executor);
+
+        CycleResult? quarantineCycle = null;
+        for (var index = 0; index < 12; index += 1)
+        {
+            var cycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+            if (cycle.FailureDisposition?.Quarantined == true)
+            {
+                quarantineCycle = cycle;
+                break;
+            }
+        }
+
+        Assert.NotNull(quarantineCycle);
+        Assert.NotNull(quarantineCycle!.GithubSync);
+        Assert.True(quarantineCycle.GithubSync!.Attempted);
+        Assert.False(quarantineCycle.GithubSync.Updated);
+        Assert.Contains("GitHub sync failed", quarantineCycle.GithubSync.Summary, StringComparison.Ordinal);
+        Assert.Contains(commands, command => command.Contains("issues/22/comments", StringComparison.Ordinal));
     }
 
     private static string FindRepoRoot()

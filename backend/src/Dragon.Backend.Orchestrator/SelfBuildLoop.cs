@@ -426,7 +426,8 @@ public sealed class SelfBuildLoop
             return new GithubSyncResult(false, false, $"No workflow state found for issue #{issueNumber}.");
         }
 
-        return githubIssueService.SyncWorkflow(owner, repo, workflow, executionRecordStore.Read(issueNumber), RootDirectory);
+        return TrySyncWorkflow(owner, repo, workflow, syncValidatedWorkflows: true) ??
+            new GithubSyncResult(false, false, $"GitHub sync skipped for issue #{issueNumber}.");
     }
 
     private GithubSyncResult? TrySyncWorkflow(string? githubOwner, string repo, IssueWorkflowState workflow, bool syncValidatedWorkflows)
@@ -436,7 +437,17 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
+        try
+        {
+            return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new GithubSyncResult(
+                true,
+                false,
+                $"GitHub sync failed for issue #{workflow.IssueNumber}: {ex.Message}");
+        }
     }
 
     private bool HasSchedulableWork(IReadOnlyList<GithubIssue> issues)

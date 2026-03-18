@@ -132,6 +132,7 @@ static int RunServeStatus(IReadOnlyDictionary<string, string> options)
 {
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var prefix = GetString(options, "prefix", "http://127.0.0.1:5078/");
+    var snapshotPath = GetNullable(options, "snapshot-file");
     using var cancellation = new CancellationTokenSource();
     ConsoleCancelEventHandler? handler = null;
     handler = (_, eventArgs) =>
@@ -145,7 +146,9 @@ static int RunServeStatus(IReadOnlyDictionary<string, string> options)
     try
     {
         var loop = new SelfBuildLoop(root);
-        var server = new StatusHttpServer(loop);
+        var server = new StatusHttpServer(
+            loop,
+            string.IsNullOrWhiteSpace(snapshotPath) ? null : Path.GetFullPath(snapshotPath, root));
         Console.WriteLine($"Serving status on {prefix}");
         server.ServeUntilCancelledAsync(prefix, cancellation.Token).GetAwaiter().GetResult();
         return 0;
@@ -527,7 +530,7 @@ static int ShowHelp()
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           status [--root <repo-root>] [--out <path>]
-          serve-status [--root <repo-root>] [--prefix http://127.0.0.1:5078/]
+          serve-status [--root <repo-root>] [--prefix http://127.0.0.1:5078/] [--snapshot-file <path>]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>] [--status-out <path>]
           run-until-idle [--max-cycles 100] [--root <repo-root>] [--status-out <path>]

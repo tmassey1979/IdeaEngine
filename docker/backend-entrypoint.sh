@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="${DRAGON_ROOT:-/workspace}"
 STATUS_PREFIX="${DRAGON_STATUS_PREFIX:-http://+:5078/}"
+STATUS_FILE="${DRAGON_STATUS_FILE:-/workspace/.dragon/status/runtime-status.json}"
 RUN_MODE="${DRAGON_RUN_MODE:-watch}"
 POLL_SECONDS="${DRAGON_POLL_SECONDS:-30}"
 MAX_PASSES="${DRAGON_MAX_PASSES:-10}"
@@ -28,16 +29,18 @@ if [[ ! -d "${ROOT}" ]]; then
 fi
 
 echo "Starting Dragon status server on ${STATUS_PREFIX}"
-dotnet /app/Dragon.Backend.Cli.dll serve-status --root "${ROOT}" --prefix "${STATUS_PREFIX}" &
+dotnet /app/Dragon.Backend.Cli.dll serve-status --root "${ROOT}" --prefix "${STATUS_PREFIX}" --snapshot-file "${STATUS_FILE}" &
 STATUS_PID=$!
 
 base_args=(--root "${ROOT}")
+status_args=(--status-out "${STATUS_FILE}")
 
 run_worker() {
   case "${RUN_MODE}" in
     watch)
       dotnet /app/Dragon.Backend.Cli.dll run-watch \
         "${base_args[@]}" \
+        "${status_args[@]}" \
         --poll-seconds "${POLL_SECONDS}" \
         --max-passes "${MAX_PASSES}" \
         --idle-passes "${IDLE_PASSES}" \
@@ -46,6 +49,7 @@ run_worker() {
     polling)
       dotnet /app/Dragon.Backend.Cli.dll run-polling \
         "${base_args[@]}" \
+        "${status_args[@]}" \
         --max-passes "${MAX_PASSES}" \
         --idle-passes "${IDLE_PASSES}" \
         --max-cycles "${MAX_CYCLES}"
@@ -53,6 +57,7 @@ run_worker() {
     idle)
       dotnet /app/Dragon.Backend.Cli.dll run-until-idle \
         "${base_args[@]}" \
+        "${status_args[@]}" \
         --max-cycles "${MAX_CYCLES}"
       ;;
     github-watch)
@@ -73,6 +78,7 @@ run_worker() {
       dotnet /app/Dragon.Backend.Cli.dll github-run-watch \
         "${github_args[@]}" \
         "${base_args[@]}" \
+        "${status_args[@]}" \
         --poll-seconds "${POLL_SECONDS}" \
         --max-passes "${MAX_PASSES}" \
         --idle-passes "${IDLE_PASSES}" \
@@ -96,6 +102,7 @@ run_worker() {
       dotnet /app/Dragon.Backend.Cli.dll github-run-polling \
         "${github_args[@]}" \
         "${base_args[@]}" \
+        "${status_args[@]}" \
         --max-passes "${MAX_PASSES}" \
         --idle-passes "${IDLE_PASSES}" \
         --max-cycles "${MAX_CYCLES}"
@@ -118,6 +125,7 @@ run_worker() {
       dotnet /app/Dragon.Backend.Cli.dll github-run-until-idle \
         "${github_args[@]}" \
         "${base_args[@]}" \
+        "${status_args[@]}" \
         --max-cycles "${MAX_CYCLES}"
       ;;
     *)

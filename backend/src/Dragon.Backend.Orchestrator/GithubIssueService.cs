@@ -617,10 +617,20 @@ public sealed class GithubIssueService
         }
 
         var body = BuildRecoveryIssueBody(workflow, currentStage, executionRecords, rootDirectory);
-        var result = commandRunner(
-            $"issue create --repo {owner}/{repo} --title \"{EscapeForDoubleQuotes(title)}\" --body \"{EscapeForDoubleQuotes(body)}\" --label story --label recovery --label backlog",
-            rootDirectory
-        );
+        var createCommand =
+            $"issue create --repo {owner}/{repo} --title \"{EscapeForDoubleQuotes(title)}\" --body \"{EscapeForDoubleQuotes(body)}\" --label story --label recovery --label backlog";
+        string result;
+        try
+        {
+            result = commandRunner(createCommand, rootDirectory);
+        }
+        catch (InvalidOperationException ex) when (IsMissingLabelFailure(ex, "recovery"))
+        {
+            result = commandRunner(
+                $"issue create --repo {owner}/{repo} --title \"{EscapeForDoubleQuotes(title)}\" --body \"{EscapeForDoubleQuotes(body)}\" --label story --label backlog",
+                rootDirectory
+            );
+        }
 
         return ParseIssueNumber(result);
     }
@@ -662,7 +672,9 @@ public sealed class GithubIssueService
                 continue;
             }
 
-            if (labels.Contains("recovery", StringComparer.OrdinalIgnoreCase))
+            if (labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
+                InferSourceIssueNumber(issueTitle, string.Empty) is not null &&
+                issueTitle.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase))
             {
                 return issueNumber;
             }
@@ -737,7 +749,8 @@ public sealed class GithubIssueService
             var title = ReadTextProperty(entry, "title");
             var body = ReadTextProperty(entry, "body");
 
-            if (!labels.Contains("recovery", StringComparer.OrdinalIgnoreCase))
+            if (!labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) &&
+                !title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -1124,10 +1137,18 @@ public sealed class GithubIssueService
 
     private void AddLabel(string owner, string repo, int issueNumber, string name, string rootDirectory)
     {
-        commandRunner(
-            $"issue edit {issueNumber} --repo {owner}/{repo} --add-label {name}",
-            rootDirectory
-        );
+        try
+        {
+            commandRunner(
+                $"issue edit {issueNumber} --repo {owner}/{repo} --add-label {name}",
+                rootDirectory
+            );
+        }
+        catch (InvalidOperationException ex) when (IsLabelMutationPermissionFailure(ex))
+        {
+            // Some fine-grained tokens can read and comment on issues but not mutate labels.
+            // Keep the workflow moving even if repo label hygiene cannot be enforced.
+        }
     }
 
     private void RemoveLabel(string owner, string repo, int issueNumber, string name, string rootDirectory)
@@ -1143,6 +1164,21 @@ public sealed class GithubIssueService
         {
             // It's fine if the label is not currently applied.
         }
+    }
+
+    private static bool IsMissingLabelFailure(InvalidOperationException exception, string labelName)
+    {
+        var message = exception.Message;
+        return message.Contains("label", StringComparison.OrdinalIgnoreCase) &&
+            message.Contains("not found", StringComparison.OrdinalIgnoreCase) &&
+            message.Contains(labelName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLabelMutationPermissionFailure(InvalidOperationException exception)
+    {
+        var message = exception.Message;
+        return message.Contains("Resource not accessible by personal access token", StringComparison.OrdinalIgnoreCase) &&
+            message.Contains("addLabelsToLabelable", StringComparison.OrdinalIgnoreCase);
     }
 
     private void UpsertHeartbeatComment(string owner, string repo, int issueNumber, string body, string rootDirectory)

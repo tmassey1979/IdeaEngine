@@ -8,6 +8,7 @@ services:
     environment:
       DRAGON_ROOT: /workspace
       DRAGON_STATUS_PREFIX: http://+:5078/
+      DRAGON_STATUS_FILE: /workspace/.dragon/status/runtime-status.json
       DRAGON_RUN_MODE: ${DRAGON_RUN_MODE:-watch}
       DRAGON_POLL_SECONDS: ${DRAGON_POLL_SECONDS:-30}
       DRAGON_MAX_PASSES: ${DRAGON_MAX_PASSES:-10}

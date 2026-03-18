@@ -13,10 +13,12 @@ public sealed class StatusHttpServer
     };
 
     private readonly SelfBuildLoop loop;
+    private readonly string? snapshotPath;
 
-    public StatusHttpServer(SelfBuildLoop loop)
+    public StatusHttpServer(SelfBuildLoop loop, string? snapshotPath = null)
     {
         this.loop = loop;
+        this.snapshotPath = snapshotPath;
     }
 
     public async Task ServeOnceAsync(string prefix, CancellationToken cancellationToken = default)
@@ -96,10 +98,7 @@ public sealed class StatusHttpServer
 
             if (string.Equals(path, "/status", StringComparison.Ordinal))
             {
-                var snapshot = loop.ReadStatus("serve-status", "status", "snapshot") with
-                {
-                    Source = "status-http"
-                };
+                var snapshot = ReadSnapshot();
 
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, snapshot, cancellationToken);
@@ -135,6 +134,32 @@ public sealed class StatusHttpServer
         }
 
         return path;
+    }
+
+    private StatusSnapshot ReadSnapshot()
+    {
+        if (!string.IsNullOrWhiteSpace(snapshotPath) && File.Exists(snapshotPath))
+        {
+            var runtimeSnapshot = JsonSerializer.Deserialize<StatusSnapshot>(
+                File.ReadAllText(snapshotPath),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+            if (runtimeSnapshot is not null)
+            {
+                return runtimeSnapshot with
+                {
+                    Source = "status-http"
+                };
+            }
+        }
+
+        return loop.ReadStatus("serve-status", "status", "snapshot") with
+        {
+            Source = "status-http"
+        };
     }
 
     private static void ApplyCorsHeaders(HttpListenerResponse response)
