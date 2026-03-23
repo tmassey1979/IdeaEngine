@@ -5417,10 +5417,10 @@ public sealed class PlannerTests
                 "mode": "waiting",
                 "summary": "Loop is intentionally deferring pending GitHub replay while provider backoff remains active."
               },
-              "interventionEscalationNote": "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+              "interventionEscalationNote": "Escalation: global intervention target is critical. Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
               "interventionTarget": {
                 "kind": "github-replay-drift",
-                "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+                "summary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
                 "ageSummary": "4h 30m old",
                 "escalation": "critical"
               }
@@ -5507,12 +5507,12 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker attention: Provider backoff is delaying GitHub replay for the oldest queued writeback drift.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is intentionally deferring pending GitHub replay while provider backoff remains active.", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention age: 4h 30m old", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention escalation level: critical", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention acknowledged: no", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention acknowledged streak: 0", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled reason: provider backoff is delaying GitHub replay until 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));

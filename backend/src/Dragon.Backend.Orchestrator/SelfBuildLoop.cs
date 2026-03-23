@@ -131,7 +131,7 @@ public sealed class SelfBuildLoop
                 leadJob.Metadata.GetValueOrDefault("workType"),
                 ReadRetryNotBeforeUtc(leadJob),
                 readyLeadJob is null);
-        var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
+        var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync, replayPrioritySummary));
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes);
@@ -2443,15 +2443,20 @@ public sealed class SelfBuildLoop
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
-        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync,
+        string? replayPrioritySummary)
     {
         if (leadQuarantine is not null &&
             string.Equals(leadQuarantine.State, "sync-drift", StringComparison.OrdinalIgnoreCase))
         {
             var pendingIssueNumber = leadQuarantine.RecoveryIssueNumber ?? leadQuarantine.IssueNumber;
+            var summary = leadQuarantine.Summary ?? $"Replay queued GitHub updates for issue #{pendingIssueNumber}.";
+            summary = string.IsNullOrWhiteSpace(replayPrioritySummary)
+                ? summary
+                : $"{replayPrioritySummary} {summary}";
             return new InterventionTargetSnapshot(
                 "github-replay-drift",
-                leadQuarantine.Summary ?? $"Replay queued GitHub updates for issue #{pendingIssueNumber}.",
+                summary,
                 leadQuarantine.IssueNumber,
                 leadQuarantine.RecoveryIssueNumber,
                 pendingIssueNumber,
@@ -2482,10 +2487,14 @@ public sealed class SelfBuildLoop
             var oldest = pendingGithubSync
                 .OrderBy(item => item.RecordedAt)
                 .First();
+            var summary = $"Replay queued GitHub update for issue #{oldest.IssueNumber}.";
+            summary = string.IsNullOrWhiteSpace(replayPrioritySummary)
+                ? summary
+                : $"{replayPrioritySummary} {summary}";
 
             return new InterventionTargetSnapshot(
                 "github-replay-drift",
-                $"Replay queued GitHub update for issue #{oldest.IssueNumber}.",
+                summary,
                 oldest.IssueNumber,
                 null,
                 oldest.IssueNumber,
