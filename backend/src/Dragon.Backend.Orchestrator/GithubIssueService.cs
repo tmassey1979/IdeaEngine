@@ -331,6 +331,7 @@ public sealed class GithubIssueService
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
+                $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -501,6 +502,7 @@ public sealed class GithubIssueService
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
+                $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -576,6 +578,74 @@ public sealed class GithubIssueService
         }
 
         return "no active recovery hold";
+    }
+
+    private static string DescribeRecoveryWritebackState(IssueWorkflowState workflow, string rootDirectory)
+    {
+        var pendingIssueNumbers = ReadPendingGithubSyncIssueNumbers(rootDirectory);
+        if (pendingIssueNumbers.Count == 0)
+        {
+            return "clear";
+        }
+
+        if (workflow.SourceIssueNumber is not null)
+        {
+            if (pendingIssueNumbers.Contains(workflow.IssueNumber))
+            {
+                return $"retry pending for current recovery issue #{workflow.IssueNumber}";
+            }
+
+            if (pendingIssueNumbers.Contains(workflow.SourceIssueNumber.Value))
+            {
+                return $"retry pending for parent issue #{workflow.SourceIssueNumber.Value}";
+            }
+
+            return "clear";
+        }
+
+        var pendingRecoveryChildren = (workflow.ActiveRecoveryIssueNumbers ?? [])
+            .Where(pendingIssueNumbers.Contains)
+            .OrderBy(value => value)
+            .ToArray();
+
+        if (pendingRecoveryChildren.Length > 0)
+        {
+            return pendingRecoveryChildren.Length == 1
+                ? $"retry pending for recovery child #{pendingRecoveryChildren[0]}"
+                : $"retry pending for recovery children {string.Join(", ", pendingRecoveryChildren.Select(value => $"#{value}"))}";
+        }
+
+        if (pendingIssueNumbers.Contains(workflow.IssueNumber))
+        {
+            return $"retry pending for issue #{workflow.IssueNumber}";
+        }
+
+        return "clear";
+    }
+
+    private static HashSet<int> ReadPendingGithubSyncIssueNumbers(string rootDirectory)
+    {
+        var statusPath = Path.Combine(rootDirectory, ".dragon", "status", "pending-github-sync.json");
+        if (!File.Exists(statusPath))
+        {
+            return [];
+        }
+
+        try
+        {
+            var pending = JsonSerializer.Deserialize<List<PendingGithubSyncSnapshot>>(
+                File.ReadAllText(statusPath),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }) ?? [];
+
+            return pending.Select(item => item.IssueNumber).ToHashSet();
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     private void MarkSupersededRecoveryIssues(

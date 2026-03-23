@@ -3383,6 +3383,7 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #23 -> children #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery state: active recovery children #500", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery writeback: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("active recovery children: #500", StringComparison.Ordinal));
     }
 
@@ -3576,6 +3577,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery state: awaiting recovery path", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery writeback: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: #999", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("Recovery checklist", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
@@ -3623,6 +3625,56 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("issue create --repo tmassey1979/IdeaEngine", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: not created", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncQuarantinedWorkflow_ShowsRecoveryWritebackRetryWhenRecoveryChildSyncIsPending()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 500,
+                "summary": "GitHub sync failed for recovery issue #500.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z"
+              }
+            ]
+            """);
+
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "quarantined",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+            },
+            DateTimeOffset.UtcNow,
+            "Quarantined after repeated failures.",
+            null,
+            [500]
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -3913,6 +3965,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label superseded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: parent #22 -> current #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery state: active child issue for parent #22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery writeback: clear", StringComparison.Ordinal));
     }
 
     [Fact]
