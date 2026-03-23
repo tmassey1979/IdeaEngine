@@ -1267,6 +1267,55 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_ExplainsDeferredGithubReplayDuringProviderBackoff()
+    {
+        var root = CreateTempRoot();
+        var statusDirectory = Path.Combine(root, ".dragon", "status");
+        Directory.CreateDirectory(statusDirectory);
+        File.WriteAllText(
+            Path.Combine(statusDirectory, "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 500,
+                "summary": "GitHub sync failed for recovery issue #500.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2026-03-23T12:01:30Z"
+              }
+            ]
+            """);
+        File.WriteAllText(
+            Path.Combine(statusDirectory, "github-replay-status.json"),
+            """
+            {
+              "recordedAt": "2026-03-23T12:05:00Z",
+              "attemptedCount": 0,
+              "updatedCount": 0,
+              "failedCount": 0,
+              "summary": "Deferred replay for 1 pending GitHub update while waiting for delayed provider retry."
+            }
+            """);
+        var store = new WorkflowStateStore(root);
+        store.Update(
+            500,
+            "Provider Notes",
+            "developer",
+            new JobExecutionResult("job-recovery", "developer", "success", "started", DateTimeOffset.UtcNow),
+            sourceIssueNumber: 22);
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting", pollIntervalSeconds: 30);
+
+        Assert.Equal("Waiting to replay pending GitHub updates after provider backoff clears.", status.WorkerActivity);
+        Assert.Equal("waiting", status.RecentLoopSignal.Mode);
+        Assert.Contains("intentionally deferring pending GitHub replay", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
+        Assert.NotNull(status.LatestGithubReplay);
+        Assert.Contains("Deferred replay for 1 pending GitHub update", status.LatestGithubReplay!.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SyncValidatedWorkflow_DoesNotRewriteLatestGithubSyncForRepeatedDeferredHeartbeat()
     {
         var root = CreateTempRoot();

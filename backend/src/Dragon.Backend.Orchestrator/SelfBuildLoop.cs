@@ -123,7 +123,7 @@ public sealed class SelfBuildLoop
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
-            ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot)
+            ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay)
             : workerActivity;
 
         return new StatusSnapshot(
@@ -2371,7 +2371,11 @@ public sealed class SelfBuildLoop
         return "fresh";
     }
 
-    private static string? BuildDefaultWorkerActivity(string workerState, InterventionTargetSnapshot? interventionTarget, LeadJobSnapshot? leadJob)
+    private static string? BuildDefaultWorkerActivity(
+        string workerState,
+        InterventionTargetSnapshot? interventionTarget,
+        LeadJobSnapshot? leadJob,
+        LatestGithubReplaySnapshot? latestGithubReplay)
     {
         if (string.Equals(workerState, "waiting", StringComparison.OrdinalIgnoreCase) &&
             leadJob is not null &&
@@ -2390,6 +2394,9 @@ public sealed class SelfBuildLoop
         {
             "github-replay-drift" => workerState switch
             {
+                "running" when ReplayWasDeferred(latestGithubReplay) => "Deferring pending GitHub replay while provider backoff remains in effect.",
+                "waiting" when ReplayWasDeferred(latestGithubReplay) => "Waiting to replay pending GitHub updates after provider backoff clears.",
+                "complete" when ReplayWasDeferred(latestGithubReplay) => "Completed the current run with GitHub replay intentionally deferred during provider backoff.",
                 "running" => "Replaying pending GitHub updates before the next GitHub pass.",
                 "waiting" => "Waiting to replay pending GitHub updates on the next GitHub pass.",
                 "complete" => "Completed the current run with pending GitHub updates still queued for replay.",
@@ -2435,6 +2442,13 @@ public sealed class SelfBuildLoop
             _ => interventionTarget.Summary
         };
     }
+
+    private static bool ReplayWasDeferred(LatestGithubReplaySnapshot? latestGithubReplay) =>
+        latestGithubReplay is not null &&
+        latestGithubReplay.AttemptedCount == 0 &&
+        latestGithubReplay.UpdatedCount == 0 &&
+        latestGithubReplay.FailedCount == 0 &&
+        latestGithubReplay.Summary.Contains("Deferred replay", StringComparison.OrdinalIgnoreCase);
 
     internal static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget)
     {
@@ -2564,6 +2578,13 @@ public sealed class SelfBuildLoop
         if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase) && latestActivity is not null)
         {
             return new RecentLoopSignalSnapshot("failing", $"Recent activity needs review after issue #{latestActivity.IssueNumber}.");
+        }
+
+        if (ReplayWasDeferred(latestGithubReplay))
+        {
+            return new RecentLoopSignalSnapshot(
+                "waiting",
+                "Loop is intentionally deferring pending GitHub replay while provider backoff remains active.");
         }
 
         if (queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay))
