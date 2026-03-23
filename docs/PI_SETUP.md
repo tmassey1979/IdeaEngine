@@ -1,0 +1,47 @@
+# Raspberry Pi Setup
+
+This repo now includes a bootstrap script for a fresh Raspberry Pi OS or Debian-based host:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tmassey1979/IdeaEngine/feature/github-run-until-idle-sync/scripts/setup-pi.sh -o setup-pi.sh
+chmod +x setup-pi.sh
+./setup-pi.sh
+```
+
+What it does:
+
+- installs Docker Engine and the Docker Compose plugin
+- installs Git and GitHub CLI
+- adds your user to the `docker` group
+- clones or updates this repo
+- creates `.env` from `.env.docker.example` if it does not exist
+
+Defaults:
+
+- repo branch: `feature/github-run-until-idle-sync`
+- install directory: `$HOME/dragon/IdeaEngine`
+- env file: `$HOME/dragon/IdeaEngine/.env`
+
+Useful overrides:
+
+```bash
+REPO_BRANCH=main ./setup-pi.sh
+INSTALL_ROOT=/srv/dragon ./setup-pi.sh
+AUTO_START=true ./setup-pi.sh
+```
+
+After the script finishes:
+
+1. Edit `.env` and set `OPENAI_API_KEY`.
+2. Set either `GITHUB_TOKEN` or `GH_TOKEN`.
+3. Start the stack:
+
+```bash
+cd "$HOME/dragon/IdeaEngine"
+docker compose up --build
+```
+
+Notes:
+
+- If the script adds your user to the `docker` group, log out and back in before running Docker without `sudo`.
+- `AUTO_START=true` only works once the required credentials are present in `.env`.
