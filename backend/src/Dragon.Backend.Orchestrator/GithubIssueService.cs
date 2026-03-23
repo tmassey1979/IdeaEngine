@@ -341,6 +341,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
+                $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -535,6 +536,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
+                $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -1017,6 +1019,83 @@ public sealed class GithubIssueService
 
             return parts.Count == 0
                 ? "none queued"
+                : string.Join(" · ", parts);
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalLeadQuarantine(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("leadQuarantine", out var leadQuarantine) ||
+                leadQuarantine.ValueKind != JsonValueKind.Object)
+            {
+                return "none active";
+            }
+
+            var issueNumber = leadQuarantine.TryGetProperty("issueNumber", out var issueNumberProperty) &&
+                issueNumberProperty.ValueKind == JsonValueKind.Number &&
+                issueNumberProperty.TryGetInt32(out var parsedIssueNumber)
+                ? parsedIssueNumber
+                : (int?)null;
+            var recoveryIssueNumber = leadQuarantine.TryGetProperty("recoveryIssueNumber", out var recoveryIssueNumberProperty) &&
+                recoveryIssueNumberProperty.ValueKind == JsonValueKind.Number &&
+                recoveryIssueNumberProperty.TryGetInt32(out var parsedRecoveryIssueNumber)
+                ? parsedRecoveryIssueNumber
+                : (int?)null;
+            var queuedRecoveryJobs = leadQuarantine.TryGetProperty("queuedRecoveryJobs", out var queuedRecoveryJobsProperty) &&
+                queuedRecoveryJobsProperty.ValueKind == JsonValueKind.Number &&
+                queuedRecoveryJobsProperty.TryGetInt32(out var parsedQueuedRecoveryJobs)
+                ? parsedQueuedRecoveryJobs
+                : 0;
+            var state = leadQuarantine.TryGetProperty("state", out var stateProperty) &&
+                stateProperty.ValueKind == JsonValueKind.String
+                ? stateProperty.GetString()
+                : null;
+            var summary = leadQuarantine.TryGetProperty("summary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String
+                ? summaryProperty.GetString()
+                : null;
+
+            var parts = new List<string>();
+            if (issueNumber is > 0)
+            {
+                parts.Add($"issue #{issueNumber.Value}");
+            }
+
+            if (recoveryIssueNumber is > 0)
+            {
+                parts.Add($"recovery #{recoveryIssueNumber.Value}");
+            }
+
+            if (queuedRecoveryJobs > 0)
+            {
+                parts.Add($"{queuedRecoveryJobs} queued recovery job{(queuedRecoveryJobs == 1 ? string.Empty : "s")}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(state))
+            {
+                parts.Add(state!);
+            }
+
+            if (!string.IsNullOrWhiteSpace(summary))
+            {
+                parts.Add(summary!);
+            }
+
+            return parts.Count == 0
+                ? "none active"
                 : string.Join(" · ", parts);
         }
         catch (JsonException)
