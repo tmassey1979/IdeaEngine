@@ -4631,6 +4631,10 @@ public sealed class PlannerTests
             Path.Combine(root, ".dragon", "status", "runtime-status.json"),
             """
             {
+              "workerMode": "watch",
+              "workerState": "waiting",
+              "pollIntervalSeconds": 30,
+              "nextPollAt": "2026-03-23T12:31:00Z",
               "health": "healthy",
               "attentionSummary": "3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
               "recentLoopSignal": {
@@ -4677,6 +4681,9 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500 (queued", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
@@ -4988,6 +4995,8 @@ public sealed class PlannerTests
             Path.Combine(root, ".dragon", "status", "runtime-status.json"),
             """
             {
+              "workerMode": "polling",
+              "workerState": "running",
               "health": "healthy",
               "attentionSummary": "1 queued job(s), 1 issue(s) in progress.",
               "recentLoopSignal": {
@@ -5043,6 +5052,9 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("stalled reason: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: shipping implementation work", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker mode: polling", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker state: running", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 1 queued job(s), 1 issue(s) in progress.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: draining", StringComparison.Ordinal));
@@ -5065,6 +5077,10 @@ public sealed class PlannerTests
             Path.Combine(root, ".dragon", "status", "runtime-status.json"),
             """
             {
+              "workerMode": "watch",
+              "workerState": "waiting",
+              "pollIntervalSeconds": 30,
+              "nextPollAt": "2026-03-16T15:31:00Z",
               "health": "attention",
               "attentionSummary": "Critical intervention target remains acknowledged but unresolved. Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
               "recentLoopSignal": {
@@ -5107,6 +5123,9 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("worker focus: tracking acknowledged operator escalation", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: attention", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: Critical intervention target remains acknowledged but unresolved.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: monitoring", StringComparison.Ordinal));

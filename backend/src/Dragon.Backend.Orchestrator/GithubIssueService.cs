@@ -334,6 +334,9 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
+                $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
+                $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -513,6 +516,9 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
+                $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
+                $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -735,6 +741,104 @@ public sealed class GithubIssueService
             }
 
             return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerMode(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("workerMode", out var modeProperty) &&
+                modeProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(modeProperty.GetString()))
+            {
+                return modeProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerState(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("workerState", out var stateProperty) &&
+                stateProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(stateProperty.GetString()))
+            {
+                return stateProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerCadence(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var pollIntervalSeconds = root.TryGetProperty("pollIntervalSeconds", out var cadenceProperty) &&
+                cadenceProperty.ValueKind == JsonValueKind.Number &&
+                cadenceProperty.TryGetInt32(out var seconds)
+                ? seconds
+                : (int?)null;
+            var nextPollAt = root.TryGetProperty("nextPollAt", out var nextPollProperty) &&
+                nextPollProperty.ValueKind == JsonValueKind.String &&
+                nextPollProperty.TryGetDateTimeOffset(out var nextPoll)
+                ? nextPoll
+                : (DateTimeOffset?)null;
+
+            if (pollIntervalSeconds is null && nextPollAt is null)
+            {
+                return "not scheduled";
+            }
+
+            if (pollIntervalSeconds is not null && nextPollAt is not null)
+            {
+                return $"every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")}, next poll {nextPollAt.Value:O}";
+            }
+
+            if (pollIntervalSeconds is not null)
+            {
+                return $"every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")}";
+            }
+
+            return $"next poll {nextPollAt!.Value:O}";
         }
         catch (JsonException)
         {
