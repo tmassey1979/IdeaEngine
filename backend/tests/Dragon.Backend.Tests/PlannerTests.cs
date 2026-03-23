@@ -4695,6 +4695,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
@@ -5077,6 +5078,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: running", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 2 / 6 · idle 0 / 2 · remaining 2 · budget 4", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 1 queued job(s), 1 issue(s) in progress.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: draining", StringComparison.Ordinal));
@@ -5159,12 +5161,78 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 7 / 10 · idle 1 / 2 · remaining 1 · budget 3", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: attention", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: Critical intervention target remains acknowledged but unresolved.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: monitoring", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is tracking acknowledged operator escalation.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical, acknowledged x3)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 3", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncInProgressWorkflow_ShowsWorkerCompletionReasonWhenRuntimeStatusCompleted()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "source": "status",
+              "lastCommand": "run-watch",
+              "workerMode": "watch",
+              "workerState": "complete",
+              "workerCompletionReason": "idle_target_reached",
+              "currentPassNumber": 6,
+              "maxPasses": 6,
+              "idleStreak": 2,
+              "idleTarget": 2,
+              "idlePassesRemaining": 0,
+              "passBudgetRemaining": 0,
+              "health": "idle",
+              "attentionSummary": "No queued work and no active issue workflows.",
+              "recentLoopSignal": {
+                "mode": "idle",
+                "summary": "Loop completed with no immediate queued work."
+              },
+              "interventionEscalationNote": null,
+              "interventionTarget": {
+                "kind": "idle",
+                "summary": "No immediate intervention target."
+              }
+            }
+            """);
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "validated",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", now.AddMinutes(-5), "done")
+            },
+            now
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("worker state: complete", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker completion: idle target reached", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker health: idle", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop mode: idle", StringComparison.Ordinal));
     }
 
     [Fact]

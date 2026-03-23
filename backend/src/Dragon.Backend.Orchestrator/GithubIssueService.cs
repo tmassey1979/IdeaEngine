@@ -340,6 +340,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
+                $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -525,6 +526,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
+                $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -960,6 +962,53 @@ public sealed class GithubIssueService
             var budgetLabel = passBudgetRemaining?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "n/a";
 
             return $"pass {passLabel} · idle {idleLabel} · remaining {remainingLabel} · budget {budgetLabel}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerCompletion(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var workerState = root.TryGetProperty("workerState", out var workerStateProperty) &&
+                workerStateProperty.ValueKind == JsonValueKind.String
+                ? workerStateProperty.GetString()
+                : null;
+            var reason = root.TryGetProperty("workerCompletionReason", out var reasonProperty) &&
+                reasonProperty.ValueKind == JsonValueKind.String
+                ? reasonProperty.GetString()
+                : null;
+
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return workerState switch
+                {
+                    "waiting" or "running" => "active",
+                    "complete" => "complete",
+                    "snapshot" => "not recorded",
+                    _ => "not recorded"
+                };
+            }
+
+            return reason switch
+            {
+                "idle_target_reached" => "idle target reached",
+                "idle_run_completed" => "idle run completed",
+                "max_passes_reached" => "pass cap reached",
+                "max_cycles_reached" => "cycle cap reached",
+                _ => reason.Replace("_", " ", StringComparison.Ordinal)
+            };
         }
         catch (JsonException)
         {
