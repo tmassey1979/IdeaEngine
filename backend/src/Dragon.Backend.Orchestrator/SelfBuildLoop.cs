@@ -225,25 +225,31 @@ public sealed class SelfBuildLoop
         string repo = "IdeaEngine",
         string project = "DragonIdeaEngine")
     {
-        var signature = snapshot.InterventionTarget is null
+        var effectiveInterventionTarget = snapshot.InterventionTarget is null
             ? null
-            : BuildInterventionTargetSignature(snapshot.InterventionTarget);
+            : snapshot.InterventionTarget with
+            {
+                TargetOutcome = BuildInterventionEscalationTargetOutcome(snapshot.InterventionTarget)
+            };
+        var signature = effectiveInterventionTarget is null
+            ? null
+            : BuildInterventionTargetSignature(effectiveInterventionTarget);
         PruneStaleInterventionEscalationFollowUps(
-            snapshot.InterventionTarget,
+            effectiveInterventionTarget,
             snapshot.InterventionEscalationStreak,
             minimumCriticalStreak,
             signature);
 
-        if (snapshot.InterventionTarget is null ||
-            !string.Equals(snapshot.InterventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
+        if (effectiveInterventionTarget is null ||
+            !string.Equals(effectiveInterventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
             snapshot.InterventionEscalationStreak < minimumCriticalStreak)
         {
             return null;
         }
 
-        var issueNumber = snapshot.InterventionTarget.IssueNumber ??
-            snapshot.InterventionTarget.RecoveryIssueNumber ??
-            snapshot.InterventionTarget.PendingGithubSyncIssueNumber;
+        var issueNumber = effectiveInterventionTarget.IssueNumber ??
+            effectiveInterventionTarget.RecoveryIssueNumber ??
+            effectiveInterventionTarget.PendingGithubSyncIssueNumber;
         if (issueNumber is null)
         {
             return null;
@@ -269,22 +275,20 @@ public sealed class SelfBuildLoop
 
         var workflowTitle = workflowStateStore.ReadAll().TryGetValue(issueNumber.Value, out var workflow)
             ? workflow.IssueTitle
-            : snapshot.InterventionTarget.Summary;
-        var targetArtifact = snapshot.InterventionTarget.TargetArtifact;
-        var targetOutcome = string.IsNullOrWhiteSpace(snapshot.InterventionTarget.TargetOutcome)
-            ? "Summarize the persistent critical intervention target and the next operator action."
-            : snapshot.InterventionTarget.TargetOutcome;
+            : effectiveInterventionTarget.Summary;
+        var targetArtifact = effectiveInterventionTarget.TargetArtifact;
+        var targetOutcome = effectiveInterventionTarget.TargetOutcome;
         var agent = InferOperatorSummaryAgent(targetArtifact ?? string.Empty);
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["requestedBy"] = "system",
             ["source"] = "dragon-orchestrator-dotnet",
             ["requestedPriority"] = "high",
-            ["requestedReason"] = "Persistent critical intervention target needs explicit operator summary.",
+            ["requestedReason"] = BuildInterventionEscalationRequestedReason(effectiveInterventionTarget),
             ["interventionEscalation"] = "true",
             ["interventionSignature"] = signature!,
-            ["interventionKind"] = snapshot.InterventionTarget.Kind,
-            ["interventionEscalationLevel"] = snapshot.InterventionTarget.Escalation ?? "critical",
+            ["interventionKind"] = effectiveInterventionTarget.Kind,
+            ["interventionEscalationLevel"] = effectiveInterventionTarget.Escalation ?? "critical",
             ["interventionEscalationStreak"] = snapshot.InterventionEscalationStreak.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["workType"] = "operator-escalation"
         };
@@ -299,9 +303,9 @@ public sealed class SelfBuildLoop
             metadata["targetOutcome"] = targetOutcome;
         }
 
-        if (snapshot.InterventionTarget.ObservedAt is not null)
+        if (effectiveInterventionTarget.ObservedAt is not null)
         {
-            metadata["interventionObservedAt"] = snapshot.InterventionTarget.ObservedAt.Value.ToString("O");
+            metadata["interventionObservedAt"] = effectiveInterventionTarget.ObservedAt.Value.ToString("O");
         }
 
         var job = new SelfBuildJob(
@@ -355,6 +359,23 @@ public sealed class SelfBuildLoop
             string.Equals(record.JobAction, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
             string.Equals(record.Status, "success", StringComparison.OrdinalIgnoreCase) &&
             record.Notes.Contains($"Intervention escalation acknowledged: {signature}.", StringComparison.Ordinal));
+
+    private static string BuildInterventionEscalationTargetOutcome(InterventionTargetSnapshot interventionTarget)
+    {
+        if (!string.IsNullOrWhiteSpace(interventionTarget.TargetOutcome))
+        {
+            return interventionTarget.TargetOutcome!;
+        }
+
+        return string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase)
+            ? "Summarize the GitHub writeback replay bottleneck and the next operator action."
+            : "Summarize the persistent critical intervention target and the next operator action.";
+    }
+
+    private static string BuildInterventionEscalationRequestedReason(InterventionTargetSnapshot interventionTarget) =>
+        string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase)
+            ? "Persistent GitHub writeback replay bottleneck needs explicit operator summary."
+            : "Persistent critical intervention target needs explicit operator summary.";
 
     private InterventionTargetSnapshot AnnotateInterventionTarget(InterventionTargetSnapshot interventionTarget)
     {

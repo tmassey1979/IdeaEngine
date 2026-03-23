@@ -2815,7 +2815,7 @@ public sealed class PlannerTests
                 500,
                 500,
                 "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
-                "Summarize the persistent critical intervention target and the next operator action.",
+                null,
                 DateTimeOffset.UtcNow.AddHours(-2),
                 "2h 0m old",
                 "critical"),
@@ -2829,7 +2829,9 @@ public sealed class PlannerTests
         Assert.Equal("summarize_issue", job.Action);
         Assert.Equal("feedback", job.Agent);
         Assert.Equal("true", job.Metadata["interventionEscalation"]);
-        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.", job.Metadata["interventionSignature"]);
+        Assert.Equal("Summarize the GitHub writeback replay bottleneck and the next operator action.", job.Metadata["targetOutcome"]);
+        Assert.Equal("Persistent GitHub writeback replay bottleneck needs explicit operator summary.", job.Metadata["requestedReason"]);
+        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the GitHub writeback replay bottleneck and the next operator action.", job.Metadata["interventionSignature"]);
         Assert.Equal("3", job.Metadata["interventionEscalationStreak"]);
         Assert.Equal("operator-escalation", job.Metadata["workType"]);
         Assert.Single(loop.ReadQueue());
@@ -2882,7 +2884,7 @@ public sealed class PlannerTests
                 500,
                 500,
                 "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
-                "Summarize the persistent critical intervention target and the next operator action.",
+                null,
                 DateTimeOffset.UtcNow.AddHours(-2),
                 "2h 0m old",
                 "critical"),
@@ -3034,7 +3036,7 @@ public sealed class PlannerTests
                 501,
                 501,
                 "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
-                "Summarize the persistent critical intervention target and the next operator action.",
+                null,
                 DateTimeOffset.UtcNow.AddHours(-2),
                 "2h 0m old",
                 "critical"),
@@ -3046,7 +3048,8 @@ public sealed class PlannerTests
         Assert.NotNull(result);
         var queued = Assert.Single(loop.ReadQueue());
         Assert.Equal(23, queued.Issue);
-        Assert.Equal("github-replay-drift|23|501|501|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.", queued.Metadata["interventionSignature"]);
+        Assert.Equal("Summarize the GitHub writeback replay bottleneck and the next operator action.", queued.Metadata["targetOutcome"]);
+        Assert.Equal("github-replay-drift|23|501|501|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the GitHub writeback replay bottleneck and the next operator action.", queued.Metadata["interventionSignature"]);
     }
 
     [Fact]
@@ -3054,7 +3057,7 @@ public sealed class PlannerTests
     {
         var root = CreateTempRoot();
         var loop = new SelfBuildLoop(root);
-        var signature = "github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.";
+        var signature = "github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the GitHub writeback replay bottleneck and the next operator action.";
         var records = new ExecutionRecordStore(root);
         records.Append(
             new SelfBuildJob(
@@ -3115,7 +3118,7 @@ public sealed class PlannerTests
                 500,
                 500,
                 "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
-                "Summarize the persistent critical intervention target and the next operator action.",
+                null,
                 DateTimeOffset.UtcNow.AddHours(-2),
                 "2h 0m old",
                 "critical"),
