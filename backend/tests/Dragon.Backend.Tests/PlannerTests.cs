@@ -368,6 +368,8 @@ public sealed class PlannerTests
         Assert.Equal(22, status.InterventionTarget.IssueNumber);
         Assert.Contains("Escalate issue #22", status.InterventionTarget.Summary, StringComparison.Ordinal);
         Assert.False(status.InterventionTarget.Acknowledged);
+        Assert.Equal("healthy", status.Health);
+        Assert.Contains("1 queued job", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Waiting to prepare an operator-facing escalation summary on the next pass.", status.WorkerActivity);
         Assert.Equal("escalating", status.RecentLoopSignal.Mode);
         Assert.Contains("actively escalating operator follow-up", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
@@ -419,6 +421,8 @@ public sealed class PlannerTests
         Assert.NotNull(status.InterventionTarget);
         Assert.True(status.InterventionTarget!.Acknowledged);
         Assert.Equal(0, status.InterventionTarget.AcknowledgedStreak);
+        Assert.Equal("attention", status.Health);
+        Assert.Contains("acknowledged but unresolved", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Waiting to continue tracking an already-acknowledged operator escalation on the next pass.", status.WorkerActivity);
         Assert.Equal("monitoring", status.RecentLoopSignal.Mode);
         Assert.Contains("tracking acknowledged operator escalation", status.RecentLoopSignal.Summary, StringComparison.Ordinal);

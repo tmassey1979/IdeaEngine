@@ -85,8 +85,6 @@ public sealed class SelfBuildLoop
         var latestGithubReplay = ReadLatestGithubReplay();
         var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
         var baseLeadQuarantine = BuildLeadQuarantine(workflows, queuedJobs, pendingGithubSync);
-        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
@@ -104,6 +102,8 @@ public sealed class SelfBuildLoop
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"));
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
+        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
@@ -1776,7 +1776,8 @@ public sealed class SelfBuildLoop
     private static string DeriveStatusHealth(
         IReadOnlyList<IssueStatusSnapshot> issues,
         LeadQuarantineSnapshot? leadQuarantine,
-        LatestGithubReplaySnapshot? latestGithubReplay)
+        LatestGithubReplaySnapshot? latestGithubReplay,
+        InterventionTargetSnapshot? interventionTarget)
     {
         if (leadQuarantine is not null)
         {
@@ -1791,6 +1792,19 @@ public sealed class SelfBuildLoop
         if (issues.Any(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase)))
         {
             return "attention";
+        }
+
+        if (interventionTarget is not null &&
+            interventionTarget.Acknowledged &&
+            string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            return "attention";
+        }
+
+        if (interventionTarget is not null &&
+            !string.Equals(interventionTarget.Kind, "idle", StringComparison.OrdinalIgnoreCase))
+        {
+            return "healthy";
         }
 
         if (issues.Any(issue => issue.QueuedJobCount > 0 || string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)))
@@ -1811,7 +1825,8 @@ public sealed class SelfBuildLoop
         IReadOnlyList<IssueStatusSnapshot> issues,
         string health,
         LeadQuarantineSnapshot? leadQuarantine,
-        LatestGithubReplaySnapshot? latestGithubReplay)
+        LatestGithubReplaySnapshot? latestGithubReplay,
+        InterventionTargetSnapshot? interventionTarget)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
         var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
@@ -1823,6 +1838,10 @@ public sealed class SelfBuildLoop
                 $"{(leadQuarantine.RecoveryIssueNumber is not null ? $" via recovery #{leadQuarantine.RecoveryIssueNumber.Value}" : string.Empty)}" +
                 $"{(leadRecoveryAge is not null ? $" ({leadRecoveryAge})" : string.Empty)}.",
             "blocked" => $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work.",
+            "attention" when interventionTarget is not null &&
+                interventionTarget.Acknowledged &&
+                string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) =>
+                $"Critical intervention target remains acknowledged but unresolved. {interventionTarget.Summary}",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
             "healthy" when queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay) =>
@@ -1996,7 +2015,7 @@ public sealed class SelfBuildLoop
                 leadJob.TargetOutcome,
                 null,
                 null,
-                "fresh");
+                isOperatorEscalation ? "critical" : "fresh");
         }
 
         return new InterventionTargetSnapshot("idle", "No immediate intervention target.");
