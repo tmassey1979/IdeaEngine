@@ -443,6 +443,14 @@ button {
   font-size: 0.96rem;
 }
 
+.status-emphasis.caution {
+  color: #f4d8bf;
+}
+
+.status-emphasis.alert {
+  color: #f2c0c0;
+}
+
 .status-compare-note {
   margin: -4px 0 16px;
   padding: 10px 12px;

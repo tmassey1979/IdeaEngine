@@ -176,6 +176,33 @@ function interventionTargetUrgency(snapshot) {
   return "normal";
 }
 
+function delayedRetryUrgency(snapshot) {
+  if (!snapshot.nextDelayedRetryAt) {
+    return "normal";
+  }
+
+  const retryAt = new Date(snapshot.nextDelayedRetryAt);
+  if (Number.isNaN(retryAt.getTime())) {
+    return "normal";
+  }
+
+  const remainingMs = retryAt.getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return "normal";
+  }
+
+  const remainingMinutes = remainingMs / 60000;
+  if (remainingMinutes >= 15) {
+    return "alert";
+  }
+
+  if (remainingMinutes >= 5) {
+    return "caution";
+  }
+
+  return "normal";
+}
+
 function formatDelta(value) {
   if (value > 0) {
     return `+${value}`;
@@ -848,6 +875,7 @@ function renderStatusSnapshot(snapshot) {
   freshness.className = `snapshot-freshness ${freshnessState.state}`;
   nextPoll.textContent = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "No next poll scheduled";
   nextDelayedRetry.textContent = snapshot.nextDelayedRetryAt ? formatTimestamp(snapshot.nextDelayedRetryAt) : "No delayed retry scheduled";
+  nextDelayedRetry.className = delayedRetryUrgencyState === "normal" ? "" : `status-emphasis ${delayedRetryUrgencyState}`;
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueDirection.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
@@ -862,9 +890,14 @@ function renderStatusSnapshot(snapshot) {
   const workerNoteState = workerNote(snapshot);
   const leadQuarantineUrgencyState = leadQuarantineUrgency(snapshot);
   const interventionTargetUrgencyState = interventionTargetUrgency(snapshot);
+  const delayedRetryUrgencyState = delayedRetryUrgency(snapshot);
   workerNoteLabel.textContent = workerNoteState.label;
   workerNoteText.textContent = workerNoteState.text;
-  const workerUrgencyState = interventionTargetUrgencyState !== "normal" ? interventionTargetUrgencyState : leadQuarantineUrgencyState;
+  const workerUrgencyState = interventionTargetUrgencyState !== "normal"
+    ? interventionTargetUrgencyState
+    : leadQuarantineUrgencyState !== "normal"
+      ? leadQuarantineUrgencyState
+      : delayedRetryUrgencyState;
   workerNoteNode.className = `status-worker-note ${workerNoteState.state}${workerUrgencyState !== "normal" ? ` drift-${workerUrgencyState}` : ""}`;
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
@@ -892,7 +925,7 @@ function renderStatusSnapshot(snapshot) {
   leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
   leadJobDelayed.textContent = snapshot.leadJob?.delayed ? "yes" : "no";
   leadJobRetryUnlock.textContent = snapshot.leadJob?.retryNotBeforeUtc ? formatTimestamp(snapshot.leadJob.retryNotBeforeUtc) : "none";
-  leadJobGroup.className = "status-activity";
+  leadJobGroup.className = `status-activity ${delayedRetryUrgencyState === "normal" ? "" : delayedRetryUrgencyState}`.trim();
   interventionTargetIssue.textContent = snapshot.interventionTarget?.issueNumber
     ? `#${snapshot.interventionTarget.issueNumber}`
     : snapshot.interventionTarget?.kind === "idle"
@@ -1124,6 +1157,7 @@ async function bootStatusMock() {
     freshness.className = "snapshot-freshness unavailable";
     nextPoll.textContent = "Unavailable";
     nextDelayedRetry.textContent = "Unavailable";
+    nextDelayedRetry.className = "";
     queueDirection.textContent = "unavailable";
     queueDirection.className = "queue-trend unavailable";
     queueComparedAt.textContent = "Unavailable";
