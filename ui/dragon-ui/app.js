@@ -747,6 +747,7 @@ function renderStatusSnapshot(snapshot) {
   const generatedAt = document.getElementById("status-generated-at");
   const freshness = document.getElementById("status-freshness");
   const nextPoll = document.getElementById("status-next-poll");
+  const nextDelayedRetry = document.getElementById("status-next-delayed-retry");
   const queueDirection = document.getElementById("status-queue-direction");
   const queueComparedAt = document.getElementById("status-queue-compared-at");
   const compareAge = document.getElementById("status-compare-age");
@@ -777,6 +778,8 @@ function renderStatusSnapshot(snapshot) {
   const leadJobTarget = document.getElementById("status-lead-job-target");
   const leadJobOutcome = document.getElementById("status-lead-job-outcome");
   const leadJobPriority = document.getElementById("status-lead-job-priority");
+  const leadJobDelayed = document.getElementById("status-lead-job-delayed");
+  const leadJobRetryUnlock = document.getElementById("status-lead-job-retry-unlock");
   const interventionTargetGroup = document.getElementById("status-intervention-target-group");
   const interventionTargetIssue = document.getElementById("status-intervention-target-issue");
   const interventionTargetKind = document.getElementById("status-intervention-target-kind");
@@ -844,6 +847,7 @@ function renderStatusSnapshot(snapshot) {
   freshness.textContent = freshnessState.label;
   freshness.className = `snapshot-freshness ${freshnessState.state}`;
   nextPoll.textContent = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "No next poll scheduled";
+  nextDelayedRetry.textContent = snapshot.nextDelayedRetryAt ? formatTimestamp(snapshot.nextDelayedRetryAt) : "No delayed retry scheduled";
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";
   queueDirection.className = `queue-trend ${snapshot.queueDirection ?? "unknown"}`;
   queueComparedAt.textContent = snapshot.queueComparedAt ? formatTimestamp(snapshot.queueComparedAt) : "No prior snapshot";
@@ -886,6 +890,8 @@ function renderStatusSnapshot(snapshot) {
   leadJobTarget.textContent = snapshot.leadJob?.targetArtifact ?? "none";
   leadJobOutcome.textContent = snapshot.leadJob?.targetOutcome ?? "none";
   leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
+  leadJobDelayed.textContent = snapshot.leadJob?.delayed ? "yes" : "no";
+  leadJobRetryUnlock.textContent = snapshot.leadJob?.retryNotBeforeUtc ? formatTimestamp(snapshot.leadJob.retryNotBeforeUtc) : "none";
   leadJobGroup.className = "status-activity";
   interventionTargetIssue.textContent = snapshot.interventionTarget?.issueNumber
     ? `#${snapshot.interventionTarget.issueNumber}`
@@ -1117,6 +1123,7 @@ async function bootStatusMock() {
     freshness.textContent = "unavailable";
     freshness.className = "snapshot-freshness unavailable";
     nextPoll.textContent = "Unavailable";
+    nextDelayedRetry.textContent = "Unavailable";
     queueDirection.textContent = "unavailable";
     queueDirection.className = "queue-trend unavailable";
     queueComparedAt.textContent = "Unavailable";
@@ -1152,6 +1159,8 @@ async function bootStatusMock() {
     leadJobTarget.textContent = "unavailable";
     leadJobOutcome.textContent = "unavailable";
     leadJobPriority.textContent = "unavailable";
+    leadJobDelayed.textContent = "unavailable";
+    leadJobRetryUnlock.textContent = "unavailable";
     leadJobGroup.className = "status-activity";
     interventionTargetIssue.textContent = "Unavailable";
     interventionTargetKind.textContent = "unavailable";
