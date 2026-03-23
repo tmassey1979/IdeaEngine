@@ -306,6 +306,49 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_TreatsQuarantineWithQueuedRecoveryChildWorkAsBlockedAndExposesLeadQuarantine()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Provider Notes", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "22",
+                ["workType"] = "recovery",
+                ["requestedBlocking"] = "true"
+            }));
+
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Provider Notes", "documentation", new JobExecutionResult("job-parent", "documentation", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "quarantined", "Parent is quarantined.");
+        store.Update(
+            500,
+            "[Recovery] Provider Notes",
+            "developer",
+            new JobExecutionResult("job-recovery", "developer", "success", "started", DateTimeOffset.UtcNow),
+            sourceIssueNumber: 22);
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus();
+
+        Assert.Equal("blocked", status.Health);
+        Assert.Contains("Lead recovery: issue #22 via recovery #500", status.AttentionSummary, StringComparison.Ordinal);
+        Assert.Equal(1, status.Rollup.ActionableQuarantinedIssues);
+        Assert.NotNull(status.LeadQuarantine);
+        Assert.Equal(22, status.LeadQuarantine!.IssueNumber);
+        Assert.Equal("Provider Notes", status.LeadQuarantine.IssueTitle);
+        Assert.Equal(1, status.LeadQuarantine.QueuedRecoveryJobs);
+        Assert.Equal(500, status.LeadQuarantine.RecoveryIssueNumber);
+        Assert.Equal("[Recovery] Provider Notes", status.LeadQuarantine.RecoveryIssueTitle);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesLatestGithubSyncFailure()
     {
         var root = CreateTempRoot();
@@ -1375,6 +1418,7 @@ public sealed class PlannerTests
             new StatusRollup(0, 0, 0, 0, 1, 0),
             null,
             null,
+            null,
             new RecentLoopSignalSnapshot("draining", "previous"),
             "unknown",
             0,
@@ -1401,6 +1445,7 @@ public sealed class PlannerTests
             "current",
             new StatusRollup(1, 0, 0, 0, 0, 1),
             new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "refresh provider notes summary", "high", true, "story"),
+            null,
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
             "unknown",

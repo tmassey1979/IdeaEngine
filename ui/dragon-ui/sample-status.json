@@ -163,5 +163,13 @@
       "latestExecutionNotes": "",
       "latestExecutionRecordedAt": "2026-03-16T22:11:22.1959085+00:00"
     }
-  ]
+  ],
+  "leadQuarantine": {
+    "issueNumber": 22,
+    "issueTitle": "Provider Notes",
+    "note": "Parent is quarantined.",
+    "queuedRecoveryJobs": 1,
+    "recoveryIssueNumber": 500,
+    "recoveryIssueTitle": "[Recovery] Provider Notes"
+  }
 }

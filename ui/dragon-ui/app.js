@@ -687,6 +687,11 @@ function renderStatusSnapshot(snapshot) {
   const leadJobTarget = document.getElementById("status-lead-job-target");
   const leadJobOutcome = document.getElementById("status-lead-job-outcome");
   const leadJobPriority = document.getElementById("status-lead-job-priority");
+  const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
+  const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
+  const leadQuarantineRecovery = document.getElementById("status-lead-quarantine-recovery");
+  const leadQuarantineJobs = document.getElementById("status-lead-quarantine-jobs");
+  const leadQuarantineNote = document.getElementById("status-lead-quarantine-note");
   const latestPassGroup = document.getElementById("status-latest-pass-group");
   const latestIssue = document.getElementById("status-latest-issue");
   const latestStage = document.getElementById("status-latest-stage");
@@ -774,6 +779,15 @@ function renderStatusSnapshot(snapshot) {
   leadJobOutcome.textContent = snapshot.leadJob?.targetOutcome ?? "none";
   leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
   leadJobGroup.className = "status-activity";
+  leadQuarantineIssue.textContent = snapshot.leadQuarantine
+    ? `#${snapshot.leadQuarantine.issueNumber} ${snapshot.leadQuarantine.issueTitle}`
+    : "No actionable quarantine";
+  leadQuarantineRecovery.textContent = snapshot.leadQuarantine?.recoveryIssueNumber
+    ? `#${snapshot.leadQuarantine.recoveryIssueNumber} ${snapshot.leadQuarantine.recoveryIssueTitle ?? ""}`.trim()
+    : "none";
+  leadQuarantineJobs.textContent = String(snapshot.leadQuarantine?.queuedRecoveryJobs ?? 0);
+  leadQuarantineNote.textContent = snapshot.leadQuarantine?.note ?? "No recovery hold recorded";
+  leadQuarantineGroup.className = snapshot.leadQuarantine ? "status-activity caution" : "status-activity";
   latestIssue.textContent = snapshot.latestActivity
     ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
     : "No recent execution";
@@ -910,6 +924,11 @@ async function bootStatusMock() {
     const leadJobTarget = document.getElementById("status-lead-job-target");
     const leadJobOutcome = document.getElementById("status-lead-job-outcome");
     const leadJobPriority = document.getElementById("status-lead-job-priority");
+    const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
+    const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
+    const leadQuarantineRecovery = document.getElementById("status-lead-quarantine-recovery");
+    const leadQuarantineJobs = document.getElementById("status-lead-quarantine-jobs");
+    const leadQuarantineNote = document.getElementById("status-lead-quarantine-note");
     const latestPassGroup = document.getElementById("status-latest-pass-group");
     const latestIssue = document.getElementById("status-latest-issue");
     const latestStage = document.getElementById("status-latest-stage");
@@ -984,6 +1003,11 @@ async function bootStatusMock() {
     leadJobOutcome.textContent = "unavailable";
     leadJobPriority.textContent = "unavailable";
     leadJobGroup.className = "status-activity";
+    leadQuarantineIssue.textContent = "Unavailable";
+    leadQuarantineRecovery.textContent = "unavailable";
+    leadQuarantineJobs.textContent = "unavailable";
+    leadQuarantineNote.textContent = "Recovery status unavailable";
+    leadQuarantineGroup.className = "status-activity";
     latestIssue.textContent = "No recent execution";
     latestStage.textContent = "unknown";
     latestSummary.textContent = "Could not load status summary";

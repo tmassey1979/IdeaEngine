@@ -58,7 +58,8 @@ public sealed class SelfBuildLoop
     {
         var queuedJobs = queueStore.ReadAll();
         var leadJob = queueStore.Peek();
-        var issues = workflowStateStore.ReadAll().Values
+        var workflows = workflowStateStore.ReadAll();
+        var issues = workflows.Values
             .OrderBy(item => item.IssueNumber)
             .Select(workflow =>
             {
@@ -80,9 +81,10 @@ public sealed class SelfBuildLoop
             })
             .ToArray();
 
-        var health = DeriveStatusHealth(queuedJobs.Count, issues);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health);
-        var rollup = BuildStatusRollup(issues);
+        var leadQuarantine = BuildLeadQuarantine(workflows, queuedJobs);
+        var health = DeriveStatusHealth(issues, leadQuarantine);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, leadQuarantine);
+        var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
         var latestGithubSync = ReadLatestGithubSync();
@@ -118,6 +120,7 @@ public sealed class SelfBuildLoop
                 leadJob.Metadata.GetValueOrDefault("requestedPriority"),
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType")),
+            leadQuarantine,
             latestActivity,
             recentLoopSignal,
             "unknown",
@@ -1501,11 +1504,83 @@ public sealed class SelfBuildLoop
         return string.Equals(parentWorkflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string DeriveStatusHealth(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues)
+    private static bool HasActionableRecoveryWork(IssueWorkflowState workflow, IReadOnlyList<SelfBuildJob> queuedJobs)
     {
-        if (issues.Any(issue =>
-                string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
-                issue.QueuedJobCount > 0))
+        if (!string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (queuedJobs.Any(job => job.Issue == workflow.IssueNumber))
+        {
+            return true;
+        }
+
+        if (!(workflow.ActiveRecoveryIssueNumbers?.Any() ?? false))
+        {
+            return false;
+        }
+
+        return workflow.ActiveRecoveryIssueNumbers!.Any(recoveryIssueNumber =>
+            queuedJobs.Any(job => job.Issue == recoveryIssueNumber));
+    }
+
+    private static int CountActionableRecoveryJobs(IssueWorkflowState workflow, IReadOnlyList<SelfBuildJob> queuedJobs)
+    {
+        if (!string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        var parentQueuedJobs = queuedJobs.Count(job => job.Issue == workflow.IssueNumber);
+        var childQueuedJobs = (workflow.ActiveRecoveryIssueNumbers ?? [])
+            .Sum(recoveryIssueNumber => queuedJobs.Count(job => job.Issue == recoveryIssueNumber));
+
+        return parentQueuedJobs + childQueuedJobs;
+    }
+
+    private static LeadQuarantineSnapshot? BuildLeadQuarantine(
+        IReadOnlyDictionary<int, IssueWorkflowState> workflows,
+        IReadOnlyList<SelfBuildJob> queuedJobs)
+    {
+        return workflows.Values
+            .Where(workflow => HasActionableRecoveryWork(workflow, queuedJobs))
+            .Select(workflow =>
+            {
+                var queuedRecoveryJobs = CountActionableRecoveryJobs(workflow, queuedJobs);
+                var recoveryIssueNumber = (workflow.ActiveRecoveryIssueNumbers ?? [])
+                    .Where(recoveryIssue => queuedJobs.Any(job => job.Issue == recoveryIssue))
+                    .OrderByDescending(recoveryIssue => queuedJobs.Count(job => job.Issue == recoveryIssue))
+                    .ThenByDescending(recoveryIssue => recoveryIssue)
+                    .FirstOrDefault();
+                var hasRecoveryIssue = recoveryIssueNumber != 0;
+
+                workflows.TryGetValue(recoveryIssueNumber, out var recoveryWorkflow);
+
+                return new
+                {
+                    Workflow = workflow,
+                    QueuedRecoveryJobs = queuedRecoveryJobs,
+                    RecoveryIssueNumber = hasRecoveryIssue ? recoveryIssueNumber : (int?)null,
+                    RecoveryIssueTitle = hasRecoveryIssue ? recoveryWorkflow?.IssueTitle : null
+                };
+            })
+            .OrderByDescending(candidate => candidate.QueuedRecoveryJobs)
+            .ThenByDescending(candidate => candidate.RecoveryIssueNumber ?? 0)
+            .ThenBy(candidate => candidate.Workflow.IssueNumber)
+            .Select(candidate => new LeadQuarantineSnapshot(
+                candidate.Workflow.IssueNumber,
+                candidate.Workflow.IssueTitle,
+                candidate.Workflow.Note,
+                candidate.QueuedRecoveryJobs,
+                candidate.RecoveryIssueNumber,
+                candidate.RecoveryIssueTitle))
+            .FirstOrDefault();
+    }
+
+    private static string DeriveStatusHealth(IReadOnlyList<IssueStatusSnapshot> issues, LeadQuarantineSnapshot? leadQuarantine)
+    {
+        if (leadQuarantine is not null)
         {
             return "blocked";
         }
@@ -1520,7 +1595,7 @@ public sealed class SelfBuildLoop
             return "attention";
         }
 
-        if (queuedJobs > 0 || issues.Any(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)))
+        if (issues.Any(issue => issue.QueuedJobCount > 0 || string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)))
         {
             return "healthy";
         }
@@ -1528,12 +1603,15 @@ public sealed class SelfBuildLoop
         return "idle";
     }
 
-    private static string BuildAttentionSummary(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues, string health)
+    private static string BuildAttentionSummary(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues, string health, LeadQuarantineSnapshot? leadQuarantine)
     {
-        var rollup = BuildStatusRollup(issues);
+        var rollup = BuildStatusRollupFromIssues(issues);
 
         return health switch
         {
+            "blocked" when leadQuarantine is not null =>
+                $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work. Lead recovery: issue #{leadQuarantine.IssueNumber}" +
+                $"{(leadQuarantine.RecoveryIssueNumber is not null ? $" via recovery #{leadQuarantine.RecoveryIssueNumber.Value}" : string.Empty)}.",
             "blocked" => $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work.",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
@@ -1542,7 +1620,32 @@ public sealed class SelfBuildLoop
         };
     }
 
-    private static StatusRollup BuildStatusRollup(IReadOnlyList<IssueStatusSnapshot> issues)
+    private static StatusRollup BuildStatusRollup(IReadOnlyDictionary<int, IssueWorkflowState> workflows, IReadOnlyList<SelfBuildJob> queuedJobs)
+    {
+        var issues = workflows.Values
+            .Select(workflow => new IssueStatusSnapshot(
+                workflow.IssueNumber,
+                workflow.IssueTitle,
+                workflow.OverallStatus,
+                InferCurrentStage(workflow),
+                queuedJobs.Count(job => job.Issue == workflow.IssueNumber),
+                workflow.Note,
+                null,
+                null,
+                null))
+            .ToArray();
+
+        var baseRollup = BuildStatusRollupFromIssues(issues);
+        var actionableQuarantinedIssues = workflows.Values.Count(workflow => HasActionableRecoveryWork(workflow, queuedJobs));
+
+        return baseRollup with
+        {
+            ActionableQuarantinedIssues = actionableQuarantinedIssues,
+            InactiveQuarantinedIssues = baseRollup.QuarantinedIssues - actionableQuarantinedIssues
+        };
+    }
+
+    private static StatusRollup BuildStatusRollupFromIssues(IReadOnlyList<IssueStatusSnapshot> issues)
     {
         var quarantinedIssues = issues
             .Where(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
@@ -1685,6 +1788,7 @@ public sealed record StatusSnapshot(
     string AttentionSummary,
     StatusRollup Rollup,
     LeadJobSnapshot? LeadJob,
+    LeadQuarantineSnapshot? LeadQuarantine,
     LatestActivitySnapshot? LatestActivity,
     RecentLoopSignalSnapshot RecentLoopSignal,
     string QueueDirection,
@@ -1741,6 +1845,15 @@ public sealed record LeadJobSnapshot(
     string? Priority,
     bool Blocking,
     string? WorkType
+);
+
+public sealed record LeadQuarantineSnapshot(
+    int IssueNumber,
+    string IssueTitle,
+    string? Note,
+    int QueuedRecoveryJobs,
+    int? RecoveryIssueNumber,
+    string? RecoveryIssueTitle
 );
 
 public sealed record LatestActivitySnapshot(
