@@ -51,6 +51,10 @@ print(f"  service: {service.get('active', 'unknown')} ({service.get('result', 'u
 print(f"  worker: {status.get('health', 'unknown')}")
 print(f"  alert_check: {alert_status}")
 print(f"  attention: {status.get('attentionSummary', 'none')}")
+if status.get("nextDelayedRetryAt"):
+    print(f"  next_delayed_retry: {status.get('nextDelayedRetryAt')}")
+if status.get("delayedRetrySummary"):
+    print(f"  delayed_retry: {status.get('delayedRetrySummary')}")
 print()
 print("Queue")
 print(f"  queued_jobs: {status.get('queuedJobs', 0)}")

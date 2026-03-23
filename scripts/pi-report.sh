@@ -140,8 +140,11 @@ fields = {
     "WORKER_MODE": payload.get("workerMode", ""),
     "WORKER_STATE": payload.get("workerState", ""),
     "WORKER_REASON": payload.get("workerCompletionReason", ""),
+    "WORKER_ACTIVITY": payload.get("workerActivity", ""),
     "HEALTH": payload.get("health", ""),
     "ATTENTION_SUMMARY": payload.get("attentionSummary", ""),
+    "NEXT_DELAYED_RETRY_AT": payload.get("nextDelayedRetryAt", ""),
+    "DELAYED_RETRY_SUMMARY": payload.get("delayedRetrySummary", ""),
     "QUEUED_JOBS": payload.get("queuedJobs", 0),
     "FAILED_ISSUES": ((payload.get("rollup") or {}).get("failedIssues", 0)),
     "IN_PROGRESS_ISSUES": ((payload.get("rollup") or {}).get("inProgressIssues", 0)),
@@ -617,8 +620,17 @@ main() {
     if [[ -n "${WORKER_REASON:-}" && "${WORKER_REASON}" != "None" ]]; then
       echo "worker_completion_reason: ${WORKER_REASON}"
     fi
+    if [[ -n "${WORKER_ACTIVITY:-}" && "${WORKER_ACTIVITY}" != "None" ]]; then
+      echo "worker_activity: ${WORKER_ACTIVITY}"
+    fi
     echo "health: ${HEALTH:-unknown}"
     echo "attention_summary: ${ATTENTION_SUMMARY:-none}"
+    if [[ -n "${NEXT_DELAYED_RETRY_AT:-}" && "${NEXT_DELAYED_RETRY_AT}" != "None" ]]; then
+      echo "next_delayed_retry_at: ${NEXT_DELAYED_RETRY_AT}"
+    fi
+    if [[ -n "${DELAYED_RETRY_SUMMARY:-}" && "${DELAYED_RETRY_SUMMARY}" != "None" ]]; then
+      echo "delayed_retry_summary: ${DELAYED_RETRY_SUMMARY}"
+    fi
     echo "queued_jobs: ${QUEUED_JOBS:-0}"
     echo "failed_issues: ${FAILED_ISSUES:-0}"
     echo "in_progress_issues: ${IN_PROGRESS_ISSUES:-0}"
@@ -633,7 +645,10 @@ main() {
     fi
   elif [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]]; then
     echo "status_json_available: yes"
+    echo "worker_activity: $(json_query workerActivity unknown)"
     echo "health: $(json_query health unknown)"
+    echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
+    echo "delayed_retry_summary: $(json_query delayedRetrySummary '')"
     echo "queued_jobs: $(json_query queuedJobs 0)"
     echo "quarantined_issues: $(json_query rollup.quarantinedIssues 0)"
     echo "validated_issues: $(json_query rollup.validatedIssues 0)"
