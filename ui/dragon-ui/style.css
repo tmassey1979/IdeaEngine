@@ -549,6 +549,11 @@ button {
   background: rgba(214, 139, 42, 0.14);
 }
 
+.status-worker-note.waiting.drift-caution,
+.status-worker-note.running.drift-caution {
+  box-shadow: 0 0 0 1px rgba(214, 139, 42, 0.18), 0 0 18px rgba(214, 139, 42, 0.12);
+}
+
 .status-worker-note.running {
   color: #d9ebff;
   background: rgba(56, 130, 246, 0.12);
@@ -559,6 +564,12 @@ button {
   color: #d9ebff;
   border-color: rgba(56, 130, 246, 0.24);
   background: rgba(56, 130, 246, 0.14);
+}
+
+.status-worker-note.waiting.drift-alert,
+.status-worker-note.running.drift-alert {
+  border-color: rgba(212, 20, 20, 0.26);
+  box-shadow: 0 0 0 1px rgba(212, 20, 20, 0.1), 0 0 22px rgba(212, 20, 20, 0.16);
 }
 
 .status-worker-note.complete {

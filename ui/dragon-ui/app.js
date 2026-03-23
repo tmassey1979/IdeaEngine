@@ -136,6 +136,24 @@ function ageLabel(value) {
   return freshnessInfo(value).label;
 }
 
+function leadQuarantineUrgency(snapshot) {
+  const leadQuarantine = snapshot.leadQuarantine;
+  if (!leadQuarantine || leadQuarantine.state !== "sync-drift" || !leadQuarantine.oldestPendingGithubSyncAt) {
+    return "normal";
+  }
+
+  const freshness = freshnessInfo(leadQuarantine.oldestPendingGithubSyncAt);
+  if (freshness.state === "stale") {
+    return "alert";
+  }
+
+  if (freshness.state === "aging" || freshness.state === "fresh") {
+    return "caution";
+  }
+
+  return "normal";
+}
+
 function formatDelta(value) {
   if (value > 0) {
     return `+${value}`;
@@ -350,14 +368,17 @@ function workerNote(snapshot) {
   const leadQuarantineAgeLabel = snapshot.leadQuarantine?.oldestPendingGithubSyncAt
     ? ` Oldest recovery writeback drift: ${ageLabel(snapshot.leadQuarantine.oldestPendingGithubSyncAt)}.`
     : "";
+  const leadQuarantinePriorityLabel = snapshot.leadQuarantine?.state === "sync-drift"
+    ? ` Lead intervention target: recovery writeback drift on issue #${snapshot.leadQuarantine.issueNumber}.`
+    : "";
 
   if (state === "waiting") {
     return {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantineAgeLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -366,8 +387,8 @@ function workerNote(snapshot) {
       label: "Running",
       state: "running",
       text: cadenceLabel
-        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantineAgeLabel}`
-        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -375,7 +396,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantineAgeLabel}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -765,9 +786,10 @@ function renderStatusSnapshot(snapshot) {
   compareNoteText.textContent = comparisonNote(snapshot);
   compareNote.className = `status-compare-note ${snapshot.comparisonMode ?? "backend"}`;
   const workerNoteState = workerNote(snapshot);
+  const leadQuarantineUrgencyState = leadQuarantineUrgency(snapshot);
   workerNoteLabel.textContent = workerNoteState.label;
   workerNoteText.textContent = workerNoteState.text;
-  workerNoteNode.className = `status-worker-note ${workerNoteState.state}`;
+  workerNoteNode.className = `status-worker-note ${workerNoteState.state}${leadQuarantineUrgencyState !== "normal" ? ` drift-${leadQuarantineUrgencyState}` : ""}`;
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -804,7 +826,9 @@ function renderStatusSnapshot(snapshot) {
   leadQuarantineAge.textContent = ageLabel(snapshot.leadQuarantine?.oldestPendingGithubSyncAt);
   leadQuarantineNote.textContent = snapshot.leadQuarantine?.note ?? "No recovery hold recorded";
   leadQuarantineSummary.textContent = snapshot.leadQuarantine?.summary ?? "No active recovery blocker";
-  leadQuarantineGroup.className = snapshot.leadQuarantine ? "status-activity caution" : "status-activity";
+  leadQuarantineGroup.className = snapshot.leadQuarantine
+    ? `status-activity ${leadQuarantineUrgencyState === "alert" ? "alert" : leadQuarantineUrgencyState === "caution" ? "caution" : "caution"}`
+    : "status-activity";
   latestIssue.textContent = snapshot.latestActivity
     ? `#${snapshot.latestActivity.issueNumber} ${snapshot.latestActivity.issueTitle}`
     : "No recent execution";
