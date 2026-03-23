@@ -92,6 +92,13 @@ public sealed class SelfBuildLoop
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
+        var nextDelayedRetryAt = queuedJobs
+            .Select(ReadRetryNotBeforeUtc)
+            .Where(value => value is not null)
+            .Min();
+        var delayedRetrySummary = nextDelayedRetryAt is null
+            ? null
+            : $"Next delayed provider retry unlocks at {nextDelayedRetryAt.Value:O}.";
         var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
         var leadJobSnapshot = leadJob is null
             ? null
@@ -152,7 +159,10 @@ public sealed class SelfBuildLoop
             effectiveWorkerActivity,
             pendingGithubSyncSummary,
             interventionTarget,
-            interventionEscalationNote
+            interventionEscalationNote,
+            0,
+            nextDelayedRetryAt,
+            delayedRetrySummary
         );
     }
 
@@ -2537,7 +2547,9 @@ public sealed record StatusSnapshot(
     string? PendingGithubSyncSummary = null,
     InterventionTargetSnapshot? InterventionTarget = null,
     string? InterventionEscalationNote = null,
-    int InterventionEscalationStreak = 0
+    int InterventionEscalationStreak = 0,
+    DateTimeOffset? NextDelayedRetryAt = null,
+    string? DelayedRetrySummary = null
 );
 
 public sealed record LatestPassSummary(

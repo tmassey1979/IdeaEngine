@@ -602,6 +602,8 @@ public sealed class PlannerTests
         Assert.Equal(22, status.LeadJob!.IssueNumber);
         Assert.True(status.LeadJob.Delayed);
         Assert.Equal(retryNotBefore, status.LeadJob.RetryNotBeforeUtc);
+        Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
+        Assert.Equal($"Next delayed provider retry unlocks at {retryNotBefore:O}.", status.DelayedRetrySummary);
         Assert.Equal($"Waiting for provider retry window on issue #22 until {retryNotBefore:O}.", status.WorkerActivity);
     }
 
