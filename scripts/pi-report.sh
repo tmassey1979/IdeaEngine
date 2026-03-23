@@ -147,6 +147,8 @@ fields = {
     "NEXT_DELAYED_RETRY_AT": payload.get("nextDelayedRetryAt", ""),
     "DELAYED_RETRY_URGENCY": payload.get("delayedRetryUrgency", ""),
     "DELAYED_RETRY_SUMMARY": payload.get("delayedRetrySummary", ""),
+    "PENDING_GITHUB_SYNC_NEXT_RETRY": next((item.get("nextRetryAt", "") for item in (payload.get("pendingGithubSync") or []) if item.get("nextRetryAt")), ""),
+    "PENDING_GITHUB_SYNC_LAST_ATTEMPT": next((item.get("lastAttemptedAt", "") for item in (payload.get("pendingGithubSync") or []) if item.get("lastAttemptedAt")), ""),
     "QUEUED_JOBS": payload.get("queuedJobs", 0),
     "FAILED_ISSUES": ((payload.get("rollup") or {}).get("failedIssues", 0)),
     "IN_PROGRESS_ISSUES": ((payload.get("rollup") or {}).get("inProgressIssues", 0)),
@@ -630,6 +632,12 @@ main() {
     if [[ -n "${NEXT_DELAYED_RETRY_AT:-}" && "${NEXT_DELAYED_RETRY_AT}" != "None" ]]; then
       echo "next_delayed_retry_at: ${NEXT_DELAYED_RETRY_AT}"
     fi
+    if [[ -n "${PENDING_GITHUB_SYNC_NEXT_RETRY:-}" && "${PENDING_GITHUB_SYNC_NEXT_RETRY}" != "None" ]]; then
+      echo "pending_github_sync_next_retry_at: ${PENDING_GITHUB_SYNC_NEXT_RETRY}"
+    fi
+    if [[ -n "${PENDING_GITHUB_SYNC_LAST_ATTEMPT:-}" && "${PENDING_GITHUB_SYNC_LAST_ATTEMPT}" != "None" ]]; then
+      echo "pending_github_sync_last_attempt_at: ${PENDING_GITHUB_SYNC_LAST_ATTEMPT}"
+    fi
     if [[ -n "${DELAYED_RETRY_SUMMARY:-}" && "${DELAYED_RETRY_SUMMARY}" != "None" ]]; then
       echo "delayed_retry_summary: ${DELAYED_RETRY_SUMMARY}"
     fi
@@ -660,6 +668,8 @@ main() {
       echo "wait_signal: routine poll wait"
     fi
     echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
+    echo "pending_github_sync_next_retry_at: $(json_query pendingGithubSync.0.nextRetryAt '')"
+    echo "pending_github_sync_last_attempt_at: $(json_query pendingGithubSync.0.lastAttemptedAt '')"
     echo "delayed_retry_urgency: $(json_query delayedRetryUrgency '')"
     echo "delayed_retry_summary: $(json_query delayedRetrySummary '')"
     echo "queued_jobs: $(json_query queuedJobs 0)"

@@ -52,6 +52,12 @@ rollup = status.get("rollup") or {}
 latest = status.get("latestActivity") or {}
 next_wake_reason = describe_wake_reason(status.get("nextWakeReason"))
 delayed_retry_urgency = status.get("delayedRetryUrgency")
+pending_github_sync = status.get("pendingGithubSync") or []
+pending_github_sync_next_retry = ""
+pending_github_sync_last_attempt = ""
+if pending_github_sync:
+    pending_github_sync_next_retry = pending_github_sync[0].get("nextRetryAt", "")
+    pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt", "")
 wait_signal = None
 if next_wake_reason == "waiting for delayed provider retry":
     wait_signal = "provider backoff"
@@ -77,6 +83,10 @@ if status.get("delayedRetryUrgency"):
     print(f"  delayed_retry_urgency: {status.get('delayedRetryUrgency')}")
 if status.get("delayedRetrySummary"):
     print(f"  delayed_retry: {status.get('delayedRetrySummary')}")
+if pending_github_sync_next_retry:
+    print(f"  pending_github_sync_next_retry: {pending_github_sync_next_retry}")
+if pending_github_sync_last_attempt:
+    print(f"  pending_github_sync_last_attempt: {pending_github_sync_last_attempt}")
 print()
 print("Queue")
 print(f"  queued_jobs: {status.get('queuedJobs', 0)}")

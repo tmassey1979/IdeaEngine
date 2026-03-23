@@ -5227,7 +5227,8 @@ public sealed class PlannerTests
                 "summary": "GitHub sync failed for recovery issue #500.",
                 "recordedAt": "2026-03-23T12:00:00Z",
                 "attemptCount": 2,
-                "lastAttemptedAt": "2026-03-23T12:01:00Z"
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2026-03-23T12:02:00Z"
               }
             ]
             """);
@@ -5293,7 +5294,8 @@ public sealed class PlannerTests
                   "summary": "GitHub sync failed for recovery issue #500.",
                   "recordedAt": "2026-03-23T12:00:00Z",
                   "attemptCount": 2,
-                  "lastAttemptedAt": "2026-03-23T12:01:00Z"
+                  "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                  "nextRetryAt": "2026-03-23T12:02:00Z"
                 }
               ],
               "pendingGithubSyncCount": 1,
@@ -5419,7 +5421,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest queued at: 2026-03-23T12:00:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest age: 1m 45s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync last attempt: 2026-03-23T12:01:00.0000000+00:00", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("pending GitHub sync next retry: not scheduled", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync next retry: 2026-03-23T12:02:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: 1 pending GitHub update remains queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 cycles, 0 seed, 0 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
