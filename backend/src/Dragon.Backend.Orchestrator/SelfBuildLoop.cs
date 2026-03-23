@@ -85,11 +85,11 @@ public sealed class SelfBuildLoop
         var latestGithubReplay = ReadLatestGithubReplay();
         var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
         var baseLeadQuarantine = BuildLeadQuarantine(workflows, queuedJobs, pendingGithubSync);
-        var health = DeriveStatusHealth(issues, baseLeadQuarantine);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine);
+        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
-        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
         var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
         var leadJobSnapshot = leadJob is null
@@ -1617,7 +1617,10 @@ public sealed class SelfBuildLoop
             .FirstOrDefault();
     }
 
-    private static string DeriveStatusHealth(IReadOnlyList<IssueStatusSnapshot> issues, LeadQuarantineSnapshot? leadQuarantine)
+    private static string DeriveStatusHealth(
+        IReadOnlyList<IssueStatusSnapshot> issues,
+        LeadQuarantineSnapshot? leadQuarantine,
+        LatestGithubReplaySnapshot? latestGithubReplay)
     {
         if (leadQuarantine is not null)
         {
@@ -1639,10 +1642,20 @@ public sealed class SelfBuildLoop
             return "healthy";
         }
 
+        if (ReplayCountsAsWork(latestGithubReplay))
+        {
+            return "healthy";
+        }
+
         return "idle";
     }
 
-    private static string BuildAttentionSummary(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues, string health, LeadQuarantineSnapshot? leadQuarantine)
+    private static string BuildAttentionSummary(
+        int queuedJobs,
+        IReadOnlyList<IssueStatusSnapshot> issues,
+        string health,
+        LeadQuarantineSnapshot? leadQuarantine,
+        LatestGithubReplaySnapshot? latestGithubReplay)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
         var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
@@ -1656,6 +1669,8 @@ public sealed class SelfBuildLoop
             "blocked" => $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work.",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
+            "healthy" when queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay) =>
+                $"{latestGithubReplay!.AttemptedCount} GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
             "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
             _ => "No queued work and no active issue workflows."
         };
@@ -1928,7 +1943,8 @@ public sealed class SelfBuildLoop
         int queuedJobs,
         string health,
         LatestActivitySnapshot? latestActivity,
-        LeadQuarantineSnapshot? leadQuarantine)
+        LeadQuarantineSnapshot? leadQuarantine,
+        LatestGithubReplaySnapshot? latestGithubReplay)
     {
         if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase) && leadQuarantine is not null)
         {
@@ -1950,6 +1966,13 @@ public sealed class SelfBuildLoop
         if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase))
         {
             return new RecentLoopSignalSnapshot("failing", $"Recent activity needs review after issue #{latestActivity.IssueNumber}.");
+        }
+
+        if (queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay))
+        {
+            return new RecentLoopSignalSnapshot(
+                "repairing",
+                latestGithubReplay!.Summary);
         }
 
         if (queuedJobs > 0)

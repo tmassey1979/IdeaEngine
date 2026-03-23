@@ -496,6 +496,10 @@ function workerProgressLabel(snapshot) {
 function workerProgressState(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
 
+  if (snapshot.recentLoopSignal?.mode === "repairing") {
+    return "waiting";
+  }
+
   if (state === "waiting") {
     const idleTarget = snapshot.idleTarget ?? 0;
     const idleStreak = snapshot.idleStreak ?? 0;
@@ -523,6 +527,10 @@ function latestPassOutcome(snapshot) {
     return "No polling summary";
   }
 
+  if ((latestPass.githubReplayAttemptedCount ?? 0) > 0 && latestPass.cycleCount === 0) {
+    return "Pass repaired GitHub drift";
+  }
+
   if (latestPass.reachedMaxCycles) {
     return "Pass hit max cycle cap";
   }
@@ -536,6 +544,8 @@ function latestPassOutcome(snapshot) {
 
 function latestPassOutcomeState(label) {
   switch (label) {
+    case "Pass repaired GitHub drift":
+      return "active";
     case "Pass reached idle":
       return "idle";
     case "Pass completed with remaining work":
@@ -556,6 +566,9 @@ function latestPassMix(snapshot) {
   }
 
   if (latestPass.seededCycles === 0 && latestPass.consumedCycles === 0) {
+    if ((latestPass.githubReplayAttemptedCount ?? 0) > 0) {
+      return "Repair-only";
+    }
     return "Idle";
   }
 
@@ -579,6 +592,7 @@ function latestPassMixState(label) {
     case "Seed-heavy":
     case "Seed-leaning":
       return "seed";
+    case "Repair-only":
     case "Consume-heavy":
     case "Consume-leaning":
       return "consume";
@@ -599,6 +613,9 @@ function latestPassCycleState(snapshot) {
 
   const label = `${latestPass.cycleCount} cycle${latestPass.cycleCount === 1 ? "" : "s"}`;
   if (latestPass.cycleCount === 0) {
+    if ((latestPass.githubReplayAttemptedCount ?? 0) > 0) {
+      return { label, state: "active" };
+    }
     return { label, state: "idle" };
   }
 
@@ -918,7 +935,7 @@ function renderStatusSnapshot(snapshot) {
       pendingGithubGroup.classList.add("alert");
     }
     feed.classList.add("deemphasized");
-  } else if (snapshot.recentLoopSignal?.mode === "draining") {
+  } else if (snapshot.recentLoopSignal?.mode === "draining" || snapshot.recentLoopSignal?.mode === "repairing") {
     latestActivityGroup.classList.add("caution");
     latestPassGroup.classList.add("caution");
     if (pendingGithubItems.length) {

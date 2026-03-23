@@ -862,6 +862,55 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_TreatsRecentGithubReplayRepairAsActiveHealthyWork()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "docs/ARCHITECTURE.md"
+                }),
+            new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow),
+            []);
+
+        var failOnce = true;
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.Contains("issue comment 22", StringComparison.Ordinal) && failOnce)
+            {
+                failOnce = false;
+                throw new InvalidOperationException("gh command failed: gh: Resource not accessible by personal access token (HTTP 403)");
+            }
+
+            return string.Empty;
+        });
+
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+        loop.ReplayPendingGithubSyncs("tmassey1979", "IdeaEngine");
+
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting", pollIntervalSeconds: 30);
+
+        Assert.Equal("healthy", status.Health);
+        Assert.Contains("replayed", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("repairing", status.RecentLoopSignal.Mode);
+        Assert.Contains("Replayed 1 pending GitHub update", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WriteStatus_WritesBackendSnapshotJson()
     {
         var root = CreateTempRoot();
