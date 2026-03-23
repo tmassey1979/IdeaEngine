@@ -309,6 +309,35 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ExecutionRecordStore_StoresInterventionEscalationAcknowledgmentInNotes()
+    {
+        var root = CreateTempRoot();
+        var store = new ExecutionRecordStore(root);
+        var signature = "github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.";
+
+        store.Append(
+            new SelfBuildJob(
+                "feedback",
+                "summarize_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["interventionEscalation"] = "true",
+                    ["interventionSignature"] = signature,
+                    ["workType"] = "operator-escalation"
+                }),
+            new JobExecutionResult("job-1", "feedback", "success", "summarized", DateTimeOffset.UtcNow),
+            []);
+
+        var record = Assert.Single(store.Read(22));
+
+        Assert.Contains($"Intervention escalation acknowledged: {signature}.", record.Notes, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ReadStatus_UsesOperatorEscalationAsInterventionTarget()
     {
         var root = CreateTempRoot();
@@ -2244,6 +2273,85 @@ public sealed class PlannerTests
         var queued = Assert.Single(loop.ReadQueue());
         Assert.Equal(23, queued.Issue);
         Assert.Equal("github-replay-drift|23|501|501|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.", queued.Metadata["interventionSignature"]);
+    }
+
+    [Fact]
+    public void EnqueuePersistentInterventionEscalationFollowUp_DoesNotRequeueAcknowledgedEscalation()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var signature = "github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.";
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "feedback",
+                "summarize_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["interventionEscalation"] = "true",
+                    ["interventionSignature"] = signature,
+                    ["workType"] = "operator-escalation"
+                }),
+            new JobExecutionResult("job-1", "feedback", "success", "summarized", DateTimeOffset.UtcNow),
+            []);
+
+        var snapshot = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "github-run-watch",
+            "github-run-watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            4,
+            10,
+            "healthy",
+            "repairing drift",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("repairing", "repairing drift"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+                22,
+                500,
+                500,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "Summarize the persistent critical intervention target and the next operator action.",
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+            4);
+
+        var result = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+
+        Assert.Null(result);
+        Assert.Empty(loop.ReadQueue());
     }
 
     [Fact]

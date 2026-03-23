@@ -208,10 +208,20 @@ public sealed class SelfBuildLoop
             return null;
         }
 
+        if (string.IsNullOrWhiteSpace(signature))
+        {
+            return null;
+        }
+
         if (queueStore.ReadAll().Any(job =>
                 string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(job.Metadata.GetValueOrDefault("interventionSignature"), signature, StringComparison.OrdinalIgnoreCase)))
+        {
+            return null;
+        }
+
+        if (HasAcknowledgedInterventionEscalation(issueNumber.Value, signature))
         {
             return null;
         }
@@ -298,6 +308,12 @@ public sealed class SelfBuildLoop
             return !string.Equals(job.Metadata.GetValueOrDefault("interventionSignature"), currentSignature, StringComparison.OrdinalIgnoreCase);
         });
     }
+
+    private bool HasAcknowledgedInterventionEscalation(int issueNumber, string signature) =>
+        executionRecordStore.Read(issueNumber).Any(record =>
+            string.Equals(record.JobAction, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(record.Status, "success", StringComparison.OrdinalIgnoreCase) &&
+            record.Notes.Contains($"Intervention escalation acknowledged: {signature}.", StringComparison.Ordinal));
 
     private static void WriteTextAtomically(string outputPath, string contents)
     {

@@ -89,6 +89,15 @@ public sealed class ExecutionRecordStore
                 : $"{summaryResolution} Superseded summary issues: {supersededSummaryIssues}.");
         }
 
+        if (string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            var signature = job.Metadata.GetValueOrDefault("interventionSignature");
+            if (!string.IsNullOrWhiteSpace(signature))
+            {
+                notes.Add($"Intervention escalation acknowledged: {signature}.");
+            }
+        }
+
         return string.Join(" ", notes);
     }
 }
