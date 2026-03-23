@@ -202,6 +202,7 @@ Alert-friendly check:
 dragon-alert-check
 ALLOW_HEALTH_STATES=healthy,idle,attention MAX_FAILED_ISSUES=1 dragon-alert-check
 MAX_DELAYED_RETRY_MINUTES=15 dragon-alert-check
+MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES=10 dragon-alert-check
 ```
 
 Optional webhook notification:
@@ -216,6 +217,7 @@ Configure alert settings:
 dragon-configure-alerts
 ALERT_WEBHOOK_URL_VALUE=https://example.invalid/webhook PROMPT_IF_MISSING=false dragon-configure-alerts
 MAX_DELAYED_RETRY_MINUTES_VALUE=15 PROMPT_IF_MISSING=false dragon-configure-alerts
+MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES_VALUE=10 PROMPT_IF_MISSING=false dragon-configure-alerts
 ```
 
 Ops cheat sheet:
@@ -277,6 +279,7 @@ Notes:
 - Scheduled alert checks are available through `dragon-alert-check.timer`, but installation is opt-in with `INSTALL_ALERT_TIMER=true`.
 - Set `ALERT_WEBHOOK_URL` in `.env` if you want the alert-check service to send webhook notifications on failures.
 - Set `MAX_DELAYED_RETRY_MINUTES` in `.env` if you want long provider backoff windows to count as alertable health drift; `0` disables that check.
+- Set `MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES` in `.env` if you want pending GitHub writeback retries to become alertable once they are overdue; `0` disables that check.
 - `update-pi.sh` creates a backup before updating by default and exits if the checkout is dirty unless `ALLOW_DIRTY_WORKTREE=true`.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
 - `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

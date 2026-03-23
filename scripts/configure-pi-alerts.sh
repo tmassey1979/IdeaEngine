@@ -11,6 +11,7 @@ MAX_SERVICE_RESTARTS_VALUE="${MAX_SERVICE_RESTARTS_VALUE:-}"
 MAX_FAILED_ISSUES_VALUE="${MAX_FAILED_ISSUES_VALUE:-}"
 MAX_ACTIONABLE_QUARANTINED_VALUE="${MAX_ACTIONABLE_QUARANTINED_VALUE:-}"
 MAX_DELAYED_RETRY_MINUTES_VALUE="${MAX_DELAYED_RETRY_MINUTES_VALUE:-}"
+MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES_VALUE="${MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES_VALUE:-}"
 ALLOW_HEALTH_STATES_VALUE="${ALLOW_HEALTH_STATES_VALUE:-}"
 
 fail() {
@@ -89,20 +90,22 @@ main() {
   [[ -d "${REPO_DIR}" ]] || fail "Repo directory not found: ${REPO_DIR}"
   ensure_env_file
 
-  local current_webhook current_restarts current_failed current_quarantined current_delayed_retry current_health
+  local current_webhook current_restarts current_failed current_quarantined current_delayed_retry current_pending_github_retry_overdue current_health
   current_webhook="$(read_existing_value ALERT_WEBHOOK_URL)"
   current_restarts="$(read_existing_value MAX_SERVICE_RESTARTS)"
   current_failed="$(read_existing_value MAX_FAILED_ISSUES)"
   current_quarantined="$(read_existing_value MAX_ACTIONABLE_QUARANTINED)"
   current_delayed_retry="$(read_existing_value MAX_DELAYED_RETRY_MINUTES)"
+  current_pending_github_retry_overdue="$(read_existing_value MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES)"
   current_health="$(read_existing_value ALLOW_HEALTH_STATES)"
 
-  local webhook restarts failed quarantined delayed_retry health_states
+  local webhook restarts failed quarantined delayed_retry pending_github_retry_overdue health_states
   webhook="${ALERT_WEBHOOK_URL_VALUE:-$(prompt_value "Alert webhook URL (leave blank to disable)" "${current_webhook}")}"
   restarts="${MAX_SERVICE_RESTARTS_VALUE:-$(prompt_value "Max service restarts before alert" "${current_restarts:-5}")}"
   failed="${MAX_FAILED_ISSUES_VALUE:-$(prompt_value "Max failed issues before alert" "${current_failed:-0}")}"
   quarantined="${MAX_ACTIONABLE_QUARANTINED_VALUE:-$(prompt_value "Max actionable quarantined issues before alert" "${current_quarantined:-0}")}"
   delayed_retry="${MAX_DELAYED_RETRY_MINUTES_VALUE:-$(prompt_value "Max delayed retry minutes before alert (0 disables)" "${current_delayed_retry:-0}")}"
+  pending_github_retry_overdue="${MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES_VALUE:-$(prompt_value "Max overdue GitHub writeback retry minutes before alert (0 disables)" "${current_pending_github_retry_overdue:-0}")}"
   health_states="${ALLOW_HEALTH_STATES_VALUE:-$(prompt_value "Allowed worker health states (comma-separated)" "${current_health:-healthy,idle}")}"
 
   set_env_value ALERT_WEBHOOK_URL "${webhook}"
@@ -110,6 +113,7 @@ main() {
   set_env_value MAX_FAILED_ISSUES "${failed}"
   set_env_value MAX_ACTIONABLE_QUARANTINED "${quarantined}"
   set_env_value MAX_DELAYED_RETRY_MINUTES "${delayed_retry}"
+  set_env_value MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES "${pending_github_retry_overdue}"
   set_env_value ALLOW_HEALTH_STATES "${health_states}"
 
   echo "Updated ${ENV_FILE}"

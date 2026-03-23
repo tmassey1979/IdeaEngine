@@ -49,6 +49,30 @@ with open(report_file, "r", encoding="utf-8") as handle:
 status = report.get("status") or {}
 latest = status.get("latestActivity") or {}
 wait_signal = describe_wait_signal(status)
+pending_github_sync = status.get("pendingGithubSync") or []
+pending_github_sync_next_retry = None
+pending_github_sync_last_attempt = None
+pending_github_sync_retry_state = None
+pending_github_sync_retry_overdue_minutes = 0
+if pending_github_sync:
+    pending_github_sync_next_retry = pending_github_sync[0].get("nextRetryAt")
+    pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt")
+    if pending_github_sync_next_retry:
+        try:
+            from datetime import datetime, timezone
+
+            retry_at = datetime.fromisoformat(pending_github_sync_next_retry.replace("Z", "+00:00"))
+            generated_at = status.get("generatedAt") or report.get("timestamp") or ""
+            reference_time = datetime.fromisoformat(generated_at.replace("Z", "+00:00")) if generated_at else datetime.now(timezone.utc)
+            delta_seconds = int((reference_time - retry_at).total_seconds())
+            if delta_seconds >= 0:
+                pending_github_sync_retry_state = "ready now"
+                pending_github_sync_retry_overdue_minutes = max(0, delta_seconds // 60)
+            else:
+                minutes = max(1, abs(delta_seconds) // 60)
+                pending_github_sync_retry_state = f"next retry in {minutes}m"
+        except ValueError:
+            pending_github_sync_retry_state = "scheduled"
 
 payload = {
     "source": alert_source,
@@ -62,6 +86,10 @@ payload = {
     "nextWakeReason": status.get("nextWakeReason"),
     "waitSignal": wait_signal,
     "nextDelayedRetryAt": status.get("nextDelayedRetryAt"),
+    "pendingGithubSyncNextRetryAt": pending_github_sync_next_retry,
+    "pendingGithubSyncLastAttemptAt": pending_github_sync_last_attempt,
+    "pendingGithubSyncRetryState": pending_github_sync_retry_state,
+    "pendingGithubSyncRetryOverdueMinutes": pending_github_sync_retry_overdue_minutes,
     "latestActivity": {
         "issueNumber": latest.get("issueNumber"),
         "issueTitle": latest.get("issueTitle"),

@@ -7,6 +7,7 @@ MAX_SERVICE_RESTARTS="${MAX_SERVICE_RESTARTS:-5}"
 MAX_FAILED_ISSUES="${MAX_FAILED_ISSUES:-0}"
 MAX_ACTIONABLE_QUARANTINED="${MAX_ACTIONABLE_QUARANTINED:-0}"
 MAX_DELAYED_RETRY_MINUTES="${MAX_DELAYED_RETRY_MINUTES:-0}"
+MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES="${MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES:-0}"
 ALLOW_HEALTH_STATES="${ALLOW_HEALTH_STATES:-healthy,idle}"
 REPORT_FILE=""
 
@@ -31,7 +32,7 @@ main() {
   trap cleanup EXIT
   "${REPO_DIR}/scripts/pi-report.sh" --json > "${REPORT_FILE}"
 
-  python3 - "${REPORT_FILE}" "${MAX_SERVICE_RESTARTS}" "${MAX_FAILED_ISSUES}" "${MAX_ACTIONABLE_QUARANTINED}" "${MAX_DELAYED_RETRY_MINUTES}" "${ALLOW_HEALTH_STATES}" <<'PY'
+  python3 - "${REPORT_FILE}" "${MAX_SERVICE_RESTARTS}" "${MAX_FAILED_ISSUES}" "${MAX_ACTIONABLE_QUARANTINED}" "${MAX_DELAYED_RETRY_MINUTES}" "${MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES}" "${ALLOW_HEALTH_STATES}" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -41,7 +42,8 @@ max_service_restarts = int(sys.argv[2])
 max_failed_issues = int(sys.argv[3])
 max_actionable_quarantined = int(sys.argv[4])
 max_delayed_retry_minutes = int(sys.argv[5])
-allow_health_states = {item.strip() for item in sys.argv[6].split(",") if item.strip()}
+max_pending_github_retry_overdue_minutes = int(sys.argv[6])
+allow_health_states = {item.strip() for item in sys.argv[7].split(",") if item.strip()}
 
 with open(report_file, "r", encoding="utf-8") as handle:
     report = json.load(handle)
@@ -109,6 +111,31 @@ if max_delayed_retry_minutes > 0 and delayed_retry_minutes > max_delayed_retry_m
         f"delayed retry wait {int(delayed_retry_minutes)}m exceeds {max_delayed_retry_minutes}m"
     )
 
+pending_github_sync = status.get("pendingGithubSync") or []
+pending_github_sync_next_retry = ""
+pending_github_sync_retry_state = "none"
+pending_github_sync_retry_overdue_minutes = 0
+if pending_github_sync:
+    pending_github_sync_next_retry = pending_github_sync[0].get("nextRetryAt") or ""
+    if pending_github_sync_next_retry:
+        try:
+            retry_at = datetime.fromisoformat(pending_github_sync_next_retry.replace("Z", "+00:00"))
+            generated_at = status.get("generatedAt") or report.get("timestamp") or ""
+            reference_time = datetime.fromisoformat(generated_at.replace("Z", "+00:00")) if generated_at else datetime.now(timezone.utc)
+            delta_minutes = (reference_time - retry_at).total_seconds() / 60
+            if delta_minutes >= 0:
+                pending_github_sync_retry_state = "ready now"
+                pending_github_sync_retry_overdue_minutes = int(delta_minutes)
+            else:
+                pending_github_sync_retry_state = f"next retry in {int(abs(delta_minutes))}m"
+        except ValueError:
+            pending_github_sync_retry_state = "scheduled"
+
+if max_pending_github_retry_overdue_minutes > 0 and pending_github_sync_retry_overdue_minutes > max_pending_github_retry_overdue_minutes:
+    problems.append(
+        f"pending GitHub retry overdue {pending_github_sync_retry_overdue_minutes}m exceeds {max_pending_github_retry_overdue_minutes}m"
+    )
+
 if problems:
     print("[alert] Dragon Pi check failed")
     for problem in problems:
@@ -121,6 +148,8 @@ print(f"worker_health={worker_health}")
 print(f"failed_issues={failed_issues}")
 print(f"actionable_quarantined={actionable_quarantined}")
 print(f"delayed_retry_minutes={int(delayed_retry_minutes)}")
+print(f"pending_github_sync_retry_state={pending_github_sync_retry_state}")
+print(f"pending_github_sync_retry_overdue_minutes={pending_github_sync_retry_overdue_minutes}")
 PY
 }
 
