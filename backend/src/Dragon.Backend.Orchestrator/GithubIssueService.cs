@@ -334,6 +334,8 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
+                $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
@@ -509,6 +511,8 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
+                $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
@@ -705,6 +709,58 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return null;
+        }
+    }
+
+    private static string DescribeGlobalWorkerHealth(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("health", out var healthProperty) &&
+                healthProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(healthProperty.GetString()))
+            {
+                return healthProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerAttention(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("attentionSummary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(summaryProperty.GetString()))
+            {
+                return summaryProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
         }
     }
 
