@@ -336,6 +336,8 @@ public sealed class GithubIssueService
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
+                $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
+                $"- worker loop summary: {DescribeGlobalWorkerLoopSummary(rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
@@ -513,6 +515,8 @@ public sealed class GithubIssueService
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
+                $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
+                $"- worker loop summary: {DescribeGlobalWorkerLoopSummary(rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
@@ -750,6 +754,62 @@ public sealed class GithubIssueService
         {
             using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
             if (document.RootElement.TryGetProperty("attentionSummary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(summaryProperty.GetString()))
+            {
+                return summaryProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerLoopMode(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("recentLoopSignal", out var recentLoopSignal) &&
+                recentLoopSignal.ValueKind == JsonValueKind.Object &&
+                recentLoopSignal.TryGetProperty("mode", out var modeProperty) &&
+                modeProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(modeProperty.GetString()))
+            {
+                return modeProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerLoopSummary(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("recentLoopSignal", out var recentLoopSignal) &&
+                recentLoopSignal.ValueKind == JsonValueKind.Object &&
+                recentLoopSignal.TryGetProperty("summary", out var summaryProperty) &&
                 summaryProperty.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrWhiteSpace(summaryProperty.GetString()))
             {

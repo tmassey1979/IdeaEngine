@@ -4633,6 +4633,10 @@ public sealed class PlannerTests
             {
               "health": "healthy",
               "attentionSummary": "3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
+              "recentLoopSignal": {
+                "mode": "repairing",
+                "summary": "Replayed 3 pending GitHub updates and waiting for a quiet confirmation pass."
+              },
               "interventionEscalationNote": "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
               "interventionTarget": {
                 "kind": "github-replay-drift",
@@ -4675,6 +4679,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop summary: Replayed 3 pending GitHub updates and waiting for a quiet confirmation pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
@@ -4984,6 +4990,10 @@ public sealed class PlannerTests
             {
               "health": "healthy",
               "attentionSummary": "1 queued job(s), 1 issue(s) in progress.",
+              "recentLoopSignal": {
+                "mode": "draining",
+                "summary": "Loop is actively draining queued work after issue #22."
+              },
               "interventionEscalationNote": null,
               "interventionTarget": {
                 "kind": "implementation",
@@ -5035,6 +5045,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker focus: shipping implementation work", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 1 queued job(s), 1 issue(s) in progress.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop mode: draining", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is actively draining queued work after issue #22.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: implementation: Advance issue #22: refresh architecture docs. (fresh)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
@@ -5055,6 +5067,10 @@ public sealed class PlannerTests
             {
               "health": "attention",
               "attentionSummary": "Critical intervention target remains acknowledged but unresolved. Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
+              "recentLoopSignal": {
+                "mode": "monitoring",
+                "summary": "Loop is tracking acknowledged operator escalation."
+              },
               "interventionEscalationNote": "Escalation: global intervention target is critical. Summarize the persistent critical intervention target and the next operator action.",
               "interventionEscalationStreak": 3,
               "interventionTarget": {
@@ -5093,6 +5109,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker focus: tracking acknowledged operator escalation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: attention", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: Critical intervention target remains acknowledged but unresolved.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop mode: monitoring", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is tracking acknowledged operator escalation.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical, acknowledged x3)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 3", StringComparison.Ordinal));
     }
