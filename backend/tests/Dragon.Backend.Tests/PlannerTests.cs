@@ -307,6 +307,60 @@ public sealed class PlannerTests
         Assert.True(status.LatestGithubSync.Attempted);
         Assert.False(status.LatestGithubSync.Updated);
         Assert.Contains("GitHub sync failed", status.LatestGithubSync.Summary, StringComparison.Ordinal);
+        Assert.Equal(1, status.PendingGithubSyncCount);
+        var pending = Assert.Single(status.PendingGithubSync!);
+        Assert.Equal(22, pending.IssueNumber);
+        Assert.Contains("GitHub sync failed", pending.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReadStatus_ClearsPendingGithubSyncAfterSuccessfulRetry()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "docs/ARCHITECTURE.md"
+                }),
+            new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow),
+            []);
+
+        var failOnce = true;
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.Contains("issue comment 22", StringComparison.Ordinal) && failOnce)
+            {
+                failOnce = false;
+                throw new InvalidOperationException("gh command failed: gh: Resource not accessible by personal access token (HTTP 403)");
+            }
+
+            return string.Empty;
+        });
+
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+        var failedStatus = loop.ReadStatus();
+        Assert.Equal(1, failedStatus.PendingGithubSyncCount);
+
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+        var recoveredStatus = loop.ReadStatus();
+        Assert.Equal(0, recoveredStatus.PendingGithubSyncCount);
+        Assert.Empty(recoveredStatus.PendingGithubSync ?? []);
+        Assert.NotNull(recoveredStatus.LatestGithubSync);
+        Assert.True(recoveredStatus.LatestGithubSync!.Updated);
     }
 
     [Fact]

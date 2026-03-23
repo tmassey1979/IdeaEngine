@@ -293,6 +293,15 @@ function githubSyncInfo(snapshot) {
   return { label: "skipped", state: "snapshot" };
 }
 
+function pendingGithubSyncInfo(snapshot) {
+  const count = snapshot.pendingGithubSyncCount ?? 0;
+  if (count > 0) {
+    return { label: String(count), state: "waiting" };
+  }
+
+  return { label: "0", state: "complete" };
+}
+
 function workerNote(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
   const completion = workerCompletionInfo(snapshot);
@@ -675,6 +684,10 @@ function renderStatusSnapshot(snapshot) {
   const githubSyncValue = githubSyncInfo(snapshot);
   githubSync.textContent = githubSyncValue.label;
   githubSync.className = `worker-completion ${githubSyncValue.state}`;
+  const pendingGithubSync = document.getElementById("status-pending-github-sync");
+  const pendingGithubSyncValue = pendingGithubSyncInfo(snapshot);
+  pendingGithubSync.textContent = pendingGithubSyncValue.label;
+  pendingGithubSync.className = `worker-progress ${pendingGithubSyncValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
   workerProgress.textContent = workerProgressLabel(snapshot);
   workerProgress.className = `worker-progress ${workerProgressState(snapshot)}`;
@@ -849,6 +862,8 @@ async function bootStatusMock() {
     workerCompletion.className = "worker-completion unavailable";
     document.getElementById("status-github-sync").textContent = "unavailable";
     document.getElementById("status-github-sync").className = "worker-completion unavailable";
+    document.getElementById("status-pending-github-sync").textContent = "unavailable";
+    document.getElementById("status-pending-github-sync").className = "worker-progress unavailable";
     pollCadence.textContent = "Unavailable";
     workerProgress.textContent = "Unavailable";
     workerProgress.className = "worker-progress unavailable";
