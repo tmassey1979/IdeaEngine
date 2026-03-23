@@ -23,6 +23,7 @@ Core commands:
   dragon-firstaid
   dragon-alert-check
   dragon-configure-alerts
+  dragon-watch-status
   dragon-doctor
   dragon-share-status
 
