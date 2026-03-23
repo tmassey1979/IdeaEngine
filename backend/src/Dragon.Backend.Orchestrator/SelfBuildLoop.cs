@@ -768,13 +768,21 @@ public sealed class SelfBuildLoop
             results.Add(SyncValidatedWorkflow(owner, repo, item.IssueNumber));
         }
 
+        var attemptedCount = results.Count(result => result.Attempted);
+        var updatedCount = results.Count(result => result.Updated);
+        var failedCount = results.Count(result => result.Attempted && !result.Updated);
+        var deferredCount = results.Count(result => !result.Attempted && !result.Updated);
         WriteLatestGithubReplay(
-            pending.Length,
-            results.Count(result => result.Updated),
-            results.Count(result => result.Attempted && !result.Updated));
+            attemptedCount,
+            updatedCount,
+            failedCount,
+            deferredCount);
 
         return results;
     }
+
+    public void RecordPendingGithubSyncForTests(int issueNumber, string summary) =>
+        RecordPendingGithubSync(issueNumber, summary);
 
     private GithubSyncResult? TrySyncWorkflow(string? githubOwner, string repo, IssueWorkflowState workflow, bool syncValidatedWorkflows)
     {
@@ -787,7 +795,10 @@ public sealed class SelfBuildLoop
         {
             var result = githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
             WriteLatestGithubSync(workflow.IssueNumber, result);
-            ClearPendingGithubSync(workflow.IssueNumber);
+            if (result.Attempted || result.Updated)
+            {
+                ClearPendingGithubSync(workflow.IssueNumber);
+            }
             return result;
         }
         catch (InvalidOperationException ex)
@@ -844,7 +855,7 @@ public sealed class SelfBuildLoop
         File.WriteAllText(GithubSyncStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
     }
 
-    private void WriteLatestGithubReplay(int attemptedCount, int updatedCount, int failedCount)
+    private void WriteLatestGithubReplay(int attemptedCount, int updatedCount, int failedCount, int deferredCount = 0)
     {
         var directory = Path.GetDirectoryName(GithubReplayStatusPath);
         if (!string.IsNullOrWhiteSpace(directory))
@@ -853,8 +864,12 @@ public sealed class SelfBuildLoop
         }
 
         var summary = attemptedCount == 0
-            ? "No pending GitHub updates needed replay."
-            : $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing.";
+            ? deferredCount > 0
+                ? $"Deferred replay for {deferredCount} pending GitHub update{(deferredCount == 1 ? string.Empty : "s")} while waiting for delayed provider retry."
+                : "No pending GitHub updates needed replay."
+            : deferredCount > 0
+                ? $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing, {deferredCount} deferred."
+                : $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing.";
 
         var snapshot = new LatestGithubReplaySnapshot(
             attemptedCount,

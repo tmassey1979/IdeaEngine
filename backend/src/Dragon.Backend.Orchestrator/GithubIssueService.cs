@@ -309,6 +309,14 @@ public sealed class GithubIssueService
         IReadOnlyList<ExecutionRecord> executionRecords,
         string rootDirectory)
     {
+        if (ShouldDeferHeartbeatForProviderBackoff(rootDirectory))
+        {
+            return new GithubSyncResult(
+                false,
+                false,
+                $"Deferred GitHub heartbeat for issue #{workflow.IssueNumber} while waiting for delayed provider retry.");
+        }
+
         var currentStage = InferCurrentStage(workflow);
         var currentStageState = workflow.Stages.TryGetValue(currentStage, out var stageState) ? stageState : null;
         var latestExecution = executionRecords.OrderByDescending(record => record.RecordedAt).FirstOrDefault();
@@ -450,6 +458,36 @@ public sealed class GithubIssueService
 
         UpsertHeartbeatComment(owner, repo, workflow.IssueNumber, commentBody, rootDirectory);
         return new GithubSyncResult(true, true, $"Updated GitHub heartbeat for issue #{workflow.IssueNumber}.");
+    }
+
+    private static bool ShouldDeferHeartbeatForProviderBackoff(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var nextWakeReason = root.TryGetProperty("nextWakeReason", out var nextWakeReasonProperty) &&
+                nextWakeReasonProperty.ValueKind == JsonValueKind.String
+                ? nextWakeReasonProperty.GetString()
+                : null;
+            var delayedRetryUrgency = root.TryGetProperty("delayedRetryUrgency", out var delayedRetryUrgencyProperty) &&
+                delayedRetryUrgencyProperty.ValueKind == JsonValueKind.String
+                ? delayedRetryUrgencyProperty.GetString()
+                : null;
+
+            return string.Equals(nextWakeReason, "delayed-provider-retry", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(delayedRetryUrgency, "alert", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static StallState DetermineStallState(DateTimeOffset? observedAt, DateTimeOffset now)

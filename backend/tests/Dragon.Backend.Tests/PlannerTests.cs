@@ -1194,6 +1194,77 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_DefersHeartbeatDuringLongProviderBackoff()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "nextWakeReason": "delayed-provider-retry",
+              "delayedRetryUrgency": "alert",
+              "nextDelayedRetryAt": "2026-03-23T16:15:00Z"
+            }
+            """);
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+
+        var commands = new List<string>();
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return string.Empty;
+        });
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+
+        var result = loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+
+        Assert.False(result.Attempted);
+        Assert.False(result.Updated);
+        Assert.Contains("Deferred GitHub heartbeat", result.Summary, StringComparison.Ordinal);
+        Assert.DoesNotContain(commands, command => command.Contains("issue comment 22", StringComparison.Ordinal));
+        Assert.DoesNotContain(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
+        Assert.NotNull(loop.ReadStatus().LatestGithubSync);
+        Assert.Contains("Deferred GitHub heartbeat", loop.ReadStatus().LatestGithubSync!.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReplayPendingGithubSyncs_LeavesPendingSyncQueuedWhenHeartbeatIsDeferred()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "nextWakeReason": "delayed-provider-retry",
+              "delayedRetryUrgency": "alert",
+              "nextDelayedRetryAt": "2026-03-23T16:15:00Z"
+            }
+            """);
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        loop.RecordPendingGithubSyncForTests(22, "GitHub sync failed for issue #22.");
+
+        var replayResults = loop.ReplayPendingGithubSyncs("tmassey1979", "IdeaEngine");
+        var status = loop.ReadStatus();
+
+        Assert.Single(replayResults);
+        Assert.False(replayResults[0].Attempted);
+        Assert.False(replayResults[0].Updated);
+        Assert.Equal(1, status.PendingGithubSyncCount);
+        Assert.NotNull(status.LatestGithubReplay);
+        Assert.Equal(0, status.LatestGithubReplay!.AttemptedCount);
+        Assert.Equal(0, status.LatestGithubReplay.UpdatedCount);
+        Assert.Equal(0, status.LatestGithubReplay.FailedCount);
+        Assert.Contains("Deferred replay for 1 pending GitHub update", status.LatestGithubReplay.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ReadStatus_TreatsRecentGithubReplayRepairAsActiveHealthyWork()
     {
         var root = CreateTempRoot();
