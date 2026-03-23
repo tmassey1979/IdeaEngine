@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-$HOME/dragon/IdeaEngine}"
 SERVICE_NAME="${SERVICE_NAME:-dragon-idea-engine}"
 BACKUP_TIMER_NAME="${BACKUP_TIMER_NAME:-dragon-backup}"
+UPDATE_TIMER_NAME="${UPDATE_TIMER_NAME:-dragon-update}"
 STATUS_URL="${STATUS_URL:-http://127.0.0.1:5078/status}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5078/health}"
 STATUS_SNAPSHOT_PATH="${STATUS_SNAPSHOT_PATH:-$REPO_DIR/.dragon/status/runtime-status.json}"
@@ -179,9 +180,10 @@ service_state() {
 
 timer_state() {
   local subcommand="$1"
+  local timer_name="$2"
   if command_exists systemctl; then
     local result
-    result="$(systemctl "${subcommand}" "${BACKUP_TIMER_NAME}.timer" 2>/dev/null || true)"
+    result="$(systemctl "${subcommand}" "${timer_name}.timer" 2>/dev/null || true)"
     if [[ -n "${result}" ]]; then
       echo "${result}"
     else
@@ -193,6 +195,8 @@ timer_state() {
 }
 
 timer_schedule() {
+  local timer_name="$1"
+  local label_prefix="$2"
   if ! command_exists systemctl; then
     echo "systemctl unavailable"
     return
@@ -200,11 +204,11 @@ timer_schedule() {
 
   local next_elapse
   local last_trigger
-  next_elapse="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
-  last_trigger="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
+  next_elapse="$(systemctl show "${timer_name}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
+  last_trigger="$(systemctl show "${timer_name}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
 
-  echo "next=${next_elapse:-unknown}"
-  echo "last=${last_trigger:-unknown}"
+  echo "${label_prefix}_next=${next_elapse:-unknown}"
+  echo "${label_prefix}_last=${last_trigger:-unknown}"
 }
 
 compose_summary() {
@@ -289,11 +293,15 @@ main() {
 
   fetch_status
 
-  local service_active service_enabled timer_active timer_enabled
+  local service_active service_enabled
+  local backup_timer_active backup_timer_enabled
+  local update_timer_active update_timer_enabled
   service_active="$(service_state is-active)"
   service_enabled="$(service_state is-enabled)"
-  timer_active="$(timer_state is-active)"
-  timer_enabled="$(timer_state is-enabled)"
+  backup_timer_active="$(timer_state is-active "${BACKUP_TIMER_NAME}")"
+  backup_timer_enabled="$(timer_state is-enabled "${BACKUP_TIMER_NAME}")"
+  update_timer_active="$(timer_state is-active "${UPDATE_TIMER_NAME}")"
+  update_timer_enabled="$(timer_state is-enabled "${UPDATE_TIMER_NAME}")"
 
   print_heading "Dragon Pi Report"
   echo "timestamp: $(date -Is)"
@@ -303,9 +311,12 @@ main() {
   print_heading "Systemd"
   echo "service_active: ${service_active}"
   echo "service_enabled: ${service_enabled}"
-  echo "backup_timer_active: ${timer_active}"
-  echo "backup_timer_enabled: ${timer_enabled}"
-  timer_schedule
+  echo "backup_timer_active: ${backup_timer_active}"
+  echo "backup_timer_enabled: ${backup_timer_enabled}"
+  timer_schedule "${BACKUP_TIMER_NAME}" "backup_timer"
+  echo "update_timer_active: ${update_timer_active}"
+  echo "update_timer_enabled: ${update_timer_enabled}"
+  timer_schedule "${UPDATE_TIMER_NAME}" "update_timer"
 
   print_heading "Endpoints"
   print_endpoint_status "${HEALTH_URL}" "health"
