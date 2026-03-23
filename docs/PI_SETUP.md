@@ -90,6 +90,7 @@ dragon-firstaid
 dragon-alert-check
 dragon-alert-notify
 dragon-configure-alerts
+dragon-ops-summary
 dragon-report --json
 ~/dragon/IdeaEngine/scripts/pi-report.sh
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
@@ -102,13 +103,14 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, and `dragon-configure-alerts`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, and `dragon-ops-summary`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
 - `pi-alert-check.sh` evaluates `pi-report.sh --json` and exits nonzero for unhealthy states so you can plug it into timers, cron, or external monitoring
 - `pi-alert-notify.sh` sends an alert payload to a configured webhook and is called automatically by the alert-check service when the check fails
 - `configure-pi-alerts.sh` updates alert webhook and threshold settings in `.env` without re-running the full env configurator
+- `pi-ops-summary.sh` prints the main service, timer, recovery, backup, and journal commands on one screen
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update/alert timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -164,6 +166,12 @@ Configure alert settings:
 ```bash
 dragon-configure-alerts
 ALERT_WEBHOOK_URL_VALUE=https://example.invalid/webhook PROMPT_IF_MISSING=false dragon-configure-alerts
+```
+
+Ops cheat sheet:
+
+```bash
+dragon-ops-summary
 ```
 
 Notes:
