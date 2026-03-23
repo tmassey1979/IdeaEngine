@@ -127,6 +127,35 @@ public sealed class OpenAiResponsesProviderTests
         Assert.Equal(TimeSpan.FromSeconds(45), exception.RetryAfter);
     }
 
+    [Fact]
+    public async Task GenerateAsync_ReadsRetryAfterDateHeader_WhenDeltaIsUnavailable()
+    {
+        var retryAt = DateTimeOffset.UtcNow.AddSeconds(25);
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent("""{"error":{"message":"Please retry later."}}""")
+            };
+            response.Headers.RetryAfter = new RetryConditionHeaderValue(retryAt);
+            return response;
+        });
+        var httpClient = new HttpClient(handler);
+        var provider = new OpenAiResponsesProvider(new OpenAiResponsesOptions("test-key"), httpClient);
+        var request = new AgentModelRequest(
+            "architect",
+            "implement_issue",
+            "gpt-5",
+            "You are the architect agent.",
+            [new AgentModelMessage("user", "Implement story #22.")]);
+
+        var exception = await Assert.ThrowsAsync<AgentModelProviderException>(() => provider.GenerateAsync(request));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, exception.StatusCode);
+        Assert.NotNull(exception.RetryAfter);
+        Assert.InRange(exception.RetryAfter!.Value.TotalSeconds, 1, 25);
+    }
+
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> handler;

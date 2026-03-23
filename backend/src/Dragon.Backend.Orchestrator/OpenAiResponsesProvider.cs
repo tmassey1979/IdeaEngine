@@ -151,7 +151,7 @@ public sealed class OpenAiResponsesProvider : IAgentModelProvider
 
     private static AgentModelProviderException CreateProviderException(HttpResponseMessage response, string responseBody)
     {
-        var retryAfter = response.Headers.RetryAfter?.Delta;
+        var retryAfter = ReadRetryAfter(response);
         var reason = string.IsNullOrWhiteSpace(response.ReasonPhrase)
             ? response.StatusCode.ToString()
             : response.ReasonPhrase;
@@ -168,6 +168,22 @@ public sealed class OpenAiResponsesProvider : IAgentModelProvider
             IsTransientStatusCode(response.StatusCode),
             response.StatusCode,
             retryAfter);
+    }
+
+    private static TimeSpan? ReadRetryAfter(HttpResponseMessage response)
+    {
+        if (response.Headers.RetryAfter?.Delta is { } delta)
+        {
+            return delta;
+        }
+
+        if (response.Headers.RetryAfter?.Date is { } retryAfterDate)
+        {
+            var remaining = retryAfterDate - DateTimeOffset.UtcNow;
+            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+        }
+
+        return null;
     }
 
     private static bool IsTransientStatusCode(HttpStatusCode statusCode)
