@@ -262,6 +262,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_IncludesLatestGithubSyncFailure()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var stories = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"], "", "Core System Principles", "codex/sections/01-dragon-idea-engine-master-codex.md"),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issues/22/comments", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("gh command failed: gh: Resource not accessible by personal access token (HTTP 403)");
+            }
+
+            return string.Empty;
+        });
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(1, string.Empty, "forced failure"));
+        var loop = new SelfBuildLoop(root, githubIssueService: github, jobExecutor: executor);
+
+        for (var index = 0; index < 12; index += 1)
+        {
+            var cycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+            if (cycle.FailureDisposition?.Quarantined == true)
+            {
+                break;
+            }
+        }
+
+        var status = loop.ReadStatus();
+
+        Assert.NotNull(status.LatestGithubSync);
+        Assert.Equal(22, status.LatestGithubSync!.IssueNumber);
+        Assert.True(status.LatestGithubSync.Attempted);
+        Assert.False(status.LatestGithubSync.Updated);
+        Assert.Contains("GitHub sync failed", status.LatestGithubSync.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WriteStatus_WritesBackendSnapshotJson()
     {
         var root = CreateTempRoot();

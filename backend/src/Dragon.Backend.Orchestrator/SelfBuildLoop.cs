@@ -34,6 +34,8 @@ public sealed class SelfBuildLoop
 
     public string RootDirectory { get; }
 
+    private string GithubSyncStatusPath => Path.Combine(RootDirectory, ".dragon", "status", "github-sync-status.json");
+
     public IReadOnlyList<SelfBuildJob> ReadQueue() => queueStore.ReadAll();
 
     public StatusSnapshot ReadStatus(
@@ -80,6 +82,7 @@ public sealed class SelfBuildLoop
         var rollup = BuildStatusRollup(issues);
         var latestActivity = BuildLatestActivity(issues);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
+        var latestGithubSync = ReadLatestGithubSync();
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -117,7 +120,8 @@ public sealed class SelfBuildLoop
             new StatusRollupDelta(0, 0, 0, 0),
             queuedJobs.Count,
             issues,
-            latestPass
+            latestPass,
+            latestGithubSync
         );
     }
 
@@ -439,15 +443,49 @@ public sealed class SelfBuildLoop
 
         try
         {
-            return githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
+            var result = githubIssueService.SyncWorkflow(githubOwner, repo, workflow, executionRecordStore.Read(workflow.IssueNumber), RootDirectory);
+            WriteLatestGithubSync(workflow.IssueNumber, result);
+            return result;
         }
         catch (InvalidOperationException ex)
         {
-            return new GithubSyncResult(
+            var result = new GithubSyncResult(
                 true,
                 false,
                 $"GitHub sync failed for issue #{workflow.IssueNumber}: {ex.Message}");
+            WriteLatestGithubSync(workflow.IssueNumber, result);
+            return result;
         }
+    }
+
+    private LatestGithubSyncSnapshot? ReadLatestGithubSync()
+    {
+        if (!File.Exists(GithubSyncStatusPath))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<LatestGithubSyncSnapshot>(
+            File.ReadAllText(GithubSyncStatusPath),
+            StatusSerializerOptions);
+    }
+
+    private void WriteLatestGithubSync(int issueNumber, GithubSyncResult result)
+    {
+        var directory = Path.GetDirectoryName(GithubSyncStatusPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var snapshot = new LatestGithubSyncSnapshot(
+            issueNumber,
+            result.Attempted,
+            result.Updated,
+            result.Summary,
+            DateTimeOffset.UtcNow);
+
+        File.WriteAllText(GithubSyncStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
     }
 
     private bool HasSchedulableWork(IReadOnlyList<GithubIssue> issues)
@@ -1439,7 +1477,8 @@ public sealed record StatusSnapshot(
     StatusRollupDelta RollupDelta,
     int QueuedJobs,
     IReadOnlyList<IssueStatusSnapshot> Issues,
-    LatestPassSummary? LatestPass = null
+    LatestPassSummary? LatestPass = null,
+    LatestGithubSyncSnapshot? LatestGithubSync = null
 );
 
 public sealed record LatestPassSummary(
@@ -1488,6 +1527,14 @@ public sealed record LatestActivitySnapshot(
 public sealed record RecentLoopSignalSnapshot(
     string Mode,
     string Summary
+);
+
+public sealed record LatestGithubSyncSnapshot(
+    int IssueNumber,
+    bool Attempted,
+    bool Updated,
+    string Summary,
+    DateTimeOffset RecordedAt
 );
 
 public static class StatusSnapshotTrend

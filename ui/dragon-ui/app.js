@@ -276,6 +276,23 @@ function workerCompletionInfo(snapshot) {
   }
 }
 
+function githubSyncInfo(snapshot) {
+  const sync = snapshot.latestGithubSync;
+  if (!sync) {
+    return { label: "not recorded", state: "snapshot" };
+  }
+
+  if (sync.updated) {
+    return { label: "updated", state: "complete" };
+  }
+
+  if (sync.attempted) {
+    return { label: "degraded", state: "capped" };
+  }
+
+  return { label: "skipped", state: "snapshot" };
+}
+
 function workerNote(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
   const completion = workerCompletionInfo(snapshot);
@@ -304,14 +321,17 @@ function workerNote(snapshot) {
   const passBudgetLabel = typeof passBudgetRemaining === "number"
     ? ` Remaining pass budget: ${passBudgetRemaining}.`
     : "";
+  const githubSyncLabel = snapshot.latestGithubSync
+    ? ` Latest GitHub sync for issue #${snapshot.latestGithubSync.issueNumber}: ${snapshot.latestGithubSync.summary}.`
+    : "";
 
   if (state === "waiting") {
     return {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}`,
     };
   }
 
@@ -320,8 +340,8 @@ function workerNote(snapshot) {
       label: "Running",
       state: "running",
       text: cadenceLabel
-        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`
-        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`,
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}`,
     };
   }
 
@@ -329,7 +349,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}`,
     };
   }
 
@@ -651,6 +671,10 @@ function renderStatusSnapshot(snapshot) {
   const workerCompletionValue = workerCompletionInfo(snapshot);
   workerCompletion.textContent = workerCompletionValue.label;
   workerCompletion.className = `worker-completion ${workerCompletionValue.state}`;
+  const githubSync = document.getElementById("status-github-sync");
+  const githubSyncValue = githubSyncInfo(snapshot);
+  githubSync.textContent = githubSyncValue.label;
+  githubSync.className = `worker-completion ${githubSyncValue.state}`;
   pollCadence.textContent = pollCadenceLabel(snapshot);
   workerProgress.textContent = workerProgressLabel(snapshot);
   workerProgress.className = `worker-progress ${workerProgressState(snapshot)}`;
@@ -823,6 +847,8 @@ async function bootStatusMock() {
     workerState.className = "worker-state unavailable";
     workerCompletion.textContent = "unavailable";
     workerCompletion.className = "worker-completion unavailable";
+    document.getElementById("status-github-sync").textContent = "unavailable";
+    document.getElementById("status-github-sync").className = "worker-completion unavailable";
     pollCadence.textContent = "Unavailable";
     workerProgress.textContent = "Unavailable";
     workerProgress.className = "worker-progress unavailable";
