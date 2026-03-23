@@ -337,6 +337,7 @@ public sealed class GithubIssueService
                 $"- worker command: {DescribeGlobalWorkerCommand(rootDirectory)}",
                 $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
                 $"- worker snapshot: {DescribeGlobalWorkerSnapshotTime(rootDirectory)}",
+                $"- worker snapshot age: {DescribeGlobalWorkerSnapshotAge(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
@@ -550,6 +551,7 @@ public sealed class GithubIssueService
                 $"- worker command: {DescribeGlobalWorkerCommand(rootDirectory)}",
                 $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
                 $"- worker snapshot: {DescribeGlobalWorkerSnapshotTime(rootDirectory)}",
+                $"- worker snapshot age: {DescribeGlobalWorkerSnapshotAge(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
@@ -904,6 +906,35 @@ public sealed class GithubIssueService
                 generatedAtProperty.TryGetDateTimeOffset(out var generatedAt))
             {
                 return generatedAt.ToString("O");
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerSnapshotAge(string rootDirectory, DateTimeOffset referenceTime)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("generatedAt", out var generatedAtProperty) &&
+                generatedAtProperty.ValueKind == JsonValueKind.String &&
+                generatedAtProperty.TryGetDateTimeOffset(out var generatedAt))
+            {
+                var elapsed = referenceTime >= generatedAt
+                    ? referenceTime - generatedAt
+                    : TimeSpan.Zero;
+                return FormatElapsed(elapsed);
             }
 
             return "not recorded";

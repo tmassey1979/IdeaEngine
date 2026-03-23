@@ -4778,6 +4778,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker command: github-run-watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker source: status", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker snapshot: 2026-03-23T12:01:45.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker snapshot age: 28m 15s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Replaying pending GitHub updates before the next watch pass.", StringComparison.Ordinal));
@@ -5255,6 +5256,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker command: run-polling", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker source: status", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker snapshot: 2026-03-16T15:26:20.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker snapshot age: 3m 40s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker mode: polling", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: running", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Advancing queued implementation work for issue #22.", StringComparison.Ordinal));
@@ -5441,6 +5443,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker command: github-run-watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker source: status", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker snapshot: 2026-03-16T15:30:35.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker snapshot age: 0s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Tracking acknowledged operator escalation before the next watch pass.", StringComparison.Ordinal));
@@ -5597,6 +5600,7 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("worker snapshot: 2026-03-16T15:30:01.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker snapshot age: 0s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: complete", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Worker stopped after reaching the configured idle target.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead job: none queued", StringComparison.Ordinal));
