@@ -5056,6 +5056,59 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncQuarantinedWorkflow_DefersRecoveryIssueCreationDuringAlertLevelProviderBackoff()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "nextWakeReason": "delayed-provider-retry",
+              "delayedRetryUrgency": "alert",
+              "nextDelayedRetryAt": "2026-03-23T16:15:00Z"
+            }
+            """);
+
+        var store = new WorkflowStateStore(root);
+        var records = new ExecutionRecordStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-1", "developer", "failed", "boom", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-2", "review", "failed", "boom", DateTimeOffset.UtcNow));
+        var quarantined = store.OverrideOverallStatus(22, "quarantined", "Quarantined after repeated failures.");
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], "Core", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string> { ["changedPaths"] = "docs/ARCHITECTURE.md" }
+            ),
+            new JobExecutionResult("job-1", "developer", "failed", "boom", DateTimeOffset.UtcNow),
+            []
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("issues/22/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", quarantined, records.Read(22), root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery issue: deferred until provider backoff clears", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled reason: provider backoff is delaying GitHub replay until 2026-03-23T16:15:00.0000000+00:00", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncQuarantinedWorkflow_ToleratesMalformedCreatedRecoveryIssueUrl()
     {
         var root = CreateTempRoot();

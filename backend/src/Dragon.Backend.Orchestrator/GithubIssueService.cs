@@ -583,8 +583,8 @@ public sealed class GithubIssueService
     {
         MarkSupersededRecoveryIssues(owner, repo, workflow, rootDirectory);
         var currentStage = InferCurrentStage(workflow);
-        var recoveryIssueNumber = EnsureRecoveryIssue(owner, repo, workflow, currentStage, executionRecords, rootDirectory);
         var quarantinedProviderBackoff = ReadQuarantinedProviderBackoffState(rootDirectory);
+        var recoveryIssueNumber = EnsureRecoveryIssue(owner, repo, workflow, currentStage, executionRecords, rootDirectory, allowCreate: !quarantinedProviderBackoff.IsStalled);
         var commentBody = string.Join(
             Environment.NewLine,
             [
@@ -651,7 +651,11 @@ public sealed class GithubIssueService
                     : "- stalled reason: none",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
-                recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
+                recoveryIssueNumber is not null
+                    ? $"- recovery issue: #{recoveryIssueNumber}"
+                    : quarantinedProviderBackoff.IsStalled
+                    ? "- recovery issue: deferred until provider backoff clears"
+                    : "- recovery issue: not created",
                 $"- source issue: #{workflow.IssueNumber}",
                 executionRecords.Count > 0
                     ? $"- recent failures: {string.Join("; ", executionRecords.OrderByDescending(record => record.RecordedAt).Take(3).Reverse().Select(record => $"{record.JobAgent}:{record.Status}:{record.JobId}"))}"
@@ -3003,7 +3007,8 @@ public sealed class GithubIssueService
         IssueWorkflowState workflow,
         string currentStage,
         IReadOnlyList<ExecutionRecord> executionRecords,
-        string rootDirectory)
+        string rootDirectory,
+        bool allowCreate = true)
     {
         if (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
         {
@@ -3015,6 +3020,11 @@ public sealed class GithubIssueService
         if (existingIssue is not null)
         {
             return existingIssue.Value;
+        }
+
+        if (!allowCreate)
+        {
+            return null;
         }
 
         var body = BuildRecoveryIssueBody(workflow, currentStage, executionRecords, rootDirectory);
