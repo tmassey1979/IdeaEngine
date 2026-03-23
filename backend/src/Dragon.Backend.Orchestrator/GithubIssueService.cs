@@ -357,6 +357,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -562,6 +563,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -1799,6 +1801,46 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not recorded";
+        }
+    }
+
+    private static string DescribePendingGithubSyncNextRetry(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not scheduled";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("pendingGithubSync", out var pendingGithubSync) ||
+                pendingGithubSync.ValueKind != JsonValueKind.Array)
+            {
+                return "not scheduled";
+            }
+
+            var nextRetry = pendingGithubSync
+                .EnumerateArray()
+                .Select(item =>
+                    item.TryGetProperty("nextRetryAt", out var nextRetryAtProperty) &&
+                    nextRetryAtProperty.ValueKind == JsonValueKind.String &&
+                    nextRetryAtProperty.TryGetDateTimeOffset(out var parsedNextRetryAt)
+                        ? parsedNextRetryAt
+                        : (DateTimeOffset?)null)
+                .Where(value => value is not null)
+                .Select(value => value!.Value)
+                .OrderBy(value => value)
+                .FirstOrDefault();
+
+            return nextRetry == default
+                ? "not scheduled"
+                : nextRetry.ToString("O");
+        }
+        catch (JsonException)
+        {
+            return "not scheduled";
         }
     }
 
