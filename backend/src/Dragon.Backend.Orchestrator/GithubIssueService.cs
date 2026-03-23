@@ -343,6 +343,7 @@ public sealed class GithubIssueService
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
+                $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
@@ -532,6 +533,7 @@ public sealed class GithubIssueService
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
+                $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
@@ -1124,6 +1126,41 @@ public sealed class GithubIssueService
             return string.IsNullOrWhiteSpace(summary)
                 ? counts
                 : $"{counts}: {summary}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribePendingGithubSyncSummary(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("pendingGithubSyncSummary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(summaryProperty.GetString()))
+            {
+                return summaryProperty.GetString()!;
+            }
+
+            if (document.RootElement.TryGetProperty("pendingGithubSyncCount", out var countProperty) &&
+                countProperty.ValueKind == JsonValueKind.Number &&
+                countProperty.TryGetInt32(out var count))
+            {
+                return count == 0
+                    ? "clear"
+                    : $"{count} pending update(s)";
+            }
+
+            return "clear";
         }
         catch (JsonException)
         {
