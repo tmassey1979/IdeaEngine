@@ -334,6 +334,8 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- worker command: {DescribeGlobalWorkerCommand(rootDirectory)}",
+                $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
@@ -516,6 +518,8 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- worker command: {DescribeGlobalWorkerCommand(rootDirectory)}",
+                $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
@@ -764,6 +768,58 @@ public sealed class GithubIssueService
                 !string.IsNullOrWhiteSpace(modeProperty.GetString()))
             {
                 return modeProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerCommand(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("lastCommand", out var commandProperty) &&
+                commandProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(commandProperty.GetString()))
+            {
+                return commandProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerSource(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("source", out var sourceProperty) &&
+                sourceProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(sourceProperty.GetString()))
+            {
+                return sourceProperty.GetString()!;
             }
 
             return "not recorded";
