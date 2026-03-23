@@ -4645,6 +4645,19 @@ public sealed class PlannerTests
               "passBudgetRemaining": 5,
               "health": "healthy",
               "attentionSummary": "3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
+              "latestPass": {
+                "passNumber": 4,
+                "cycleCount": 0,
+                "seededCycles": 0,
+                "consumedCycles": 0,
+                "reachedIdle": false,
+                "reachedMaxCycles": false,
+                "githubReplayAttemptedCount": 3,
+                "githubReplayUpdatedCount": 3,
+                "githubReplayFailedCount": 0,
+                "operatorEscalationQueuedCount": 0,
+                "operatorEscalationConsumedCount": 0
+              },
               "recentLoopSignal": {
                 "mode": "repairing",
                 "summary": "Replayed 3 pending GitHub updates and waiting for a quiet confirmation pass."
@@ -4696,6 +4709,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 seed, 0 consume, replay 3/3", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
@@ -5019,6 +5033,19 @@ public sealed class PlannerTests
               "passBudgetRemaining": 4,
               "health": "healthy",
               "attentionSummary": "1 queued job(s), 1 issue(s) in progress.",
+              "latestPass": {
+                "passNumber": 2,
+                "cycleCount": 4,
+                "seededCycles": 1,
+                "consumedCycles": 3,
+                "reachedIdle": false,
+                "reachedMaxCycles": false,
+                "githubReplayAttemptedCount": 0,
+                "githubReplayUpdatedCount": 0,
+                "githubReplayFailedCount": 0,
+                "operatorEscalationQueuedCount": 0,
+                "operatorEscalationConsumedCount": 0
+              },
               "recentLoopSignal": {
                 "mode": "draining",
                 "summary": "Loop is actively draining queued work after issue #22."
@@ -5079,6 +5106,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 2 / 6 · idle 0 / 2 · remaining 2 · budget 4", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass: pass 2: 4 cycles, 1 seed, 3 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 1 queued job(s), 1 issue(s) in progress.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: draining", StringComparison.Ordinal));
@@ -5115,6 +5143,19 @@ public sealed class PlannerTests
               "passBudgetRemaining": 3,
               "health": "attention",
               "attentionSummary": "Critical intervention target remains acknowledged but unresolved. Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
+              "latestPass": {
+                "passNumber": 7,
+                "cycleCount": 2,
+                "seededCycles": 1,
+                "consumedCycles": 1,
+                "reachedIdle": false,
+                "reachedMaxCycles": false,
+                "githubReplayAttemptedCount": 0,
+                "githubReplayUpdatedCount": 0,
+                "githubReplayFailedCount": 0,
+                "operatorEscalationQueuedCount": 1,
+                "operatorEscalationConsumedCount": 1
+              },
               "recentLoopSignal": {
                 "mode": "monitoring",
                 "summary": "Loop is tracking acknowledged operator escalation."
@@ -5162,6 +5203,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 7 / 10 · idle 1 / 2 · remaining 1 · budget 3", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass: pass 7: 1 seed, 1 consume, escalation 1/1", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: attention", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: Critical intervention target remains acknowledged but unresolved.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: monitoring", StringComparison.Ordinal));
@@ -5193,6 +5235,19 @@ public sealed class PlannerTests
               "passBudgetRemaining": 0,
               "health": "idle",
               "attentionSummary": "No queued work and no active issue workflows.",
+              "latestPass": {
+                "passNumber": 6,
+                "cycleCount": 3,
+                "seededCycles": 1,
+                "consumedCycles": 2,
+                "reachedIdle": true,
+                "reachedMaxCycles": false,
+                "githubReplayAttemptedCount": 0,
+                "githubReplayUpdatedCount": 0,
+                "githubReplayFailedCount": 0,
+                "operatorEscalationQueuedCount": 0,
+                "operatorEscalationConsumedCount": 0
+              },
               "recentLoopSignal": {
                 "mode": "idle",
                 "summary": "Loop completed with no immediate queued work."
@@ -5231,6 +5286,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: complete", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: idle target reached", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass: pass 6: 3 cycles, 1 seed, 2 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: idle", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: idle", StringComparison.Ordinal));
     }

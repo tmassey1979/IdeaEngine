@@ -341,6 +341,7 @@ public sealed class GithubIssueService
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
+                $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -527,6 +528,7 @@ public sealed class GithubIssueService
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
+                $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -1009,6 +1011,86 @@ public sealed class GithubIssueService
                 "max_cycles_reached" => "cycle cap reached",
                 _ => reason.Replace("_", " ", StringComparison.Ordinal)
             };
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalLatestPass(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestPass", out var latestPass) ||
+                latestPass.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var passNumber = latestPass.TryGetProperty("passNumber", out var passNumberProperty) &&
+                passNumberProperty.ValueKind == JsonValueKind.Number &&
+                passNumberProperty.TryGetInt32(out var parsedPassNumber)
+                ? parsedPassNumber
+                : 0;
+            var cycleCount = latestPass.TryGetProperty("cycleCount", out var cycleCountProperty) &&
+                cycleCountProperty.ValueKind == JsonValueKind.Number &&
+                cycleCountProperty.TryGetInt32(out var parsedCycleCount)
+                ? parsedCycleCount
+                : 0;
+            var seededCycles = latestPass.TryGetProperty("seededCycles", out var seededCyclesProperty) &&
+                seededCyclesProperty.ValueKind == JsonValueKind.Number &&
+                seededCyclesProperty.TryGetInt32(out var parsedSeededCycles)
+                ? parsedSeededCycles
+                : 0;
+            var consumedCycles = latestPass.TryGetProperty("consumedCycles", out var consumedCyclesProperty) &&
+                consumedCyclesProperty.ValueKind == JsonValueKind.Number &&
+                consumedCyclesProperty.TryGetInt32(out var parsedConsumedCycles)
+                ? parsedConsumedCycles
+                : 0;
+            var replayAttempted = latestPass.TryGetProperty("githubReplayAttemptedCount", out var replayAttemptedProperty) &&
+                replayAttemptedProperty.ValueKind == JsonValueKind.Number &&
+                replayAttemptedProperty.TryGetInt32(out var parsedReplayAttempted)
+                ? parsedReplayAttempted
+                : 0;
+            var replayUpdated = latestPass.TryGetProperty("githubReplayUpdatedCount", out var replayUpdatedProperty) &&
+                replayUpdatedProperty.ValueKind == JsonValueKind.Number &&
+                replayUpdatedProperty.TryGetInt32(out var parsedReplayUpdated)
+                ? parsedReplayUpdated
+                : 0;
+            var escalationQueued = latestPass.TryGetProperty("operatorEscalationQueuedCount", out var escalationQueuedProperty) &&
+                escalationQueuedProperty.ValueKind == JsonValueKind.Number &&
+                escalationQueuedProperty.TryGetInt32(out var parsedEscalationQueued)
+                ? parsedEscalationQueued
+                : 0;
+            var escalationConsumed = latestPass.TryGetProperty("operatorEscalationConsumedCount", out var escalationConsumedProperty) &&
+                escalationConsumedProperty.ValueKind == JsonValueKind.Number &&
+                escalationConsumedProperty.TryGetInt32(out var parsedEscalationConsumed)
+                ? parsedEscalationConsumed
+                : 0;
+
+            var passLabel = passNumber > 0
+                ? $"pass {passNumber}"
+                : "pass n/a";
+
+            if (escalationQueued > 0 || escalationConsumed > 0)
+            {
+                return $"{passLabel}: {seededCycles} seed, {consumedCycles} consume, escalation {escalationConsumed}/{escalationQueued}";
+            }
+
+            if (replayAttempted > 0)
+            {
+                return $"{passLabel}: {seededCycles} seed, {consumedCycles} consume, replay {replayUpdated}/{replayAttempted}";
+            }
+
+            return $"{passLabel}: {cycleCount} cycle{(cycleCount == 1 ? string.Empty : "s")}, {seededCycles} seed, {consumedCycles} consume";
         }
         catch (JsonException)
         {
