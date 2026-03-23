@@ -8,6 +8,14 @@ chmod +x setup-pi.sh
 ./setup-pi.sh
 ```
 
+If you want the guided all-in-one path instead:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tmassey1979/IdeaEngine/feature/github-run-until-idle-sync/scripts/pi-bootstrap-all.sh -o pi-bootstrap-all.sh
+chmod +x pi-bootstrap-all.sh
+./pi-bootstrap-all.sh
+```
+
 What it does:
 
 - installs Docker Engine and the Docker Compose plugin
@@ -31,6 +39,9 @@ INSTALL_ROOT=/srv/dragon ./setup-pi.sh
 AUTO_START=true ./setup-pi.sh
 INSTALL_SYSTEMD_SERVICE=false AUTO_START=true ./setup-pi.sh
 INSTALL_BACKUP_TIMER=false ./setup-pi.sh
+
+AUTO_START_STACK=false ./pi-bootstrap-all.sh
+RUN_HEALTHCHECK_AT_END=false ./pi-bootstrap-all.sh
 ```
 
 After the script finishes:
