@@ -343,6 +343,7 @@ public sealed class GithubIssueService
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
+                $"- worker lead quarantine drift age: {DescribeGlobalLeadQuarantineDriftAge(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
                 $"- worker rollup delta: {DescribeGlobalWorkerRollupDelta(rootDirectory)}",
@@ -558,6 +559,7 @@ public sealed class GithubIssueService
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
+                $"- worker lead quarantine drift age: {DescribeGlobalLeadQuarantineDriftAge(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
                 $"- worker rollup delta: {DescribeGlobalWorkerRollupDelta(rootDirectory)}",
@@ -1166,6 +1168,45 @@ public sealed class GithubIssueService
             return parts.Count == 0
                 ? "none active"
                 : string.Join(" · ", parts);
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalLeadQuarantineDriftAge(string rootDirectory, DateTimeOffset referenceTime)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("leadQuarantine", out var leadQuarantine) ||
+                leadQuarantine.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var oldestPendingGithubSyncAt = leadQuarantine.TryGetProperty("oldestPendingGithubSyncAt", out var oldestPendingGithubSyncAtProperty) &&
+                oldestPendingGithubSyncAtProperty.ValueKind == JsonValueKind.String &&
+                oldestPendingGithubSyncAtProperty.TryGetDateTimeOffset(out var parsedOldestPendingGithubSyncAt)
+                ? parsedOldestPendingGithubSyncAt
+                : (DateTimeOffset?)null;
+
+            if (oldestPendingGithubSyncAt is null)
+            {
+                return "not recorded";
+            }
+
+            var elapsed = referenceTime >= oldestPendingGithubSyncAt.Value
+                ? referenceTime - oldestPendingGithubSyncAt.Value
+                : TimeSpan.Zero;
+            return FormatElapsed(elapsed);
         }
         catch (JsonException)
         {
