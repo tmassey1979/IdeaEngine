@@ -52,6 +52,7 @@ Routine maintenance:
 ```bash
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
 ~/dragon/IdeaEngine/scripts/update-pi.sh
+~/dragon/IdeaEngine/scripts/collect-pi-diagnostics.sh
 ```
 
 What those do:
@@ -59,6 +60,7 @@ What those do:
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
+- `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, and backend snapshots
 
 Notes:
 
