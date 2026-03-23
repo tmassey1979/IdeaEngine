@@ -1627,6 +1627,7 @@ public sealed class PlannerTests
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncRetryState").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSyncRetryOverdueMinutes").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPriorityReason").ValueKind);
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPrioritySummary").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("latestGithubReplay").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSync").GetArrayLength());
         Assert.Equal("implementation", rootElement.GetProperty("interventionTarget").GetProperty("kind").GetString());
@@ -5369,6 +5370,7 @@ public sealed class PlannerTests
               "pendingGithubSyncRetryState": "ready now",
               "pendingGithubSyncRetryOverdueMinutes": 29,
               "replayPriorityReason": "overdue-github-writeback-retry",
+              "replayPrioritySummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
               "latestActivity": {
                 "issueNumber": 500,
                 "issueTitle": "[Recovery] Core",
@@ -5494,6 +5496,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("pending GitHub sync retry state: ready now", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync retry overdue: 29m", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync priority: overdue-github-writeback-retry", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync priority summary: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: 1 pending GitHub update remains queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 cycles, 0 seed, 0 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
@@ -5857,6 +5860,7 @@ public sealed class PlannerTests
               "pendingGithubSyncRetryState": null,
               "pendingGithubSyncRetryOverdueMinutes": 0,
               "replayPriorityReason": null,
+              "replayPrioritySummary": null,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
@@ -6070,6 +6074,7 @@ public sealed class PlannerTests
               "pendingGithubSyncRetryState": null,
               "pendingGithubSyncRetryOverdueMinutes": 0,
               "replayPriorityReason": null,
+              "replayPrioritySummary": null,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
@@ -6246,6 +6251,7 @@ public sealed class PlannerTests
               "pendingGithubSyncRetryState": null,
               "pendingGithubSyncRetryOverdueMinutes": 0,
               "replayPriorityReason": null,
+              "replayPrioritySummary": null,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",

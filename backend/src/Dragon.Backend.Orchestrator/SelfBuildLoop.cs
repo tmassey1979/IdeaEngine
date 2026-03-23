@@ -109,6 +109,7 @@ public sealed class SelfBuildLoop
             .Where(value => value is not null)
             .Min();
         var replayPriorityReason = BuildReplayPriorityReason(nextDelayedRetryAt, pendingGithubSyncRetryState, pendingGithubSyncRetryOverdueMinutes);
+        var replayPrioritySummary = BuildReplayPrioritySummary(replayPriorityReason);
         var nextWakeReason = DeriveNextWakeReason(nextPollAt, nextDelayedRetryAt);
         var delayedRetryUrgency = DeriveDelayedRetryUrgency(nextDelayedRetryAt, now);
         var delayedRetrySummary = nextDelayedRetryAt is null
@@ -183,7 +184,8 @@ public sealed class SelfBuildLoop
             pendingGithubSyncNextRetryAt,
             pendingGithubSyncRetryState,
             pendingGithubSyncRetryOverdueMinutes,
-            replayPriorityReason
+            replayPriorityReason,
+            replayPrioritySummary
         );
     }
 
@@ -2413,6 +2415,15 @@ public sealed class SelfBuildLoop
         return null;
     }
 
+    private static string? BuildReplayPrioritySummary(string? replayPriorityReason) =>
+        replayPriorityReason switch
+        {
+            "provider-backoff" => "Provider backoff is delaying GitHub writeback replay.",
+            "overdue-github-writeback-retry" => "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
+            "ready-github-writeback-retry" => "GitHub writeback replay is ready to run.",
+            _ => null
+        };
+
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
@@ -2913,7 +2924,8 @@ public sealed record StatusSnapshot(
     DateTimeOffset? PendingGithubSyncNextRetryAt = null,
     string? PendingGithubSyncRetryState = null,
     int PendingGithubSyncRetryOverdueMinutes = 0,
-    string? ReplayPriorityReason = null
+    string? ReplayPriorityReason = null,
+    string? ReplayPrioritySummary = null
 );
 
 public sealed record LatestPassSummary(

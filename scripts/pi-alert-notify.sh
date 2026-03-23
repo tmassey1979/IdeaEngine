@@ -35,6 +35,9 @@ import sys
 report_file, alert_source, alert_message = sys.argv[1:4]
 
 def describe_wait_signal(status: dict) -> str | None:
+    replay_priority_summary = status.get("replayPrioritySummary")
+    if replay_priority_summary:
+        return replay_priority_summary
     replay_priority_reason = status.get("replayPriorityReason")
     pending_github_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
     pending_github_retry_state = status.get("pendingGithubSyncRetryState")
@@ -75,6 +78,7 @@ payload = {
     "message": alert_message,
     "timestamp": report.get("timestamp"),
     "alertCause": alert_cause,
+    "replayPrioritySummary": status.get("replayPrioritySummary"),
     "service": report.get("service"),
     "timers": report.get("timers"),
     "endpoints": report.get("endpoints"),
