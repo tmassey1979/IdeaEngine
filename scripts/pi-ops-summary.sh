@@ -22,6 +22,7 @@ Core commands:
   dragon-stop
   dragon-restart
   dragon-ensure-running
+  dragon-wait-healthy
   dragon-tail-logs
   dragon-update
   dragon-backup
@@ -41,6 +42,7 @@ Service control:
   dragon-stop --status
   dragon-restart --follow
   dragon-ensure-running
+  dragon-wait-healthy
   dragon-tail-logs
   dragon-tail-logs --all
 
