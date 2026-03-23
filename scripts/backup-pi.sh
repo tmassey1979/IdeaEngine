@@ -9,6 +9,7 @@ BACKUP_DIR="${BACKUP_DIR:-$BACKUP_ROOT/$TIMESTAMP}"
 STOP_SERVICE="${STOP_SERVICE:-true}"
 RESTART_SERVICE="${RESTART_SERVICE:-true}"
 ARCHIVE_NAME="${ARCHIVE_NAME:-dragon-pi-backup-$TIMESTAMP.tar.gz}"
+BACKUP_RETENTION_COUNT="${BACKUP_RETENTION_COUNT:-7}"
 
 VOLUMES=(
   "dragon-postgres"
@@ -80,6 +81,17 @@ main() {
 
   tar -czf "${BACKUP_ROOT}/${ARCHIVE_NAME}" -C "${BACKUP_ROOT}" "${TIMESTAMP}"
   echo "Created archive ${BACKUP_ROOT}/${ARCHIVE_NAME}"
+
+  if [[ "${BACKUP_RETENTION_COUNT}" =~ ^[0-9]+$ ]] && [[ "${BACKUP_RETENTION_COUNT}" -gt 0 ]]; then
+    mapfile -t old_archives < <(find "${BACKUP_ROOT}" -maxdepth 1 -type f -name 'dragon-pi-backup-*.tar.gz' | sort)
+    if [[ "${#old_archives[@]}" -gt "${BACKUP_RETENTION_COUNT}" ]]; then
+      remove_count=$(( ${#old_archives[@]} - BACKUP_RETENTION_COUNT ))
+      for archive_path in "${old_archives[@]:0:${remove_count}}"; do
+        echo "Removing old backup ${archive_path}"
+        rm -f "${archive_path}"
+      done
+    fi
+  fi
 }
 
 main "$@"

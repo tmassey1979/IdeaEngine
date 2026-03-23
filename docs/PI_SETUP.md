@@ -30,6 +30,7 @@ REPO_BRANCH=main ./setup-pi.sh
 INSTALL_ROOT=/srv/dragon ./setup-pi.sh
 AUTO_START=true ./setup-pi.sh
 INSTALL_SYSTEMD_SERVICE=false AUTO_START=true ./setup-pi.sh
+INSTALL_BACKUP_TIMER=false ./setup-pi.sh
 ```
 
 After the script finishes:
@@ -45,6 +46,12 @@ After the script finishes:
 ```bash
 sudo systemctl start dragon-idea-engine
 sudo journalctl -u dragon-idea-engine -f
+```
+
+3. Verify the nightly backup timer:
+
+```bash
+systemctl list-timers dragon-backup.timer
 ```
 
 Routine maintenance:
@@ -79,3 +86,5 @@ Notes:
 - `AUTO_START=true` only works once the required credentials are present in `.env`.
 - The installed service runs `docker compose up --build` from the repo checkout and restarts automatically on boot.
 - Backup and restore stop the service by default to reduce the chance of inconsistent volume snapshots.
+- The setup script installs a nightly `dragon-backup.timer` by default.
+- `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
