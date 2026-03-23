@@ -75,6 +75,10 @@ systemctl list-timers dragon-update.timer
 Routine maintenance:
 
 ```bash
+dragon-report
+dragon-health
+dragon-update
+dragon-backup
 ~/dragon/IdeaEngine/scripts/pi-report.sh
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
 ~/dragon/IdeaEngine/scripts/update-pi.sh
@@ -86,6 +90,7 @@ Routine maintenance:
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, and `dragon-diagnostics`
 - `pi-report.sh` prints a concise service, backup/update timer, worker, queue, activity, compose, and backup summary
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -107,6 +112,7 @@ Notes:
 - If the script adds your user to the `docker` group, log out and back in before running Docker without `sudo`.
 - `AUTO_START=true` only works once the required credentials are present in `.env`.
 - The installed service runs `docker compose up --build` from the repo checkout and restarts automatically on boot.
+- The setup script installs shortcut commands into `$HOME/.local/bin` when `scripts/install-pi-aliases.sh` is available.
 - Backup and restore stop the service by default to reduce the chance of inconsistent volume snapshots.
 - The setup script installs a nightly `dragon-backup.timer` by default.
 - Scheduled self-updates are available through `dragon-update.timer`, but installation is opt-in with `INSTALL_UPDATE_TIMER=true`.

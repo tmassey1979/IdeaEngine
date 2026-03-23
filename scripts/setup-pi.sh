@@ -276,6 +276,10 @@ main() {
     exit 1
   fi
 
+  if [[ -x "${REPO_DIR}/scripts/install-pi-aliases.sh" ]]; then
+    "${REPO_DIR}/scripts/install-pi-aliases.sh"
+  fi
+
   start_stack_if_requested
   print_next_steps
 }
