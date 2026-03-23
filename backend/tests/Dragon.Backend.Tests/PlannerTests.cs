@@ -5148,6 +5148,8 @@ public sealed class PlannerTests
               "pollIntervalSeconds": 30,
               "nextPollAt": "2026-03-23T12:31:00Z",
               "nextWakeReason": "delayed-provider-retry",
+              "delayedRetryUrgency": "alert",
+              "nextDelayedRetryAt": "2026-03-23T12:31:00Z",
               "currentPassNumber": 4,
               "maxPasses": 9,
               "idleStreak": 2,
@@ -5261,6 +5263,8 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500 (queued", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker command: github-run-watch", StringComparison.Ordinal));
@@ -5313,6 +5317,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("global intervention acknowledged streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled reason: provider backoff is delaying GitHub replay until 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 

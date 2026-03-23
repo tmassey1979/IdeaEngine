@@ -584,6 +584,7 @@ public sealed class GithubIssueService
         MarkSupersededRecoveryIssues(owner, repo, workflow, rootDirectory);
         var currentStage = InferCurrentStage(workflow);
         var recoveryIssueNumber = EnsureRecoveryIssue(owner, repo, workflow, currentStage, executionRecords, rootDirectory);
+        var quarantinedProviderBackoff = ReadQuarantinedProviderBackoffState(rootDirectory);
         var commentBody = string.Join(
             Environment.NewLine,
             [
@@ -644,6 +645,10 @@ public sealed class GithubIssueService
                 $"- global intervention acknowledged streak: {DescribeGlobalInterventionAcknowledgedStreak(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
+                $"- stalled: {(quarantinedProviderBackoff.IsStalled ? "yes" : "no")}",
+                quarantinedProviderBackoff.IsStalled
+                    ? $"- stalled reason: {quarantinedProviderBackoff.Reason}"
+                    : "- stalled reason: none",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -664,16 +669,69 @@ public sealed class GithubIssueService
 
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
         EnsureLabel(owner, repo, "recovery", "1D76DB", "Follow-up recovery work spawned from quarantine.", rootDirectory);
+        EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
         EnsureLabel(owner, repo, "superseded", "6E7781", "Older overlapping work that has been replaced by a newer path.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
-        RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
+        if (quarantinedProviderBackoff.IsStalled)
+        {
+            AddLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        }
+        else
+        {
+            RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        }
+
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         UpsertMarkedComment(owner, repo, workflow.IssueNumber, RemediationMarker, commentBody, rootDirectory);
 
         return new GithubSyncResult(true, true, $"Updated GitHub issue #{workflow.IssueNumber} with quarantine trace.");
+    }
+
+    private static QuarantinedProviderBackoffState ReadQuarantinedProviderBackoffState(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return QuarantinedProviderBackoffState.NotStalled;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var nextWakeReason = root.TryGetProperty("nextWakeReason", out var nextWakeReasonProperty) &&
+                nextWakeReasonProperty.ValueKind == JsonValueKind.String
+                ? nextWakeReasonProperty.GetString()
+                : null;
+            var delayedRetryUrgency = root.TryGetProperty("delayedRetryUrgency", out var delayedRetryUrgencyProperty) &&
+                delayedRetryUrgencyProperty.ValueKind == JsonValueKind.String
+                ? delayedRetryUrgencyProperty.GetString()
+                : null;
+
+            if (!string.Equals(nextWakeReason, "delayed-provider-retry", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(delayedRetryUrgency, "alert", StringComparison.OrdinalIgnoreCase))
+            {
+                return QuarantinedProviderBackoffState.NotStalled;
+            }
+
+            var nextDelayedRetryAt = root.TryGetProperty("nextDelayedRetryAt", out var nextDelayedRetryProperty) &&
+                nextDelayedRetryProperty.ValueKind == JsonValueKind.String &&
+                nextDelayedRetryProperty.TryGetDateTimeOffset(out var parsedNextDelayedRetryAt)
+                ? parsedNextDelayedRetryAt
+                : (DateTimeOffset?)null;
+
+            var reason = nextDelayedRetryAt is null
+                ? "provider backoff is delaying GitHub replay for queued recovery writeback drift"
+                : $"provider backoff is delaying GitHub replay until {nextDelayedRetryAt.Value:O}";
+            return new QuarantinedProviderBackoffState(true, reason);
+        }
+        catch (JsonException)
+        {
+            return QuarantinedProviderBackoffState.NotStalled;
+        }
     }
 
     private static string DescribeRecoveryChain(IssueWorkflowState workflow)
@@ -3597,3 +3655,10 @@ public sealed record StallState(
     bool IsStalled,
     TimeSpan Elapsed
 );
+
+public sealed record QuarantinedProviderBackoffState(
+    bool IsStalled,
+    string? Reason)
+{
+    public static QuarantinedProviderBackoffState NotStalled { get; } = new(false, null);
+}
