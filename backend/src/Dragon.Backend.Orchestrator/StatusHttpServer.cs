@@ -140,19 +140,26 @@ public sealed class StatusHttpServer
     {
         if (!string.IsNullOrWhiteSpace(snapshotPath) && File.Exists(snapshotPath))
         {
-            var runtimeSnapshot = JsonSerializer.Deserialize<StatusSnapshot>(
-                File.ReadAllText(snapshotPath),
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
-
-            if (runtimeSnapshot is not null)
+            try
             {
-                return runtimeSnapshot with
+                var runtimeSnapshot = JsonSerializer.Deserialize<StatusSnapshot>(
+                    File.ReadAllText(snapshotPath),
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                if (runtimeSnapshot is not null)
                 {
-                    Source = "status-http"
-                };
+                    return runtimeSnapshot with
+                    {
+                        Source = "status-http"
+                    };
+                }
+            }
+            catch (JsonException)
+            {
+                // A concurrent writer may have left a transiently incomplete file; fall back to the live loop snapshot.
             }
         }
 

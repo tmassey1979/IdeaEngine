@@ -160,8 +160,21 @@ public sealed class SelfBuildLoop
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllText(outputPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
+        WriteTextAtomically(outputPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
         return snapshot;
+    }
+
+    private static void WriteTextAtomically(string outputPath, string contents)
+    {
+        var tempPath = $"{outputPath}.{Guid.NewGuid():N}.tmp";
+        File.WriteAllText(tempPath, contents);
+
+        if (File.Exists(outputPath))
+        {
+            File.Delete(outputPath);
+        }
+
+        File.Move(tempPath, outputPath);
     }
 
     public IReadOnlyList<GithubIssue> LoadGithubIssues(string owner, string repo) =>

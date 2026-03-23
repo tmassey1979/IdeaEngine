@@ -715,6 +715,48 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public async Task StatusHttpServer_FallsBackWhenRuntimeSnapshotFileIsInvalid()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            711,
+            new SelfBuildJobPayload("[Story] Runtime Fallback", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "ui/dragon-ui/sample-status.json",
+                ["targetOutcome"] = "serve a fallback dashboard snapshot",
+                ["requestedPriority"] = "high",
+                ["requestedBlocking"] = "true",
+                ["workType"] = "story"
+            }));
+
+        var snapshotPath = Path.Combine(root, ".dragon", "status", "runtime-status.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(snapshotPath)!);
+        File.WriteAllText(snapshotPath, "{");
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop, snapshotPath);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var snapshot = await client.GetFromJsonAsync<StatusSnapshot>($"{prefix}status");
+        await serveTask;
+
+        Assert.NotNull(snapshot);
+        Assert.Equal("status-http", snapshot!.Source);
+        Assert.Equal("serve-status", snapshot.LastCommand);
+        Assert.Equal(1, snapshot.QueuedJobs);
+        Assert.NotNull(snapshot.LeadJob);
+        Assert.Equal(711, snapshot.LeadJob!.IssueNumber);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_IncludesCorsHeadersOnStatusResponses()
     {
         var root = CreateTempRoot();

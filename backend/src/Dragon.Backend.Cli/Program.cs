@@ -638,11 +638,24 @@ static void WriteStatusSnapshot(string outputPath, StatusSnapshot snapshot)
         Directory.CreateDirectory(directory);
     }
 
-    File.WriteAllText(outputPath, JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
+    WriteTextAtomically(outputPath, JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     }));
+}
+
+static void WriteTextAtomically(string outputPath, string contents)
+{
+    var tempPath = $"{outputPath}.{Guid.NewGuid():N}.tmp";
+    File.WriteAllText(tempPath, contents);
+
+    if (File.Exists(outputPath))
+    {
+        File.Delete(outputPath);
+    }
+
+    File.Move(tempPath, outputPath);
 }
 
 static void PrintJson<TValue>(TValue value)
