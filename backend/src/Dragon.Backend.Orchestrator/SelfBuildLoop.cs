@@ -105,6 +105,7 @@ public sealed class SelfBuildLoop
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"));
         var interventionTarget = BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync);
+        var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget)
             : workerActivity;
@@ -144,7 +145,8 @@ public sealed class SelfBuildLoop
             pendingGithubSync,
             effectiveWorkerActivity,
             pendingGithubSyncSummary,
-            interventionTarget
+            interventionTarget,
+            interventionEscalationNote
         );
     }
 
@@ -1922,6 +1924,21 @@ public sealed class SelfBuildLoop
         };
     }
 
+    private static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget)
+    {
+        if (interventionTarget is null || string.IsNullOrWhiteSpace(interventionTarget.Escalation))
+        {
+            return null;
+        }
+
+        return interventionTarget.Escalation switch
+        {
+            "critical" => $"Escalation: global intervention target is critical. {interventionTarget.Summary}",
+            "warning" => $"Escalation: global intervention target is aging and should be reviewed soon. {interventionTarget.Summary}",
+            _ => null
+        };
+    }
+
     private static string? FormatLeadQuarantineAge(LeadQuarantineSnapshot? leadQuarantine)
     {
         if (leadQuarantine?.OldestPendingGithubSyncAt is null)
@@ -2119,7 +2136,8 @@ public sealed record StatusSnapshot(
     IReadOnlyList<PendingGithubSyncSnapshot>? PendingGithubSync = null,
     string? WorkerActivity = null,
     string? PendingGithubSyncSummary = null,
-    InterventionTargetSnapshot? InterventionTarget = null
+    InterventionTargetSnapshot? InterventionTarget = null,
+    string? InterventionEscalationNote = null
 );
 
 public sealed record LatestPassSummary(

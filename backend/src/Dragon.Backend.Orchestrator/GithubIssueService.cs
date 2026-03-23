@@ -335,6 +335,7 @@ public sealed class GithubIssueService
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
+                $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -508,6 +509,7 @@ public sealed class GithubIssueService
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
+                $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -720,6 +722,32 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalInterventionEscalation(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "none";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("interventionEscalationNote", out var noteProperty) &&
+                noteProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(noteProperty.GetString()))
+            {
+                return noteProperty.GetString()!;
+            }
+
+            return "none";
+        }
+        catch (JsonException)
+        {
+            return "none";
         }
     }
 

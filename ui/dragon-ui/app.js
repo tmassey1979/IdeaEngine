@@ -390,6 +390,9 @@ function workerNote(snapshot) {
   const interventionTargetLabel = snapshot.interventionTarget && snapshot.interventionTarget.kind !== "idle"
     ? ` Lead intervention target: ${snapshot.interventionTarget.summary}`
     : "";
+  const interventionEscalationLabel = snapshot.interventionEscalationNote
+    ? ` ${snapshot.interventionEscalationNote}`
+    : "";
   const leadQuarantineAgeLabel = snapshot.leadQuarantine?.oldestPendingGithubSyncAt
     ? ` Oldest recovery writeback drift: ${ageLabel(snapshot.leadQuarantine.oldestPendingGithubSyncAt)}.`
     : "";
@@ -399,8 +402,8 @@ function workerNote(snapshot) {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -409,8 +412,8 @@ function workerNote(snapshot) {
       label: "Running",
       state: "running",
       text: cadenceLabel
-        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`
-        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -418,7 +421,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -765,6 +768,7 @@ function renderStatusSnapshot(snapshot) {
   const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
   const interventionTargetAge = document.getElementById("status-intervention-target-age");
   const interventionTargetEscalation = document.getElementById("status-intervention-target-escalation");
+  const interventionTargetNote = document.getElementById("status-intervention-target-note");
   const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
   const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
   const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
@@ -876,6 +880,7 @@ function renderStatusSnapshot(snapshot) {
   interventionTargetArtifact.textContent = snapshot.interventionTarget?.targetArtifact ?? "none";
   interventionTargetAge.textContent = snapshot.interventionTarget?.ageSummary ?? "n/a";
   interventionTargetEscalation.textContent = snapshot.interventionTarget?.escalation ?? "normal";
+  interventionTargetNote.textContent = snapshot.interventionEscalationNote ?? "No escalation";
   interventionTargetSummary.textContent = snapshot.interventionTarget?.summary ?? "No immediate intervention target.";
   interventionTargetGroup.className = snapshot.interventionTarget && snapshot.interventionTarget.kind !== "idle"
     ? `status-activity ${interventionTargetUrgencyState === "alert" ? "alert" : interventionTargetUrgencyState === "caution" ? "caution" : ""}`.trim()
@@ -1037,6 +1042,7 @@ async function bootStatusMock() {
     const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
     const interventionTargetAge = document.getElementById("status-intervention-target-age");
     const interventionTargetEscalation = document.getElementById("status-intervention-target-escalation");
+    const interventionTargetNote = document.getElementById("status-intervention-target-note");
     const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
     const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
     const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
@@ -1126,6 +1132,7 @@ async function bootStatusMock() {
     interventionTargetArtifact.textContent = "unavailable";
     interventionTargetAge.textContent = "unavailable";
     interventionTargetEscalation.textContent = "unavailable";
+    interventionTargetNote.textContent = "Intervention escalation unavailable";
     interventionTargetSummary.textContent = "Intervention target unavailable";
     interventionTargetGroup.className = "status-activity";
     leadQuarantineIssue.textContent = "Unavailable";
