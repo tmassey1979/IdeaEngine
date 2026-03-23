@@ -336,6 +336,7 @@ public sealed class GithubIssueService
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- worker command: {DescribeGlobalWorkerCommand(rootDirectory)}",
                 $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
+                $"- worker snapshot: {DescribeGlobalWorkerSnapshotTime(rootDirectory)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
@@ -528,6 +529,7 @@ public sealed class GithubIssueService
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- worker command: {DescribeGlobalWorkerCommand(rootDirectory)}",
                 $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
+                $"- worker snapshot: {DescribeGlobalWorkerSnapshotTime(rootDirectory)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
@@ -836,6 +838,32 @@ public sealed class GithubIssueService
                 !string.IsNullOrWhiteSpace(sourceProperty.GetString()))
             {
                 return sourceProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerSnapshotTime(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("generatedAt", out var generatedAtProperty) &&
+                generatedAtProperty.ValueKind == JsonValueKind.String &&
+                generatedAtProperty.TryGetDateTimeOffset(out var generatedAt))
+            {
+                return generatedAt.ToString("O");
             }
 
             return "not recorded";
