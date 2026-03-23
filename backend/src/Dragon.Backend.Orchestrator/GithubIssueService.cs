@@ -357,6 +357,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
@@ -563,6 +564,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
@@ -1841,6 +1843,46 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not scheduled";
+        }
+    }
+
+    private static string DescribePendingGithubSyncLastAttempt(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not attempted";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("pendingGithubSync", out var pendingGithubSync) ||
+                pendingGithubSync.ValueKind != JsonValueKind.Array)
+            {
+                return "not attempted";
+            }
+
+            var lastAttempt = pendingGithubSync
+                .EnumerateArray()
+                .Select(item =>
+                    item.TryGetProperty("lastAttemptedAt", out var lastAttemptedAtProperty) &&
+                    lastAttemptedAtProperty.ValueKind == JsonValueKind.String &&
+                    lastAttemptedAtProperty.TryGetDateTimeOffset(out var parsedLastAttemptedAt)
+                        ? parsedLastAttemptedAt
+                        : (DateTimeOffset?)null)
+                .Where(value => value is not null)
+                .Select(value => value!.Value)
+                .OrderByDescending(value => value)
+                .FirstOrDefault();
+
+            return lastAttempt == default
+                ? "not attempted"
+                : lastAttempt.ToString("O");
+        }
+        catch (JsonException)
+        {
+            return "not attempted";
         }
     }
 
