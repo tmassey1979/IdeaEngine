@@ -342,6 +342,7 @@ public sealed class GithubIssueService
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
+                $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
@@ -530,6 +531,7 @@ public sealed class GithubIssueService
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
+                $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
@@ -1068,6 +1070,60 @@ public sealed class GithubIssueService
             };
 
             return $"{prefix} {state}: {summary}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalGithubReplay(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestGithubReplay", out var latestGithubReplay) ||
+                latestGithubReplay.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var attemptedCount = latestGithubReplay.TryGetProperty("attemptedCount", out var attemptedCountProperty) &&
+                attemptedCountProperty.ValueKind == JsonValueKind.Number &&
+                attemptedCountProperty.TryGetInt32(out var parsedAttemptedCount)
+                ? parsedAttemptedCount
+                : 0;
+            var updatedCount = latestGithubReplay.TryGetProperty("updatedCount", out var updatedCountProperty) &&
+                updatedCountProperty.ValueKind == JsonValueKind.Number &&
+                updatedCountProperty.TryGetInt32(out var parsedUpdatedCount)
+                ? parsedUpdatedCount
+                : 0;
+            var failedCount = latestGithubReplay.TryGetProperty("failedCount", out var failedCountProperty) &&
+                failedCountProperty.ValueKind == JsonValueKind.Number &&
+                failedCountProperty.TryGetInt32(out var parsedFailedCount)
+                ? parsedFailedCount
+                : 0;
+            var summary = latestGithubReplay.TryGetProperty("summary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(summaryProperty.GetString())
+                ? summaryProperty.GetString()!
+                : null;
+
+            var counts = $"{updatedCount}/{attemptedCount} updated";
+            if (failedCount > 0)
+            {
+                counts += $", {failedCount} failed";
+            }
+
+            return string.IsNullOrWhiteSpace(summary)
+                ? counts
+                : $"{counts}: {summary}";
         }
         catch (JsonException)
         {
