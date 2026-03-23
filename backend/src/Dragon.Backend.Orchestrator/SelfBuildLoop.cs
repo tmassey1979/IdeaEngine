@@ -2239,7 +2239,7 @@ public sealed class SelfBuildLoop
             latestActivity is not null)
         {
             return interventionTarget!.Acknowledged
-                ? new RecentLoopSignalSnapshot("escalating", $"Loop is tracking acknowledged operator escalation after issue #{latestActivity.IssueNumber}.")
+                ? new RecentLoopSignalSnapshot("monitoring", $"Loop is tracking acknowledged operator escalation after issue #{latestActivity.IssueNumber}.")
                 : new RecentLoopSignalSnapshot("escalating", $"Loop is actively escalating operator follow-up after issue #{latestActivity.IssueNumber}.");
         }
 
@@ -2247,7 +2247,7 @@ public sealed class SelfBuildLoop
             string.Equals(interventionTarget?.Kind, "operator-escalation", StringComparison.OrdinalIgnoreCase))
         {
             return interventionTarget!.Acknowledged
-                ? new RecentLoopSignalSnapshot("escalating", "Loop is tracking acknowledged operator escalation.")
+                ? new RecentLoopSignalSnapshot("monitoring", "Loop is tracking acknowledged operator escalation.")
                 : new RecentLoopSignalSnapshot("escalating", "Loop is actively escalating operator follow-up.");
         }
 

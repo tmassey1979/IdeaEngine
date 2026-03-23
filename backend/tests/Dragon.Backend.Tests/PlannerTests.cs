@@ -420,7 +420,7 @@ public sealed class PlannerTests
         Assert.True(status.InterventionTarget!.Acknowledged);
         Assert.Equal(0, status.InterventionTarget.AcknowledgedStreak);
         Assert.Equal("Waiting to continue tracking an already-acknowledged operator escalation on the next pass.", status.WorkerActivity);
-        Assert.Equal("escalating", status.RecentLoopSignal.Mode);
+        Assert.Equal("monitoring", status.RecentLoopSignal.Mode);
         Assert.Contains("tracking acknowledged operator escalation", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
 
@@ -2070,7 +2070,7 @@ public sealed class PlannerTests
             null,
             null,
             null,
-            new RecentLoopSignalSnapshot("escalating", "previous"),
+            new RecentLoopSignalSnapshot("monitoring", "previous"),
             "unknown",
             0,
             null,
@@ -2121,7 +2121,7 @@ public sealed class PlannerTests
             null,
             null,
             null,
-            new RecentLoopSignalSnapshot("escalating", "current"),
+            new RecentLoopSignalSnapshot("monitoring", "current"),
             "unknown",
             0,
             null,

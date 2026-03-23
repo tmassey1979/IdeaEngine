@@ -513,7 +513,7 @@ function workerProgressLabel(snapshot) {
 function workerProgressState(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
 
-  if (snapshot.recentLoopSignal?.mode === "repairing" || snapshot.recentLoopSignal?.mode === "escalating") {
+  if (snapshot.recentLoopSignal?.mode === "repairing" || snapshot.recentLoopSignal?.mode === "escalating" || snapshot.recentLoopSignal?.mode === "monitoring") {
     return "waiting";
   }
 
@@ -977,7 +977,7 @@ function renderStatusSnapshot(snapshot) {
       pendingGithubGroup.classList.add("alert");
     }
     feed.classList.add("deemphasized");
-  } else if (snapshot.recentLoopSignal?.mode === "draining" || snapshot.recentLoopSignal?.mode === "repairing" || snapshot.recentLoopSignal?.mode === "escalating") {
+  } else if (snapshot.recentLoopSignal?.mode === "draining" || snapshot.recentLoopSignal?.mode === "repairing" || snapshot.recentLoopSignal?.mode === "escalating" || snapshot.recentLoopSignal?.mode === "monitoring") {
     latestActivityGroup.classList.add("caution");
     latestPassGroup.classList.add("caution");
     if (pendingGithubItems.length) {
