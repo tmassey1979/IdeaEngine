@@ -4817,6 +4817,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop summary: Replayed 3 pending GitHub updates and waiting for a quiet confirmation pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention age: 4h 30m old", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
@@ -5297,6 +5298,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker loop mode: draining", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is actively draining queued work after issue #22.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: implementation: Advance issue #22: refresh architecture docs. (fresh)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention age: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
@@ -5486,6 +5488,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker loop mode: monitoring", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is tracking acknowledged operator escalation.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical, acknowledged x3)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention age: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 3", StringComparison.Ordinal));
     }
 
@@ -5640,6 +5643,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("latest pass outcome: idle reached", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: idle", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: idle", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention age: not recorded", StringComparison.Ordinal));
     }
 
     [Fact]
