@@ -356,6 +356,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
+                $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -557,6 +558,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
+                $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -1786,6 +1788,48 @@ public sealed class GithubIssueService
             }
 
             return $"{passLabel}: {cycleCount} cycle{(cycleCount == 1 ? string.Empty : "s")}, {seededCycles} seed, {consumedCycles} consume";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalLatestPassOutcome(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestPass", out var latestPass) ||
+                latestPass.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var reachedIdle = latestPass.TryGetProperty("reachedIdle", out var reachedIdleProperty) &&
+                reachedIdleProperty.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                reachedIdleProperty.GetBoolean();
+            var reachedMaxCycles = latestPass.TryGetProperty("reachedMaxCycles", out var reachedMaxCyclesProperty) &&
+                reachedMaxCyclesProperty.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                reachedMaxCyclesProperty.GetBoolean();
+
+            if (reachedIdle)
+            {
+                return "idle reached";
+            }
+
+            if (reachedMaxCycles)
+            {
+                return "pass cap reached";
+            }
+
+            return "active";
         }
         catch (JsonException)
         {

@@ -4788,6 +4788,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay: 3/3 updated: Replayed 3 pending GitHub updates.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: 1 pending GitHub update remains queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 seed, 0 consume, replay 3/3", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
@@ -5253,6 +5254,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: No pending GitHub updates needed replay on the latest pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 2: 4 cycles, 1 seed, 3 consume", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: 1 queued job(s), 1 issue(s) in progress.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: draining", StringComparison.Ordinal));
@@ -5427,6 +5429,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: No pending GitHub updates needed replay on the latest pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 7: 1 seed, 1 consume, escalation 1/1", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: attention", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: Critical intervention target remains acknowledged but unresolved.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: monitoring", StringComparison.Ordinal));
@@ -5569,6 +5572,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: No pending GitHub updates needed replay on the latest pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 6: 3 cycles, 1 seed, 2 consume", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass outcome: idle reached", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: idle", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: idle", StringComparison.Ordinal));
     }
