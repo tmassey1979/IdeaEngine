@@ -6637,6 +6637,86 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_PrioritizesReadyGithubReplayBeforeSeedingOrdinaryWork()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "docs/ARCHITECTURE.md"
+                }),
+            new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow),
+            []);
+
+        var stories = new[]
+        {
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        loop.RecordPendingGithubSyncForTests(22, "GitHub sync failed for issue #22.");
+
+        var replay = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+        var next = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.Equal("replay", replay.Mode);
+        Assert.NotNull(replay.GithubSync);
+        Assert.Contains("Replayed 1 pending GitHub update", replay.GithubSync!.Summary, StringComparison.Ordinal);
+        Assert.Equal(0, loop.ReadStatus().PendingGithubSyncCount);
+        Assert.Equal("seed", next.Mode);
+        Assert.Equal(23, next.Job!.Issue);
+    }
+
+    [Fact]
+    public void CycleOnce_DoesNotPrioritizeGithubReplayBeforePendingRetryWindow()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 22,
+                "summary": "GitHub sync failed for issue #22.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2099-03-23T12:15:00Z"
+              }
+            ]
+            """);
+
+        var stories = new[]
+        {
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+
+        var cycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.Equal("seed", cycle.Mode);
+        Assert.Equal(23, cycle.Job!.Issue);
+        Assert.Equal(1, loop.ReadStatus().PendingGithubSyncCount);
+    }
+
+    [Fact]
     public void RunUntilIdle_DoesNotReportIdle_WhenOnlyDelayedRetryWorkRemains()
     {
         var root = CreateTempRoot();
@@ -6765,12 +6845,14 @@ public sealed class PlannerTests
     public void CycleOnce_ToleratesGithubSyncFailure()
     {
         var root = CreateTempRoot();
-        Directory.CreateDirectory(Path.Combine(root, "docs"));
-        File.WriteAllText(Path.Combine(root, "package.json"), """{ "scripts": { "test": "placeholder" } }""");
+        var store = new WorkflowStateStore(root);
+        var now = DateTimeOffset.UtcNow;
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", now.AddHours(-2)));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "failed", "blocked", now.AddHours(-2)));
         var stories = new[]
         {
-            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"], "", "Core System Principles", "codex/sections/01-dragon-idea-engine-master-codex.md"),
-            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"])
         };
 
         var commands = new List<string>();
@@ -6789,25 +6871,18 @@ public sealed class PlannerTests
 
             return string.Empty;
         });
-        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(1, string.Empty, "forced failure"));
-        var loop = new SelfBuildLoop(root, githubIssueService: github, jobExecutor: executor);
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
 
-        CycleResult? quarantineCycle = null;
-        for (var index = 0; index < 12; index += 1)
-        {
-            var cycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
-            if (cycle.FailureDisposition?.Quarantined == true)
-            {
-                quarantineCycle = cycle;
-                break;
-            }
-        }
+        var quarantineCycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
 
         Assert.NotNull(quarantineCycle);
         Assert.NotNull(quarantineCycle!.GithubSync);
         Assert.True(quarantineCycle.GithubSync!.Attempted);
         Assert.False(quarantineCycle.GithubSync.Updated);
         Assert.Contains("GitHub sync failed", quarantineCycle.GithubSync.Summary, StringComparison.Ordinal);
+        Assert.Equal("quarantine", quarantineCycle.Mode);
+        Assert.NotNull(quarantineCycle.FailureDisposition);
+        Assert.True(quarantineCycle.FailureDisposition!.Quarantined);
         Assert.Contains(commands, command => command.Contains("issues/22/comments", StringComparison.Ordinal));
     }
 

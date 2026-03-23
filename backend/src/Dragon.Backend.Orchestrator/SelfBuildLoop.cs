@@ -479,6 +479,12 @@ public sealed class SelfBuildLoop
 
         if (!queueStore.HasReadyJobs())
         {
+            var prioritizedReplay = TryPrioritizeReadyGithubReplay(githubOwner, repo, syncValidatedWorkflows);
+            if (prioritizedReplay is not null)
+            {
+                return prioritizedReplay;
+            }
+
             if (HasSchedulableWork(issues))
             {
                 var seeded = SeedNext(issues, repo, project);
@@ -507,6 +513,40 @@ public sealed class SelfBuildLoop
         var githubSync = TrySyncWorkflow(githubOwner, repo, workflow, syncValidatedWorkflows);
 
         return new CycleResult("consume", job, execution, followUps, workflow, githubSync, executionRecord, failureDisposition);
+    }
+
+    private CycleResult? TryPrioritizeReadyGithubReplay(string? githubOwner, string repo, bool syncValidatedWorkflows)
+    {
+        if (!syncValidatedWorkflows || string.IsNullOrWhiteSpace(githubOwner))
+        {
+            return null;
+        }
+
+        if (ShouldDeferGithubReplayForProviderBackoff())
+        {
+            return null;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var hasReadyPendingReplay = ReadPendingGithubSync().Any(item =>
+            item.NextRetryAt is null || item.NextRetryAt.Value <= now);
+        if (!hasReadyPendingReplay)
+        {
+            return null;
+        }
+
+        ReplayPendingGithubSyncs(githubOwner, repo);
+        var latestReplay = ReadLatestGithubReplay();
+        var replaySummary = latestReplay?.Summary ?? "Replayed pending GitHub updates before resuming queued work.";
+        return new CycleResult(
+            "replay",
+            null,
+            null,
+            [],
+            GithubSync: new GithubSyncResult(
+                latestReplay?.AttemptedCount > 0,
+                latestReplay?.UpdatedCount > 0,
+                replaySummary));
     }
 
     public CycleResult CycleOnceFromGithub(
