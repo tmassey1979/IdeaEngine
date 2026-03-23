@@ -97,6 +97,7 @@ public sealed class SelfBuildLoop
             .Select(ReadRetryNotBeforeUtc)
             .Where(value => value is not null)
             .Min();
+        var nextWakeReason = DeriveNextWakeReason(nextPollAt, nextDelayedRetryAt);
         var delayedRetryUrgency = DeriveDelayedRetryUrgency(nextDelayedRetryAt, DateTimeOffset.UtcNow);
         var delayedRetrySummary = nextDelayedRetryAt is null
             ? null
@@ -163,6 +164,7 @@ public sealed class SelfBuildLoop
             interventionTarget,
             interventionEscalationNote,
             0,
+            nextWakeReason,
             nextDelayedRetryAt,
             delayedRetryUrgency,
             delayedRetrySummary
@@ -2072,6 +2074,19 @@ public sealed class SelfBuildLoop
         return "normal";
     }
 
+    private static string? DeriveNextWakeReason(DateTimeOffset? nextPollAt, DateTimeOffset? nextDelayedRetryAt)
+    {
+        if (nextDelayedRetryAt is not null &&
+            (nextPollAt is null || (nextPollAt.Value - nextDelayedRetryAt.Value).Duration() <= TimeSpan.FromSeconds(1)))
+        {
+            return "delayed-provider-retry";
+        }
+
+        return nextPollAt is null
+            ? null
+            : "poll-interval";
+    }
+
     private static StatusRollup BuildStatusRollup(IReadOnlyDictionary<int, IssueWorkflowState> workflows, IReadOnlyList<SelfBuildJob> queuedJobs)
     {
         var issues = workflows.Values
@@ -2611,6 +2626,7 @@ public sealed record StatusSnapshot(
     InterventionTargetSnapshot? InterventionTarget = null,
     string? InterventionEscalationNote = null,
     int InterventionEscalationStreak = 0,
+    string? NextWakeReason = null,
     DateTimeOffset? NextDelayedRetryAt = null,
     string? DelayedRetryUrgency = null,
     string? DelayedRetrySummary = null

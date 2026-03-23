@@ -143,6 +143,7 @@ fields = {
     "WORKER_ACTIVITY": payload.get("workerActivity", ""),
     "HEALTH": payload.get("health", ""),
     "ATTENTION_SUMMARY": payload.get("attentionSummary", ""),
+    "NEXT_WAKE_REASON": payload.get("nextWakeReason", ""),
     "NEXT_DELAYED_RETRY_AT": payload.get("nextDelayedRetryAt", ""),
     "DELAYED_RETRY_URGENCY": payload.get("delayedRetryUrgency", ""),
     "DELAYED_RETRY_SUMMARY": payload.get("delayedRetrySummary", ""),
@@ -648,6 +649,7 @@ main() {
     echo "status_json_available: yes"
     echo "worker_activity: $(json_query workerActivity unknown)"
     echo "health: $(json_query health unknown)"
+    echo "next_wake_reason: $(json_query nextWakeReason '')"
     echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
     echo "delayed_retry_urgency: $(json_query delayedRetryUrgency '')"
     echo "delayed_retry_summary: $(json_query delayedRetrySummary '')"

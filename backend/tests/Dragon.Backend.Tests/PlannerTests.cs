@@ -604,6 +604,7 @@ public sealed class PlannerTests
         Assert.Equal(retryNotBefore, status.LeadJob.RetryNotBeforeUtc);
         Assert.Equal("attention", status.Health);
         Assert.Contains("Provider retry remains delayed", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("delayed-provider-retry", status.NextWakeReason);
         Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
         Assert.Equal("alert", status.DelayedRetryUrgency);
         Assert.Equal($"Next delayed provider retry unlocks at {retryNotBefore:O}.", status.DelayedRetrySummary);
@@ -634,6 +635,7 @@ public sealed class PlannerTests
 
         Assert.Equal("healthy", status.Health);
         Assert.Contains("Waiting for the next provider retry window", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("delayed-provider-retry", status.NextWakeReason);
         Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
         Assert.Equal("normal", status.DelayedRetryUrgency);
     }
@@ -2838,6 +2840,7 @@ public sealed class PlannerTests
         Assert.Equal("waiting", snapshot.WorkerState);
         Assert.Null(snapshot.WorkerCompletionReason);
         Assert.Equal(nextPollAt, snapshot.NextPollAt);
+        Assert.Equal("poll-interval", snapshot.NextWakeReason);
         Assert.Null(snapshot.PollIntervalSeconds);
         Assert.Equal(0, snapshot.IdleStreak);
         Assert.Equal(0, snapshot.IdleTarget);
@@ -2850,6 +2853,7 @@ public sealed class PlannerTests
         Assert.Equal("waiting", document.RootElement.GetProperty("workerState").GetString());
         Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("workerCompletionReason").ValueKind);
         Assert.Equal(nextPollAt, document.RootElement.GetProperty("nextPollAt").GetDateTimeOffset());
+        Assert.Equal("poll-interval", document.RootElement.GetProperty("nextWakeReason").GetString());
         Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("pollIntervalSeconds").ValueKind);
         Assert.Equal(0, document.RootElement.GetProperty("idleStreak").GetInt32());
         Assert.Equal(0, document.RootElement.GetProperty("idleTarget").GetInt32());
@@ -4960,6 +4964,7 @@ public sealed class PlannerTests
               },
               "pollIntervalSeconds": 30,
               "nextPollAt": "2026-03-23T12:31:00Z",
+              "nextWakeReason": "delayed-provider-retry",
               "currentPassNumber": 4,
               "maxPasses": 9,
               "idleStreak": 2,
@@ -5092,8 +5097,9 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue compared at: 2026-03-23T11:59:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compare age: 2m 45s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker poll interval: 30s", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker cadence: next wake 2026-03-23T12:31:00.0000000+00:00 (base poll every 30 seconds)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker cadence: next wake 2026-03-23T12:31:00.0000000+00:00 (waiting for delayed provider retry; base poll every 30 seconds)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next wake reason: waiting for delayed provider retry", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake in: 1m 0s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
@@ -5579,6 +5585,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker poll interval: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake: not scheduled", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next wake reason: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake in: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 2 / 6 · idle 0 / 2 · remaining 2 · budget 4", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
@@ -5652,6 +5659,7 @@ public sealed class PlannerTests
               },
               "pollIntervalSeconds": 30,
               "nextPollAt": "2026-03-16T15:31:00Z",
+              "nextWakeReason": "poll-interval",
               "currentPassNumber": 7,
               "maxPasses": 10,
               "idleStreak": 1,
@@ -5771,8 +5779,9 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue compared at: 2026-03-16T15:25:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compare age: 5m 35s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker poll interval: 30s", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker cadence: next wake 2026-03-16T15:31:00.0000000+00:00 (base poll every 30 seconds)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker cadence: next wake 2026-03-16T15:31:00.0000000+00:00 (scheduled poll interval; base poll every 30 seconds)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake: 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next wake reason: scheduled poll interval", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake in: 1m 0s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 7 / 10 · idle 1 / 2 · remaining 1 · budget 3", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
@@ -5935,6 +5944,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue compare age: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker poll interval: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake: not scheduled", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next wake reason: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake in: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: idle target reached", StringComparison.Ordinal));

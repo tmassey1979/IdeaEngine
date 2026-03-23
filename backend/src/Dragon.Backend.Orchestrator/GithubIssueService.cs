@@ -353,6 +353,7 @@ public sealed class GithubIssueService
                 $"- worker poll interval: {DescribeGlobalWorkerPollInterval(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
+                $"- worker next wake reason: {DescribeGlobalWorkerNextWakeReason(rootDirectory)}",
                 $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
@@ -574,6 +575,7 @@ public sealed class GithubIssueService
                 $"- worker poll interval: {DescribeGlobalWorkerPollInterval(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
+                $"- worker next wake reason: {DescribeGlobalWorkerNextWakeReason(rootDirectory)}",
                 $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
@@ -1517,6 +1519,10 @@ public sealed class GithubIssueService
                 nextPollProperty.TryGetDateTimeOffset(out var nextPoll)
                 ? nextPoll
                 : (DateTimeOffset?)null;
+            var nextWakeReason = root.TryGetProperty("nextWakeReason", out var nextWakeReasonProperty) &&
+                nextWakeReasonProperty.ValueKind == JsonValueKind.String
+                ? nextWakeReasonProperty.GetString()
+                : null;
 
             if (pollIntervalSeconds is null && nextPollAt is null)
             {
@@ -1525,7 +1531,8 @@ public sealed class GithubIssueService
 
             if (pollIntervalSeconds is not null && nextPollAt is not null)
             {
-                return $"next wake {nextPollAt.Value:O} (base poll every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")})";
+                var reasonText = DescribeNextWakeReasonText(nextWakeReason) ?? "scheduled wake";
+                return $"next wake {nextPollAt.Value:O} ({reasonText}; base poll every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")})";
             }
 
             if (pollIntervalSeconds is not null)
@@ -1533,7 +1540,10 @@ public sealed class GithubIssueService
                 return $"base poll every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")}";
             }
 
-            return $"next wake {nextPollAt!.Value:O}";
+            var standaloneReasonText = DescribeNextWakeReasonText(nextWakeReason);
+            return standaloneReasonText is null
+                ? $"next wake {nextPollAt!.Value:O}"
+                : $"next wake {nextPollAt!.Value:O} ({standaloneReasonText})";
         }
         catch (JsonException)
         {
@@ -1595,6 +1605,30 @@ public sealed class GithubIssueService
         }
     }
 
+    private static string DescribeGlobalWorkerNextWakeReason(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var nextWakeReason = document.RootElement.TryGetProperty("nextWakeReason", out var nextWakeReasonProperty) &&
+                nextWakeReasonProperty.ValueKind == JsonValueKind.String
+                ? nextWakeReasonProperty.GetString()
+                : null;
+
+            return DescribeNextWakeReasonText(nextWakeReason) ?? "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
     private static string DescribeGlobalWorkerNextPollIn(string rootDirectory, DateTimeOffset referenceTime)
     {
         var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
@@ -1623,6 +1657,13 @@ public sealed class GithubIssueService
             return "not scheduled";
         }
     }
+
+    private static string? DescribeNextWakeReasonText(string? nextWakeReason) => nextWakeReason switch
+    {
+        "delayed-provider-retry" => "waiting for delayed provider retry",
+        "poll-interval" => "scheduled poll interval",
+        _ => null
+    };
 
     private static string DescribeGlobalWorkerProgress(string rootDirectory)
     {

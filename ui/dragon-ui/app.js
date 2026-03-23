@@ -207,6 +207,17 @@ function delayedRetryUrgency(snapshot) {
   return "normal";
 }
 
+function nextWakeReasonLabel(snapshot) {
+  switch (snapshot.nextWakeReason) {
+    case "delayed-provider-retry":
+      return "waiting for delayed provider retry";
+    case "poll-interval":
+      return "scheduled poll interval";
+    default:
+      return null;
+  }
+}
+
 function formatDelta(value) {
   if (value > 0) {
     return `+${value}`;
@@ -877,7 +888,10 @@ function renderStatusSnapshot(snapshot) {
   const freshnessState = freshnessInfo(snapshot.generatedAt);
   freshness.textContent = freshnessState.label;
   freshness.className = `snapshot-freshness ${freshnessState.state}`;
-  nextPoll.textContent = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "No next poll scheduled";
+  const nextWakeReason = nextWakeReasonLabel(snapshot);
+  nextPoll.textContent = snapshot.nextPollAt
+    ? `${formatTimestamp(snapshot.nextPollAt)}${nextWakeReason ? ` (${nextWakeReason})` : ""}`
+    : "No next wake scheduled";
   nextDelayedRetry.textContent = snapshot.nextDelayedRetryAt ? formatTimestamp(snapshot.nextDelayedRetryAt) : "No delayed retry scheduled";
   nextDelayedRetry.className = delayedRetryUrgencyState === "normal" ? "" : `status-emphasis ${delayedRetryUrgencyState}`;
   queueDirection.textContent = snapshot.queueDirection ?? "unknown";

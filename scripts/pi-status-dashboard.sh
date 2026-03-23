@@ -51,6 +51,8 @@ print(f"  service: {service.get('active', 'unknown')} ({service.get('result', 'u
 print(f"  worker: {status.get('health', 'unknown')}")
 print(f"  alert_check: {alert_status}")
 print(f"  attention: {status.get('attentionSummary', 'none')}")
+if status.get("nextWakeReason"):
+    print(f"  next_wake_reason: {status.get('nextWakeReason')}")
 if status.get("nextDelayedRetryAt"):
     print(f"  next_delayed_retry: {status.get('nextDelayedRetryAt')}")
 if status.get("delayedRetryUrgency"):
