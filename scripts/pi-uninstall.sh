@@ -8,6 +8,8 @@ BACKUP_SERVICE_NAME="${BACKUP_SERVICE_NAME:-dragon-backup}"
 BACKUP_TIMER_NAME="${BACKUP_TIMER_NAME:-dragon-backup}"
 UPDATE_SERVICE_NAME="${UPDATE_SERVICE_NAME:-dragon-update}"
 UPDATE_TIMER_NAME="${UPDATE_TIMER_NAME:-dragon-update}"
+ALERT_SERVICE_NAME="${ALERT_SERVICE_NAME:-dragon-alert-check}"
+ALERT_TIMER_NAME="${ALERT_TIMER_NAME:-dragon-alert-check}"
 REMOVE_REPO_DIR="${REMOVE_REPO_DIR:-false}"
 
 WRAPPERS=(
@@ -45,6 +47,8 @@ main() {
   disable_unit_if_present "${BACKUP_SERVICE_NAME}.service"
   disable_unit_if_present "${UPDATE_TIMER_NAME}.timer"
   disable_unit_if_present "${UPDATE_SERVICE_NAME}.service"
+  disable_unit_if_present "${ALERT_TIMER_NAME}.timer"
+  disable_unit_if_present "${ALERT_SERVICE_NAME}.service"
 
   sudo systemctl daemon-reload
 

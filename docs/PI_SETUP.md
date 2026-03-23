@@ -40,6 +40,7 @@ AUTO_START=true ./setup-pi.sh
 INSTALL_SYSTEMD_SERVICE=false AUTO_START=true ./setup-pi.sh
 INSTALL_BACKUP_TIMER=false ./setup-pi.sh
 INSTALL_UPDATE_TIMER=true ./setup-pi.sh
+INSTALL_ALERT_TIMER=true ./setup-pi.sh
 
 AUTO_START_STACK=false ./pi-bootstrap-all.sh
 RUN_HEALTHCHECK_AT_END=false ./pi-bootstrap-all.sh
@@ -70,6 +71,12 @@ systemctl list-timers dragon-backup.timer
 
 ```bash
 systemctl list-timers dragon-update.timer
+```
+
+5. Optional: verify the scheduled alert timer if you enabled it:
+
+```bash
+systemctl list-timers dragon-alert-check.timer
 ```
 
 Routine maintenance:
@@ -151,6 +158,7 @@ Notes:
 - Backup and restore stop the service by default to reduce the chance of inconsistent volume snapshots.
 - The setup script installs a nightly `dragon-backup.timer` by default.
 - Scheduled self-updates are available through `dragon-update.timer`, but installation is opt-in with `INSTALL_UPDATE_TIMER=true`.
+- Scheduled alert checks are available through `dragon-alert-check.timer`, but installation is opt-in with `INSTALL_ALERT_TIMER=true`.
 - `update-pi.sh` creates a backup before updating by default and exits if the checkout is dirty unless `ALLOW_DIRTY_WORKTREE=true`.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
 - `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

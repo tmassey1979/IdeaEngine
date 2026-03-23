@@ -1,0 +1,9 @@
+[Unit]
+Description=Dragon Idea Engine Alert Check
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO_DIR__
+ExecStart=/bin/bash -lc 'cd "__REPO_DIR__" && ./scripts/pi-alert-check.sh'

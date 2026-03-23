@@ -25,6 +25,13 @@ UPDATE_SERVICE_PATH="${UPDATE_SERVICE_PATH:-/etc/systemd/system/${UPDATE_SERVICE
 UPDATE_TIMER_NAME="${UPDATE_TIMER_NAME:-dragon-update}"
 UPDATE_TIMER_TEMPLATE="${UPDATE_TIMER_TEMPLATE:-$REPO_DIR/docker/dragon-update.timer}"
 UPDATE_TIMER_PATH="${UPDATE_TIMER_PATH:-/etc/systemd/system/${UPDATE_TIMER_NAME}.timer}"
+INSTALL_ALERT_TIMER="${INSTALL_ALERT_TIMER:-false}"
+ALERT_SERVICE_NAME="${ALERT_SERVICE_NAME:-dragon-alert-check}"
+ALERT_SERVICE_TEMPLATE="${ALERT_SERVICE_TEMPLATE:-$REPO_DIR/docker/dragon-alert-check.service}"
+ALERT_SERVICE_PATH="${ALERT_SERVICE_PATH:-/etc/systemd/system/${ALERT_SERVICE_NAME}.service}"
+ALERT_TIMER_NAME="${ALERT_TIMER_NAME:-dragon-alert-check}"
+ALERT_TIMER_TEMPLATE="${ALERT_TIMER_TEMPLATE:-$REPO_DIR/docker/dragon-alert-check.timer}"
+ALERT_TIMER_PATH="${ALERT_TIMER_PATH:-/etc/systemd/system/${ALERT_TIMER_NAME}.timer}"
 
 require_command() {
   local command_name="$1"
@@ -213,6 +220,33 @@ install_update_timer() {
   echo "Installed and enabled update timer ${UPDATE_TIMER_NAME}.timer"
 }
 
+install_alert_timer() {
+  if [[ "${INSTALL_ALERT_TIMER}" != "true" ]]; then
+    return
+  fi
+
+  if [[ ! -f "${ALERT_SERVICE_TEMPLATE}" ]]; then
+    echo "Missing alert service template: ${ALERT_SERVICE_TEMPLATE}" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "${ALERT_TIMER_TEMPLATE}" ]]; then
+    echo "Missing alert timer template: ${ALERT_TIMER_TEMPLATE}" >&2
+    exit 1
+  fi
+
+  local rendered_service
+  rendered_service="$(mktemp)"
+  sed "s|__REPO_DIR__|${REPO_DIR}|g" "${ALERT_SERVICE_TEMPLATE}" > "${rendered_service}"
+  sudo install -m 0644 "${rendered_service}" "${ALERT_SERVICE_PATH}"
+  rm -f "${rendered_service}"
+
+  sudo install -m 0644 "${ALERT_TIMER_TEMPLATE}" "${ALERT_TIMER_PATH}"
+  sudo systemctl daemon-reload
+  sudo systemctl enable "${ALERT_TIMER_NAME}.timer"
+  echo "Installed and enabled alert timer ${ALERT_TIMER_NAME}.timer"
+}
+
 print_next_steps() {
   cat <<EOF
 
@@ -223,6 +257,7 @@ Env:  ${ENV_FILE}
 Service: ${SERVICE_NAME}.service
 Backup timer: ${BACKUP_TIMER_NAME}.timer
 Update timer: ${UPDATE_TIMER_NAME}.timer
+Alert timer: ${ALERT_TIMER_NAME}.timer
 
 Next steps:
 1. Edit ${ENV_FILE} and set OPENAI_API_KEY plus GITHUB_TOKEN or GH_TOKEN.
@@ -234,6 +269,7 @@ Next steps:
 5. Check backup timer:
    systemctl list-timers ${BACKUP_TIMER_NAME}.timer
 6. Optional: enable scheduled updates during setup with INSTALL_UPDATE_TIMER=true
+7. Optional: enable scheduled alert checks during setup with INSTALL_ALERT_TIMER=true
 EOF
 }
 
@@ -268,6 +304,7 @@ main() {
   install_systemd_service
   install_backup_timer
   install_update_timer
+  install_alert_timer
 
   if docker compose version >/dev/null 2>&1; then
     echo "Docker Compose plugin is available."
