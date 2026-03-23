@@ -33,6 +33,7 @@ EOF
 
 main() {
   local -a journal_args
+  local -a unit_args
   journal_args=(--follow)
 
   while [[ $# -gt 0 ]]; do
@@ -68,7 +69,11 @@ main() {
     )
   fi
 
-  sudo journalctl "${journal_args[@]}" "${UNITS[@]/#/-u }"
+  for unit_name in "${UNITS[@]}"; do
+    unit_args+=(-u "${unit_name}")
+  done
+
+  sudo journalctl "${journal_args[@]}" "${unit_args[@]}"
 }
 
 main "$@"
