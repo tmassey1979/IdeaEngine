@@ -353,7 +353,9 @@ public sealed class GithubIssueService
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
+                $"- GitHub sync recorded at: {DescribeGlobalGithubSyncRecordedAt(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
+                $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -555,7 +557,9 @@ public sealed class GithubIssueService
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
+                $"- GitHub sync recorded at: {DescribeGlobalGithubSyncRecordedAt(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
+                $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -1626,6 +1630,35 @@ public sealed class GithubIssueService
         }
     }
 
+    private static string DescribeGlobalGithubSyncRecordedAt(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestGithubSync", out var latestGithubSync) ||
+                latestGithubSync.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            return latestGithubSync.TryGetProperty("recordedAt", out var recordedAtProperty) &&
+                recordedAtProperty.ValueKind == JsonValueKind.String &&
+                recordedAtProperty.TryGetDateTimeOffset(out var recordedAt)
+                ? recordedAt.ToString("O")
+                : "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
     private static string DescribeGlobalGithubReplay(string rootDirectory)
     {
         var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
@@ -1673,6 +1706,35 @@ public sealed class GithubIssueService
             return string.IsNullOrWhiteSpace(summary)
                 ? counts
                 : $"{counts}: {summary}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalGithubReplayRecordedAt(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestGithubReplay", out var latestGithubReplay) ||
+                latestGithubReplay.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            return latestGithubReplay.TryGetProperty("recordedAt", out var recordedAtProperty) &&
+                recordedAtProperty.ValueKind == JsonValueKind.String &&
+                recordedAtProperty.TryGetDateTimeOffset(out var recordedAt)
+                ? recordedAt.ToString("O")
+                : "not recorded";
         }
         catch (JsonException)
         {
