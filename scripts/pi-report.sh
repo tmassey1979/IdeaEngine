@@ -178,6 +178,21 @@ service_state() {
   fi
 }
 
+service_property() {
+  local property_name="$1"
+  if command_exists systemctl; then
+    local result
+    result="$(systemctl show "${SERVICE_NAME}.service" --property "${property_name}" --value 2>/dev/null || true)"
+    if [[ -n "${result}" ]]; then
+      echo "${result}"
+    else
+      echo "unknown"
+    fi
+  else
+    echo "unavailable"
+  fi
+}
+
 timer_state() {
   local subcommand="$1"
   local timer_name="$2"
@@ -288,16 +303,40 @@ print_endpoint_status() {
   fi
 }
 
+recent_service_failures() {
+  if ! command_exists journalctl; then
+    echo "journalctl unavailable"
+    return
+  fi
+
+  local lines
+  lines="$(journalctl -u "${SERVICE_NAME}.service" -n 80 --no-pager 2>/dev/null | grep -Ei "error|failed|exception|fatal|panic|crash" | tail -n 5 || true)"
+  if [[ -z "${lines}" ]]; then
+    echo "recent_service_failures: none found"
+    return
+  fi
+
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    echo "recent_service_failure: ${line}"
+  done <<< "${lines}"
+}
+
 main() {
   trap cleanup EXIT
 
   fetch_status
 
   local service_active service_enabled
+  local service_substate service_result service_exec_status service_restart_count
   local backup_timer_active backup_timer_enabled
   local update_timer_active update_timer_enabled
   service_active="$(service_state is-active)"
   service_enabled="$(service_state is-enabled)"
+  service_substate="$(service_property SubState)"
+  service_result="$(service_property Result)"
+  service_exec_status="$(service_property ExecMainStatus)"
+  service_restart_count="$(service_property NRestarts)"
   backup_timer_active="$(timer_state is-active "${BACKUP_TIMER_NAME}")"
   backup_timer_enabled="$(timer_state is-enabled "${BACKUP_TIMER_NAME}")"
   update_timer_active="$(timer_state is-active "${UPDATE_TIMER_NAME}")"
@@ -311,12 +350,17 @@ main() {
   print_heading "Systemd"
   echo "service_active: ${service_active}"
   echo "service_enabled: ${service_enabled}"
+  echo "service_substate: ${service_substate}"
+  echo "service_result: ${service_result}"
+  echo "service_exec_main_status: ${service_exec_status}"
+  echo "service_restart_count: ${service_restart_count}"
   echo "backup_timer_active: ${backup_timer_active}"
   echo "backup_timer_enabled: ${backup_timer_enabled}"
   timer_schedule "${BACKUP_TIMER_NAME}" "backup_timer"
   echo "update_timer_active: ${update_timer_active}"
   echo "update_timer_enabled: ${update_timer_enabled}"
   timer_schedule "${UPDATE_TIMER_NAME}" "update_timer"
+  recent_service_failures
 
   print_heading "Endpoints"
   print_endpoint_status "${HEALTH_URL}" "health"

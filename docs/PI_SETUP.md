@@ -95,7 +95,7 @@ What those do:
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
-- `pi-report.sh` prints a concise service, backup/update timer, worker, queue, activity, compose, and backup summary
+- `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update timers, worker state, queue, activity, compose, and backup summary
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
 - `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, and backend snapshots
