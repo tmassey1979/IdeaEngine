@@ -359,6 +359,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- GitHub replay age: {DescribeGlobalGithubReplayAge(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync issues: {DescribePendingGithubSyncIssues(rootDirectory)}",
                 $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
                 $"- pending GitHub sync oldest queued at: {DescribePendingGithubSyncOldestQueuedAt(rootDirectory)}",
                 $"- pending GitHub sync oldest age: {DescribePendingGithubSyncOldestAge(rootDirectory)}",
@@ -571,6 +572,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- GitHub replay age: {DescribeGlobalGithubReplayAge(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync issues: {DescribePendingGithubSyncIssues(rootDirectory)}",
                 $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
                 $"- pending GitHub sync oldest queued at: {DescribePendingGithubSyncOldestQueuedAt(rootDirectory)}",
                 $"- pending GitHub sync oldest age: {DescribePendingGithubSyncOldestAge(rootDirectory)}",
@@ -2019,6 +2021,48 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not recorded";
+        }
+    }
+
+    private static string DescribePendingGithubSyncIssues(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "none";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("pendingGithubSync", out var pendingGithubSync) ||
+                pendingGithubSync.ValueKind != JsonValueKind.Array)
+            {
+                return "none";
+            }
+
+            var issueNumbers = pendingGithubSync
+                .EnumerateArray()
+                .Select(item =>
+                    item.TryGetProperty("issueNumber", out var issueNumberProperty) &&
+                    issueNumberProperty.ValueKind == JsonValueKind.Number &&
+                    issueNumberProperty.TryGetInt32(out var parsedIssueNumber)
+                        ? parsedIssueNumber
+                        : (int?)null)
+                .Where(value => value is not null)
+                .Select(value => value!.Value)
+                .Distinct()
+                .OrderBy(value => value)
+                .Select(value => $"#{value}")
+                .ToArray();
+
+            return issueNumbers.Length == 0
+                ? "none"
+                : string.Join(", ", issueNumbers);
+        }
+        catch (JsonException)
+        {
+            return "none";
         }
     }
 

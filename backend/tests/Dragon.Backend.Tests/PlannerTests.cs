@@ -4800,6 +4800,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-23T12:01:30.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay age: 15s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 1", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync issues: #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync attempts: max 2", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest queued at: 2026-03-23T12:00:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest age: 1m 45s", StringComparison.Ordinal));
@@ -5276,6 +5277,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-16T15:26:15.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay age: 5s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync issues: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync attempts: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest queued at: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest age: not recorded", StringComparison.Ordinal));
@@ -5461,6 +5463,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-16T15:30:30.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay age: 5s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync issues: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync attempts: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest queued at: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest age: not recorded", StringComparison.Ordinal));
@@ -5614,6 +5617,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-16T15:30:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay age: 1s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync issues: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync attempts: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest queued at: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest age: not recorded", StringComparison.Ordinal));
