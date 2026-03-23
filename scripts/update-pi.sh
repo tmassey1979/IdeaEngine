@@ -8,6 +8,8 @@ INSTALL_SYSTEMD_SERVICE="${INSTALL_SYSTEMD_SERVICE:-true}"
 SERVICE_TEMPLATE="${SERVICE_TEMPLATE:-$REPO_DIR/docker/dragon-compose.service}"
 SERVICE_PATH="${SERVICE_PATH:-/etc/systemd/system/${SERVICE_NAME}.service}"
 RUN_HEALTHCHECK="${RUN_HEALTHCHECK:-true}"
+BACKUP_BEFORE_UPDATE="${BACKUP_BEFORE_UPDATE:-true}"
+ALLOW_DIRTY_WORKTREE="${ALLOW_DIRTY_WORKTREE:-false}"
 
 require_command() {
   local command_name="$1"
@@ -43,10 +45,38 @@ refresh_service_file() {
   sudo systemctl enable "${SERVICE_NAME}.service"
 }
 
+ensure_clean_worktree() {
+  if [[ "${ALLOW_DIRTY_WORKTREE}" == "true" ]]; then
+    return
+  fi
+
+  local status_output
+  status_output="$(git -C "${REPO_DIR}" status --short --untracked-files=normal)"
+  if [[ -n "${status_output}" ]]; then
+    echo "Refusing to update because the repo has local changes." >&2
+    echo "Set ALLOW_DIRTY_WORKTREE=true to override after reviewing the checkout." >&2
+    echo "${status_output}" >&2
+    exit 1
+  fi
+}
+
+run_backup_if_requested() {
+  if [[ "${BACKUP_BEFORE_UPDATE}" != "true" ]]; then
+    return
+  fi
+
+  if [[ -x "${REPO_DIR}/scripts/backup-pi.sh" ]]; then
+    echo "Creating a backup before update..."
+    "${REPO_DIR}/scripts/backup-pi.sh"
+  fi
+}
+
 main() {
   require_command git
   require_command docker
   require_repo
+  ensure_clean_worktree
+  run_backup_if_requested
 
   echo "Updating Dragon Idea Engine in ${REPO_DIR}..."
   git -C "${REPO_DIR}" fetch origin

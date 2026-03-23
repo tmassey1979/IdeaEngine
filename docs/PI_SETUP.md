@@ -39,6 +39,7 @@ INSTALL_ROOT=/srv/dragon ./setup-pi.sh
 AUTO_START=true ./setup-pi.sh
 INSTALL_SYSTEMD_SERVICE=false AUTO_START=true ./setup-pi.sh
 INSTALL_BACKUP_TIMER=false ./setup-pi.sh
+INSTALL_UPDATE_TIMER=true ./setup-pi.sh
 
 AUTO_START_STACK=false ./pi-bootstrap-all.sh
 RUN_HEALTHCHECK_AT_END=false ./pi-bootstrap-all.sh
@@ -65,6 +66,12 @@ sudo journalctl -u dragon-idea-engine -f
 systemctl list-timers dragon-backup.timer
 ```
 
+4. Optional: verify the scheduled update timer if you enabled it:
+
+```bash
+systemctl list-timers dragon-update.timer
+```
+
 Routine maintenance:
 
 ```bash
@@ -81,7 +88,7 @@ What those do:
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
 - `pi-report.sh` prints a concise service, timer, worker, queue, activity, compose, and backup summary
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
-- `update-pi.sh` pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
+- `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
 - `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, and backend snapshots
 - `backup-pi.sh` creates a timestamped backup of `.env`, `.dragon`, and Docker volumes
 - `restore-pi.sh` restores `.env`, `.dragon`, and Docker volumes from a chosen backup
@@ -102,5 +109,7 @@ Notes:
 - The installed service runs `docker compose up --build` from the repo checkout and restarts automatically on boot.
 - Backup and restore stop the service by default to reduce the chance of inconsistent volume snapshots.
 - The setup script installs a nightly `dragon-backup.timer` by default.
+- Scheduled self-updates are available through `dragon-update.timer`, but installation is opt-in with `INSTALL_UPDATE_TIMER=true`.
+- `update-pi.sh` creates a backup before updating by default and exits if the checkout is dirty unless `ALLOW_DIRTY_WORKTREE=true`.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
 - `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

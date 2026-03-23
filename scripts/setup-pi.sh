@@ -18,6 +18,13 @@ BACKUP_SERVICE_PATH="${BACKUP_SERVICE_PATH:-/etc/systemd/system/${BACKUP_SERVICE
 BACKUP_TIMER_NAME="${BACKUP_TIMER_NAME:-dragon-backup}"
 BACKUP_TIMER_TEMPLATE="${BACKUP_TIMER_TEMPLATE:-$REPO_DIR/docker/dragon-backup.timer}"
 BACKUP_TIMER_PATH="${BACKUP_TIMER_PATH:-/etc/systemd/system/${BACKUP_TIMER_NAME}.timer}"
+INSTALL_UPDATE_TIMER="${INSTALL_UPDATE_TIMER:-false}"
+UPDATE_SERVICE_NAME="${UPDATE_SERVICE_NAME:-dragon-update}"
+UPDATE_SERVICE_TEMPLATE="${UPDATE_SERVICE_TEMPLATE:-$REPO_DIR/docker/dragon-update.service}"
+UPDATE_SERVICE_PATH="${UPDATE_SERVICE_PATH:-/etc/systemd/system/${UPDATE_SERVICE_NAME}.service}"
+UPDATE_TIMER_NAME="${UPDATE_TIMER_NAME:-dragon-update}"
+UPDATE_TIMER_TEMPLATE="${UPDATE_TIMER_TEMPLATE:-$REPO_DIR/docker/dragon-update.timer}"
+UPDATE_TIMER_PATH="${UPDATE_TIMER_PATH:-/etc/systemd/system/${UPDATE_TIMER_NAME}.timer}"
 
 require_command() {
   local command_name="$1"
@@ -179,6 +186,33 @@ install_backup_timer() {
   echo "Installed and enabled backup timer ${BACKUP_TIMER_NAME}.timer"
 }
 
+install_update_timer() {
+  if [[ "${INSTALL_UPDATE_TIMER}" != "true" ]]; then
+    return
+  fi
+
+  if [[ ! -f "${UPDATE_SERVICE_TEMPLATE}" ]]; then
+    echo "Missing update service template: ${UPDATE_SERVICE_TEMPLATE}" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "${UPDATE_TIMER_TEMPLATE}" ]]; then
+    echo "Missing update timer template: ${UPDATE_TIMER_TEMPLATE}" >&2
+    exit 1
+  fi
+
+  local rendered_service
+  rendered_service="$(mktemp)"
+  sed "s|__REPO_DIR__|${REPO_DIR}|g" "${UPDATE_SERVICE_TEMPLATE}" > "${rendered_service}"
+  sudo install -m 0644 "${rendered_service}" "${UPDATE_SERVICE_PATH}"
+  rm -f "${rendered_service}"
+
+  sudo install -m 0644 "${UPDATE_TIMER_TEMPLATE}" "${UPDATE_TIMER_PATH}"
+  sudo systemctl daemon-reload
+  sudo systemctl enable "${UPDATE_TIMER_NAME}.timer"
+  echo "Installed and enabled update timer ${UPDATE_TIMER_NAME}.timer"
+}
+
 print_next_steps() {
   cat <<EOF
 
@@ -188,6 +222,7 @@ Repo: ${REPO_DIR}
 Env:  ${ENV_FILE}
 Service: ${SERVICE_NAME}.service
 Backup timer: ${BACKUP_TIMER_NAME}.timer
+Update timer: ${UPDATE_TIMER_NAME}.timer
 
 Next steps:
 1. Edit ${ENV_FILE} and set OPENAI_API_KEY plus GITHUB_TOKEN or GH_TOKEN.
@@ -198,6 +233,7 @@ Next steps:
    sudo journalctl -u ${SERVICE_NAME} -f
 5. Check backup timer:
    systemctl list-timers ${BACKUP_TIMER_NAME}.timer
+6. Optional: enable scheduled updates during setup with INSTALL_UPDATE_TIMER=true
 EOF
 }
 
@@ -231,6 +267,7 @@ main() {
   ensure_env_file
   install_systemd_service
   install_backup_timer
+  install_update_timer
 
   if docker compose version >/dev/null 2>&1; then
     echo "Docker Compose plugin is available."
