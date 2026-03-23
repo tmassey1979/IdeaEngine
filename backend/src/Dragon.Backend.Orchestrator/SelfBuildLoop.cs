@@ -86,6 +86,7 @@ public sealed class SelfBuildLoop
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
         var latestGithubSync = ReadLatestGithubSync();
         var pendingGithubSync = ReadPendingGithubSync();
+        var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -127,7 +128,8 @@ public sealed class SelfBuildLoop
             latestGithubSync,
             pendingGithubSync.Count,
             pendingGithubSync,
-            workerActivity
+            workerActivity,
+            pendingGithubSyncSummary
         );
     }
 
@@ -1436,6 +1438,22 @@ public sealed class SelfBuildLoop
         );
     }
 
+    private static string? BuildPendingGithubSyncSummary(IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+    {
+        if (pendingGithubSync.Count == 0)
+        {
+            return null;
+        }
+
+        var latest = pendingGithubSync
+            .OrderByDescending(item => item.RecordedAt)
+            .First();
+
+        return pendingGithubSync.Count == 1
+            ? $"1 GitHub update is waiting for retry: issue #{latest.IssueNumber}."
+            : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Latest: issue #{latest.IssueNumber}.";
+    }
+
     private static RecentLoopSignalSnapshot BuildRecentLoopSignal(int queuedJobs, string health, LatestActivitySnapshot? latestActivity)
     {
         if (latestActivity is null)
@@ -1532,7 +1550,8 @@ public sealed record StatusSnapshot(
     LatestGithubSyncSnapshot? LatestGithubSync = null,
     int PendingGithubSyncCount = 0,
     IReadOnlyList<PendingGithubSyncSnapshot>? PendingGithubSync = null,
-    string? WorkerActivity = null
+    string? WorkerActivity = null,
+    string? PendingGithubSyncSummary = null
 );
 
 public sealed record LatestPassSummary(

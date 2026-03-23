@@ -75,6 +75,7 @@
       "recordedAt": "2026-03-23T15:45:02.0000000+00:00"
     }
   ],
+  "pendingGithubSyncSummary": "2 GitHub updates are waiting for retry. Latest: issue #148.",
   "queuedJobs": 1,
   "issues": [
     {
