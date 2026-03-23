@@ -5,6 +5,7 @@ globalThis.__DRAGON_STATUS__ = {
   "workerMode": "watch",
   "workerState": "complete",
   "workerCompletionReason": "idle_target_reached",
+  "workerActivity": "Loading GitHub issues for the next watch pass.",
   "nextPollAt": null,
   "pollIntervalSeconds": 30,
   "idleStreak": 2,
@@ -60,6 +61,20 @@ globalThis.__DRAGON_STATUS__ = {
     "reachedIdle": false,
     "reachedMaxCycles": false
   },
+  "latestGithubSync": null,
+  "pendingGithubSyncCount": 2,
+  "pendingGithubSync": [
+    {
+      "issueNumber": 147,
+      "summary": "GitHub writeback retry queued after recovery issue creation was rejected by createIssue permissions.",
+      "recordedAt": "2026-03-23T15:44:18.0000000+00:00"
+    },
+    {
+      "issueNumber": 148,
+      "summary": "GitHub writeback retry queued after issue sync returned HTTP 403 for comment or label updates.",
+      "recordedAt": "2026-03-23T15:45:02.0000000+00:00"
+    }
+  ],
   "queuedJobs": 1,
   "issues": [
     {

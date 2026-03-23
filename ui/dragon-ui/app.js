@@ -663,6 +663,9 @@ function renderStatusSnapshot(snapshot) {
   const latestPassWork = document.getElementById("status-latest-pass-work");
   const latestPassMixNode = document.getElementById("status-latest-pass-mix");
   const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
+  const pendingGithubGroup = document.getElementById("status-pending-github-group");
+  const pendingGithubSummary = document.getElementById("status-pending-github-summary");
+  const pendingGithubList = document.getElementById("status-pending-github-list");
   const loopMode = document.getElementById("status-loop-mode");
   const loopSummary = document.getElementById("status-loop-summary");
   const queueDelta = document.getElementById("status-queue-delta");
@@ -756,13 +759,36 @@ function renderStatusSnapshot(snapshot) {
   const latestPassOutcomeLabel = latestPassOutcome(snapshot);
   latestPassOutcomeNode.textContent = latestPassOutcomeLabel;
   latestPassOutcomeNode.className = `pass-outcome ${latestPassOutcomeState(latestPassOutcomeLabel)}`;
+  pendingGithubGroup.className = "status-activity";
+  const pendingGithubItems = snapshot.pendingGithubSync ?? [];
+  pendingGithubSummary.textContent = pendingGithubItems.length
+    ? `${pendingGithubItems.length} issue update${pendingGithubItems.length === 1 ? "" : "s"} waiting`
+    : "No pending GitHub updates";
+  pendingGithubList.innerHTML = pendingGithubItems.length
+    ? pendingGithubItems
+        .slice(0, 5)
+        .map((item) => `
+          <div class="status-line">
+            <span>#${item.issueNumber}</span>
+            <strong>${item.summary}</strong>
+            <p class="status-timestamp">${formatTimestamp(item.recordedAt)}</p>
+          </div>
+        `)
+        .join("")
+    : '<p class="status-line">No pending GitHub sync backlog.</p>';
   if (snapshot.recentLoopSignal?.mode === "failing" || snapshot.recentLoopSignal?.mode === "blocked") {
     latestActivityGroup.classList.add("alert");
     latestPassGroup.classList.add("alert");
+    if (pendingGithubItems.length) {
+      pendingGithubGroup.classList.add("alert");
+    }
     feed.classList.add("deemphasized");
   } else if (snapshot.recentLoopSignal?.mode === "draining") {
     latestActivityGroup.classList.add("caution");
     latestPassGroup.classList.add("caution");
+    if (pendingGithubItems.length) {
+      pendingGithubGroup.classList.add("caution");
+    }
   }
   loopMode.textContent = snapshot.recentLoopSignal?.mode ?? "unknown";
   loopSummary.textContent = snapshot.recentLoopSignal?.summary ?? "No recent loop summary";
@@ -847,6 +873,8 @@ async function bootStatusMock() {
     const latestPassWork = document.getElementById("status-latest-pass-work");
     const latestPassMixNode = document.getElementById("status-latest-pass-mix");
     const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
+    const pendingGithubSummary = document.getElementById("status-pending-github-summary");
+    const pendingGithubList = document.getElementById("status-pending-github-list");
     const loopMode = document.getElementById("status-loop-mode");
     const loopSummary = document.getElementById("status-loop-summary");
     const queueDelta = document.getElementById("status-queue-delta");
@@ -921,6 +949,8 @@ async function bootStatusMock() {
     latestPassMixNode.className = "pass-mix unavailable";
     latestPassOutcomeNode.textContent = "Could not load pass summary";
     latestPassOutcomeNode.className = "pass-outcome unavailable";
+    pendingGithubSummary.textContent = "unavailable";
+    pendingGithubList.innerHTML = '<p class="status-line">Pending GitHub sync details are unavailable.</p>';
     loopMode.textContent = "unavailable";
     loopSummary.textContent = "Could not load loop summary";
     queueDelta.textContent = "0";
