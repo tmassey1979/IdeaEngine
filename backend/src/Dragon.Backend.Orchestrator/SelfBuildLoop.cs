@@ -19,6 +19,7 @@ public sealed class SelfBuildLoop
     private readonly ExecutionRecordStore executionRecordStore;
     private readonly LocalJobExecutor jobExecutor;
     private readonly GithubIssueService githubIssueService;
+    private readonly Func<DateTimeOffset> nowProvider;
 
     public SelfBuildLoop(
         string rootDirectory,
@@ -29,7 +30,8 @@ public sealed class SelfBuildLoop
         Func<DateTimeOffset>? nowProvider = null)
     {
         RootDirectory = rootDirectory;
-        queueStore = new QueueStore(rootDirectory, queueName, nowProvider);
+        this.nowProvider = nowProvider ?? (() => DateTimeOffset.UtcNow);
+        queueStore = new QueueStore(rootDirectory, queueName, this.nowProvider);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
         this.jobExecutor = jobExecutor ?? LocalJobExecutor.CreateDefault(environmentReader ?? Environment.GetEnvironmentVariable);
@@ -527,7 +529,7 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = nowProvider();
         var hasReadyPendingReplay = ReadPendingGithubSync().Any(item =>
             item.NextRetryAt is null || item.NextRetryAt.Value <= now);
         if (!hasReadyPendingReplay)
@@ -999,20 +1001,30 @@ public sealed class SelfBuildLoop
 
     private void RecordPendingGithubSync(int issueNumber, string summary)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = nowProvider();
         var pending = ReadPendingGithubSync().ToList();
         var existing = pending.FirstOrDefault(item => item.IssueNumber == issueNumber);
         pending.RemoveAll(item => item.IssueNumber == issueNumber);
+        var attemptCount = existing is null ? 1 : existing.AttemptCount + 1;
+        var nextRetryAt = now.Add(ComputePendingGithubSyncRetryDelay(attemptCount));
 
         pending.Add(existing is null
-            ? new PendingGithubSyncSnapshot(issueNumber, summary, now, 1, now)
+            ? new PendingGithubSyncSnapshot(issueNumber, summary, now, attemptCount, now, nextRetryAt)
             : existing with
             {
                 Summary = summary,
-                AttemptCount = existing.AttemptCount + 1,
-                LastAttemptedAt = now
+                AttemptCount = attemptCount,
+                LastAttemptedAt = now,
+                NextRetryAt = nextRetryAt
             });
         WritePendingGithubSync(pending);
+    }
+
+    private static TimeSpan ComputePendingGithubSyncRetryDelay(int attemptCount)
+    {
+        var clampedAttempts = Math.Max(1, attemptCount);
+        var delaySeconds = Math.Min(300, 30 * clampedAttempts);
+        return TimeSpan.FromSeconds(delaySeconds);
     }
 
     private void ClearPendingGithubSync(int issueNumber)
@@ -1054,10 +1066,12 @@ public sealed class SelfBuildLoop
             .Select(item =>
             {
                 var baseline = item.LastAttemptedAt ?? item.RecordedAt;
-                return item with
-                {
-                    NextRetryAt = baseline.Add(retryDelay)
-                };
+                return item.NextRetryAt is null
+                    ? item with
+                    {
+                        NextRetryAt = baseline.Add(retryDelay)
+                    }
+                    : item;
             })
             .ToArray();
     }

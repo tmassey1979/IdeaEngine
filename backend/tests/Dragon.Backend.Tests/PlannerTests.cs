@@ -996,6 +996,62 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_DoesNotReplayFreshGithubSyncFailureBeforePersistedRetryWindow()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", now));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", now));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", now));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "docs/ARCHITECTURE.md"
+                }),
+            new JobExecutionResult("job-dev", "developer", "success", "done", now),
+            []);
+
+        var stories = new[]
+        {
+            new GithubIssue(23, "[Story] Dragon Idea Engine Master Codex: System Architecture", "OPEN", ["story"], "", "System Architecture", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.Contains("issue comment 22", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("gh command failed: gh: Resource not accessible by personal access token (HTTP 403)");
+            }
+
+            return string.Empty;
+        });
+
+        var loop = new SelfBuildLoop(root, githubIssueService: github, nowProvider: () => now);
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+
+        var failedStatus = loop.ReadStatus();
+        var pending = Assert.Single(failedStatus.PendingGithubSync!);
+        Assert.NotNull(pending.NextRetryAt);
+        Assert.True(pending.NextRetryAt > now);
+
+        var cycle = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.Equal("seed", cycle.Mode);
+        Assert.Equal(23, cycle.Job!.Issue);
+        Assert.Equal(1, loop.ReadStatus().PendingGithubSyncCount);
+    }
+
+    [Fact]
     public void RunPollingFromGithub_ReplaysPendingGithubSyncBacklogBeforePass()
     {
         var root = CreateTempRoot();
@@ -6640,10 +6696,26 @@ public sealed class PlannerTests
     public void CycleOnce_PrioritizesReadyGithubReplayBeforeSeedingOrdinaryWork()
     {
         var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 5, 0, TimeSpan.Zero);
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 22,
+                "summary": "GitHub sync failed for issue #22.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2026-03-23T12:02:00Z"
+              }
+            ]
+            """);
         var store = new WorkflowStateStore(root);
-        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
-        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
-        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", now));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", now));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", now));
 
         var records = new ExecutionRecordStore(root);
         records.Append(
@@ -6658,7 +6730,7 @@ public sealed class PlannerTests
                 {
                     ["changedPaths"] = "docs/ARCHITECTURE.md"
                 }),
-            new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow),
+            new JobExecutionResult("job-dev", "developer", "success", "done", now),
             []);
 
         var stories = new[]
@@ -6667,8 +6739,7 @@ public sealed class PlannerTests
         };
 
         var github = new GithubIssueService((_, _) => string.Empty);
-        var loop = new SelfBuildLoop(root, githubIssueService: github);
-        loop.RecordPendingGithubSyncForTests(22, "GitHub sync failed for issue #22.");
+        var loop = new SelfBuildLoop(root, githubIssueService: github, nowProvider: () => now);
 
         var replay = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
         var next = loop.CycleOnce(stories, repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
