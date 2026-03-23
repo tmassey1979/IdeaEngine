@@ -508,6 +508,16 @@ public sealed class SelfBuildLoop
             return new CycleResult("waiting", null, null, []);
         }
 
+        var readyLeadJob = queueStore.Peek();
+        if (readyLeadJob is not null)
+        {
+            var prioritizedReplay = TryPrioritizeReadyGithubReplayAheadOfOrdinaryWork(readyLeadJob, githubOwner, repo, syncValidatedWorkflows);
+            if (prioritizedReplay is not null)
+            {
+                return prioritizedReplay;
+            }
+        }
+
         var job = queueStore.Dequeue()!;
         var execution = jobExecutor.Execute(RootDirectory, job);
         var workflow = workflowStateStore.Update(job, execution);
@@ -561,6 +571,46 @@ public sealed class SelfBuildLoop
                 latestReplay?.AttemptedCount > 0,
                 latestReplay?.UpdatedCount > 0,
                 replaySummary));
+    }
+
+    private CycleResult? TryPrioritizeReadyGithubReplayAheadOfOrdinaryWork(
+        SelfBuildJob readyLeadJob,
+        string? githubOwner,
+        string repo,
+        bool syncValidatedWorkflows)
+    {
+        if (!IsOrdinaryWorkJob(readyLeadJob))
+        {
+            return null;
+        }
+
+        if (!HasOverdueReadyPendingGithubSync())
+        {
+            return null;
+        }
+
+        return TryPrioritizeReadyGithubReplay(githubOwner, repo, syncValidatedWorkflows);
+    }
+
+    private bool HasOverdueReadyPendingGithubSync()
+    {
+        var now = nowProvider();
+        return ReadPendingGithubSync().Any(item =>
+            item.NextRetryAt is not null &&
+            item.NextRetryAt.Value <= now &&
+            now - item.NextRetryAt.Value >= LongDelayedRetryAttentionThreshold);
+    }
+
+    private static bool IsOrdinaryWorkJob(SelfBuildJob job)
+    {
+        var workType = job.Metadata.GetValueOrDefault("workType");
+        if (string.Equals(workType, "recovery", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(workType, "operator-escalation", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public CycleResult CycleOnceFromGithub(

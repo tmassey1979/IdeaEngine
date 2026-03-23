@@ -6867,6 +6867,120 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_PrioritizesOverdueGithubReplayBeforeOrdinaryQueuedWork()
+    {
+        var root = CreateTempRoot();
+        var now = DateTimeOffset.Parse("2026-03-23T12:45:00Z");
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 22,
+                "summary": "GitHub sync failed for issue #22.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2026-03-23T12:15:00Z"
+              }
+            ]
+            """);
+
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", now));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", now));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", now));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "docs/ARCHITECTURE.md"
+                }),
+            new JobExecutionResult("job-dev", "developer", "success", "done", now),
+            []);
+
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            23,
+            new SelfBuildJobPayload("System Architecture", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story"
+            }));
+
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github, nowProvider: () => now);
+
+        var cycle = loop.CycleOnce([], repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.Equal("replay", cycle.Mode);
+        Assert.NotNull(cycle.GithubSync);
+        Assert.Contains("Replayed 1 pending GitHub update", cycle.GithubSync!.Summary, StringComparison.Ordinal);
+        Assert.Single(loop.ReadQueue());
+        Assert.Equal(23, loop.ReadQueue().Single().Issue);
+        Assert.Equal(0, loop.ReadStatus().PendingGithubSyncCount);
+    }
+
+    [Fact]
+    public void CycleOnce_DoesNotPrioritizeOverdueGithubReplayBeforeRecoveryWork()
+    {
+        var root = CreateTempRoot();
+        var now = DateTimeOffset.Parse("2026-03-23T12:45:00Z");
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 22,
+                "summary": "GitHub sync failed for issue #22.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2026-03-23T12:15:00Z"
+              }
+            ]
+            """);
+
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Core", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "recovery"
+            }));
+
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github, jobExecutor: executor, nowProvider: () => now);
+
+        var cycle = loop.CycleOnce([], repo: "IdeaEngine", project: "DragonIdeaEngine", githubOwner: "tmassey1979", syncValidatedWorkflows: true);
+
+        Assert.Equal("consume", cycle.Mode);
+        Assert.NotNull(cycle.Job);
+        Assert.Equal(500, cycle.Job!.Issue);
+        Assert.Equal(1, loop.ReadStatus().PendingGithubSyncCount);
+    }
+
+    [Fact]
     public void RunUntilIdle_DoesNotReportIdle_WhenOnlyDelayedRetryWorkRemains()
     {
         var root = CreateTempRoot();
