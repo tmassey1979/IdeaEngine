@@ -21,6 +21,7 @@ Core commands:
   dragon-start
   dragon-start-and-wait
   dragon-stop
+  dragon-wait-stopped
   dragon-restart
   dragon-restart-and-wait
   dragon-ensure-running
@@ -43,6 +44,7 @@ Service control:
   dragon-start --follow
   dragon-start-and-wait
   dragon-stop --status
+  dragon-wait-stopped
   dragon-restart --follow
   dragon-restart-and-wait
   dragon-ensure-running
