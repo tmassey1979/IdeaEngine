@@ -17,6 +17,7 @@ Core commands:
   dragon-report
   dragon-report --json
   dragon-health
+  dragon-preflight
   dragon-tail-logs
   dragon-update
   dragon-backup

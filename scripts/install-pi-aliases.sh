@@ -42,6 +42,7 @@ main() {
 
   install_wrapper "dragon-report" "pi-report.sh"
   install_wrapper "dragon-health" "healthcheck-pi.sh"
+  install_wrapper "dragon-preflight" "pi-preflight.sh"
   install_wrapper "dragon-update" "update-pi.sh"
   install_wrapper "dragon-backup" "backup-pi.sh"
   install_wrapper "dragon-diagnostics" "collect-pi-diagnostics.sh"
