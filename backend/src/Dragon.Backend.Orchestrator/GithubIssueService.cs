@@ -352,8 +352,8 @@ public sealed class GithubIssueService
                 $"- worker queue compare age: {DescribeGlobalQueueCompareAge(rootDirectory)}",
                 $"- worker poll interval: {DescribeGlobalWorkerPollInterval(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
-                $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
-                $"- worker next poll in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
+                $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
+                $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -573,8 +573,8 @@ public sealed class GithubIssueService
                 $"- worker queue compare age: {DescribeGlobalQueueCompareAge(rootDirectory)}",
                 $"- worker poll interval: {DescribeGlobalWorkerPollInterval(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
-                $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
-                $"- worker next poll in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
+                $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
+                $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -1525,15 +1525,15 @@ public sealed class GithubIssueService
 
             if (pollIntervalSeconds is not null && nextPollAt is not null)
             {
-                return $"every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")}, next poll {nextPollAt.Value:O}";
+                return $"next wake {nextPollAt.Value:O} (base poll every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")})";
             }
 
             if (pollIntervalSeconds is not null)
             {
-                return $"every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")}";
+                return $"base poll every {pollIntervalSeconds.Value} second{(pollIntervalSeconds.Value == 1 ? string.Empty : "s")}";
             }
 
-            return $"next poll {nextPollAt!.Value:O}";
+            return $"next wake {nextPollAt!.Value:O}";
         }
         catch (JsonException)
         {
