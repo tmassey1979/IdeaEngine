@@ -2188,6 +2188,8 @@ public sealed class SelfBuildLoop
     {
         var seededCycles = result.Cycles.Count(cycle => string.Equals(cycle.Mode, "seed", StringComparison.OrdinalIgnoreCase));
         var consumedCycles = result.Cycles.Count(cycle => string.Equals(cycle.Mode, "consume", StringComparison.OrdinalIgnoreCase));
+        var operatorEscalationQueuedCount = result.Cycles.Sum(cycle => cycle.FollowUps.Count(IsOperatorEscalationJob));
+        var operatorEscalationConsumedCount = result.Cycles.Count(cycle => cycle.Job is not null && IsOperatorEscalationJob(cycle.Job));
 
         return new LatestPassSummary(
             passNumber,
@@ -2199,9 +2201,14 @@ public sealed class SelfBuildLoop
             latestGithubReplay?.AttemptedCount ?? 0,
             latestGithubReplay?.UpdatedCount ?? 0,
             latestGithubReplay?.FailedCount ?? 0,
-            latestGithubReplay?.Summary
+            latestGithubReplay?.Summary,
+            operatorEscalationQueuedCount,
+            operatorEscalationConsumedCount
         );
     }
+
+    private static bool IsOperatorEscalationJob(SelfBuildJob job) =>
+        string.Equals(job.Metadata.GetValueOrDefault("workType"), "operator-escalation", StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed record CycleResult(
@@ -2278,7 +2285,9 @@ public sealed record LatestPassSummary(
     int GithubReplayAttemptedCount = 0,
     int GithubReplayUpdatedCount = 0,
     int GithubReplayFailedCount = 0,
-    string? GithubReplaySummary = null
+    string? GithubReplaySummary = null,
+    int OperatorEscalationQueuedCount = 0,
+    int OperatorEscalationConsumedCount = 0
 );
 
 public sealed record StatusRollup(

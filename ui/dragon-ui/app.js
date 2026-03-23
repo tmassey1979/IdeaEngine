@@ -539,6 +539,10 @@ function latestPassOutcome(snapshot) {
     return "No polling summary";
   }
 
+  if ((latestPass.operatorEscalationQueuedCount ?? 0) > 0 || (latestPass.operatorEscalationConsumedCount ?? 0) > 0) {
+    return "Pass advanced operator escalation";
+  }
+
   if ((latestPass.githubReplayAttemptedCount ?? 0) > 0 && latestPass.cycleCount === 0) {
     return "Pass repaired GitHub drift";
   }
@@ -556,6 +560,8 @@ function latestPassOutcome(snapshot) {
 
 function latestPassOutcomeState(label) {
   switch (label) {
+    case "Pass advanced operator escalation":
+      return "active";
     case "Pass repaired GitHub drift":
       return "active";
     case "Pass reached idle":
@@ -584,6 +590,10 @@ function latestPassMix(snapshot) {
     return "Idle";
   }
 
+  if ((latestPass.operatorEscalationQueuedCount ?? 0) > 0 || (latestPass.operatorEscalationConsumedCount ?? 0) > 0) {
+    return "Escalation-active";
+  }
+
   if (latestPass.seededCycles > 0 && latestPass.consumedCycles === 0) {
     return "Seed-heavy";
   }
@@ -604,6 +614,7 @@ function latestPassMixState(label) {
     case "Seed-heavy":
     case "Seed-leaning":
       return "seed";
+    case "Escalation-active":
     case "Repair-only":
     case "Consume-heavy":
     case "Consume-leaning":
@@ -913,9 +924,11 @@ function renderStatusSnapshot(snapshot) {
   latestPassCycles.textContent = latestPassCycle.label;
   latestPassCycles.className = `cycle-mix ${latestPassCycle.state}`;
   latestPassWork.textContent = snapshot.latestPass
-    ? snapshot.latestPass.githubReplayAttemptedCount > 0
-      ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume, replay ${snapshot.latestPass.githubReplayUpdatedCount}/${snapshot.latestPass.githubReplayAttemptedCount}`
-      : `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
+    ? (snapshot.latestPass.operatorEscalationQueuedCount > 0 || snapshot.latestPass.operatorEscalationConsumedCount > 0)
+      ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume, escalation ${snapshot.latestPass.operatorEscalationConsumedCount ?? 0}/${snapshot.latestPass.operatorEscalationQueuedCount ?? 0}`
+      : snapshot.latestPass.githubReplayAttemptedCount > 0
+        ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume, replay ${snapshot.latestPass.githubReplayUpdatedCount}/${snapshot.latestPass.githubReplayAttemptedCount}`
+        : `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 seed, 0 consume";
   const latestPassReplayValue = latestPassReplayState(snapshot);
   latestPassReplay.textContent = latestPassReplayValue.label;

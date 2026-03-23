@@ -1671,10 +1671,21 @@ public sealed class PlannerTests
     [Fact]
     public void BuildLatestPassSummary_CapturesPassOutcomeCounts()
     {
+        var escalationFollowUp = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("Issue 22", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "operator-escalation"
+            });
         var pass = new RunUntilIdleResult(
             [
-                new CycleResult("seed", null, null, []),
-                new CycleResult("consume", null, null, []),
+                new CycleResult("seed", null, null, [escalationFollowUp]),
+                new CycleResult("consume", escalationFollowUp, null, []),
                 new CycleResult("consume", null, null, [])
             ],
             true,
@@ -1690,6 +1701,8 @@ public sealed class PlannerTests
         Assert.False(summary.ReachedMaxCycles);
         Assert.Equal(0, summary.GithubReplayAttemptedCount);
         Assert.Null(summary.GithubReplaySummary);
+        Assert.Equal(1, summary.OperatorEscalationQueuedCount);
+        Assert.Equal(1, summary.OperatorEscalationConsumedCount);
     }
 
     [Fact]
@@ -1715,6 +1728,8 @@ public sealed class PlannerTests
         Assert.Equal(3, summary.GithubReplayUpdatedCount);
         Assert.Equal(1, summary.GithubReplayFailedCount);
         Assert.Equal("Replayed 4 pending GitHub updates: 3 updated, 1 still failing.", summary.GithubReplaySummary);
+        Assert.Equal(0, summary.OperatorEscalationQueuedCount);
+        Assert.Equal(0, summary.OperatorEscalationConsumedCount);
     }
 
     [Fact]
