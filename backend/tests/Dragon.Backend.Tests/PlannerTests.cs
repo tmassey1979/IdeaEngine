@@ -4791,6 +4791,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue trend: down · -2 · vs 2026-03-23T11:59:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compared at: 2026-03-23T11:59:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compare age: 2m 45s", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker poll interval: 30s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll in: 1m 0s", StringComparison.Ordinal));
@@ -5275,6 +5276,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue trend: flat · +0 · vs 2026-03-16T15:20:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compared at: 2026-03-16T15:20:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compare age: 6m 20s", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker poll interval: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll in: not scheduled", StringComparison.Ordinal));
@@ -5468,6 +5470,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue trend: up · +1 · vs 2026-03-16T15:25:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compared at: 2026-03-16T15:25:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compare age: 5m 35s", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker poll interval: 30s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll in: 1m 0s", StringComparison.Ordinal));
@@ -5630,6 +5633,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker queue trend: unknown · +0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compared at: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue compare age: not recorded", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker poll interval: not recorded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll in: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));

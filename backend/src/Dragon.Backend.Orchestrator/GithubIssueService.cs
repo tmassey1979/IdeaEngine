@@ -350,6 +350,7 @@ public sealed class GithubIssueService
                 $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
                 $"- worker queue compared at: {DescribeGlobalQueueComparedAt(rootDirectory)}",
                 $"- worker queue compare age: {DescribeGlobalQueueCompareAge(rootDirectory)}",
+                $"- worker poll interval: {DescribeGlobalWorkerPollInterval(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker next poll in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
@@ -570,6 +571,7 @@ public sealed class GithubIssueService
                 $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
                 $"- worker queue compared at: {DescribeGlobalQueueComparedAt(rootDirectory)}",
                 $"- worker queue compare age: {DescribeGlobalQueueCompareAge(rootDirectory)}",
+                $"- worker poll interval: {DescribeGlobalWorkerPollInterval(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker next poll in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
@@ -1532,6 +1534,34 @@ public sealed class GithubIssueService
             }
 
             return $"next poll {nextPollAt!.Value:O}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerPollInterval(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var pollIntervalSeconds = root.TryGetProperty("pollIntervalSeconds", out var cadenceProperty) &&
+                cadenceProperty.ValueKind == JsonValueKind.Number &&
+                cadenceProperty.TryGetInt32(out var parsedPollIntervalSeconds)
+                ? parsedPollIntervalSeconds
+                : (int?)null;
+
+            return pollIntervalSeconds is null
+                ? "not recorded"
+                : $"{pollIntervalSeconds.Value}s";
         }
         catch (JsonException)
         {
