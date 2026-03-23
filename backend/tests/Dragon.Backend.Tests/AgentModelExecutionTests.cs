@@ -26,8 +26,57 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("gpt-5", request.Model);
         Assert.Contains("architect agent", request.Instructions!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Return JSON only", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("operations", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("followUps", request.Instructions!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(request.Messages, message => message.Role == "user" && message.Content.Contains(issue.Title, StringComparison.Ordinal));
         Assert.Equal("310", request.Metadata!["issueNumber"]);
+    }
+
+    [Fact]
+    public void BuildPrompt_KeepsSummaryOnlySchema_ForNonImplementationActions()
+    {
+        var job = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            431,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex: Feedback Agent",
+                ["story"],
+                "Feedback Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null
+            ),
+            new Dictionary<string, string>()
+        );
+
+        var request = AgentPromptFactory.Build(job);
+
+        Assert.Contains("Return JSON only with fields: summary, recommendation, artifacts.", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("operations", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildPrompt_AsksImplementationAgentsForBoundedOperations()
+    {
+        var issue = new GithubIssue(
+            432,
+            "[Story] Dragon Idea Engine Master Codex: Refactor Agent",
+            "OPEN",
+            ["story"],
+            "Improve prompt factory structure.",
+            "Refactor Agent",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+        var job = SelfBuildJobFactory.Create(issue, "refactor", "IdeaEngine", "DragonIdeaEngine");
+
+        var request = AgentPromptFactory.Build(job);
+        var userPrompt = Assert.Single(request.Messages, message => message.Role == "user").Content;
+
+        Assert.Contains("operations", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Prefer relative repo paths", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Include bounded operations whenever you can safely advance the repository directly", userPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

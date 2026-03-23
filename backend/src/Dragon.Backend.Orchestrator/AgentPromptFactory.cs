@@ -30,15 +30,17 @@ public static class AgentPromptFactory
 
     private static string BuildInstructions(SelfBuildJob job)
     {
+        var implementationSchema = "Return JSON only with fields: summary, recommendation, artifacts, operations, followUps.";
+        var summarySchema = "Return JSON only with fields: summary, recommendation, artifacts.";
         var baseInstruction = job.Agent.ToLowerInvariant() switch
         {
-            "architect" => "You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. Return JSON only with fields: summary, recommendation, artifacts.",
-            "documentation" => "You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations. Return JSON only with fields: summary, recommendation, artifacts.",
-            "feedback" => "You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language. Return JSON only with fields: summary, recommendation, artifacts.",
-            "idea" => "You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices. Return JSON only with fields: summary, recommendation, artifacts.",
-            "repository-manager" => "You are the repository manager agent. Focus on repository hygiene, branch strategy, and delivery mechanics. Return JSON only with fields: summary, recommendation, artifacts.",
-            "refactor" => "You are the refactor agent. Improve structure and clarity without changing intended behavior. Return JSON only with fields: summary, recommendation, artifacts.",
-            _ => $"You are the {job.Agent} agent. Complete the assigned work. Return JSON only with fields: summary, recommendation, artifacts."
+            "architect" => $"You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. {GetSchema(job, implementationSchema, summarySchema)}",
+            "documentation" => $"You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations. {GetSchema(job, implementationSchema, summarySchema)}",
+            "feedback" => $"You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language. {GetSchema(job, implementationSchema, summarySchema)}",
+            "idea" => $"You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices. {GetSchema(job, implementationSchema, summarySchema)}",
+            "repository-manager" => $"You are the repository manager agent. Focus on repository hygiene, branch strategy, and delivery mechanics. {GetSchema(job, implementationSchema, summarySchema)}",
+            "refactor" => $"You are the refactor agent. Improve structure and clarity without changing intended behavior. {GetSchema(job, implementationSchema, summarySchema)}",
+            _ => $"You are the {job.Agent} agent. Complete the assigned work. {GetSchema(job, implementationSchema, summarySchema)}"
         };
         var hasTargeting = HasMetadataValue(job, "targetArtifact") || HasMetadataValue(job, "targetOutcome");
         var hasBroadRollup = HasBroadChangedArtifactRollup(job);
@@ -73,6 +75,16 @@ public static class AgentPromptFactory
         return baseInstruction;
     }
 
+    private static string GetSchema(SelfBuildJob job, string implementationSchema, string summarySchema)
+    {
+        if (!IsImplementationAction(job.Action))
+        {
+            return summarySchema;
+        }
+
+        return $"{implementationSchema} Use operations when you can make a bounded repository change directly. Prefer relative repo paths. Keep operations minimal and deterministic; leave operations empty when no safe edit is needed.";
+    }
+
     private static bool HasMetadataValue(SelfBuildJob job, string key) =>
         job.Metadata.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value);
 
@@ -80,6 +92,10 @@ public static class AgentPromptFactory
         job.Metadata.TryGetValue("changedArtifactRollup", out var value) &&
         !string.IsNullOrWhiteSpace(value) &&
         value.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length > 1;
+
+    private static bool IsImplementationAction(string action) =>
+        string.Equals(action, "implement_issue", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(action, "recover_issue", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildUserPrompt(SelfBuildJob job)
     {
@@ -136,7 +152,9 @@ public static class AgentPromptFactory
         }
 
         builder.AppendLine();
-        builder.AppendLine("Return the best concise result for this agent role.");
+        builder.AppendLine(IsImplementationAction(job.Action)
+            ? "Return the best concise result for this agent role. Include bounded operations whenever you can safely advance the repository directly."
+            : "Return the best concise result for this agent role.");
         return builder.ToString();
     }
 }
