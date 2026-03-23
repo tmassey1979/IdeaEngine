@@ -378,6 +378,7 @@ public sealed class GithubIssueService
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- global intervention age: {DescribeGlobalInterventionAge(rootDirectory)}",
                 $"- global intervention escalation level: {DescribeGlobalInterventionEscalationLevel(rootDirectory)}",
+                $"- global intervention acknowledged streak: {DescribeGlobalInterventionAcknowledgedStreak(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
                 $"- current stage: {currentStage}",
@@ -596,6 +597,7 @@ public sealed class GithubIssueService
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- global intervention age: {DescribeGlobalInterventionAge(rootDirectory)}",
                 $"- global intervention escalation level: {DescribeGlobalInterventionEscalationLevel(rootDirectory)}",
+                $"- global intervention acknowledged streak: {DescribeGlobalInterventionAcknowledgedStreak(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
                 $"- blocked stage: {currentStage}",
@@ -2636,6 +2638,34 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalInterventionAcknowledgedStreak(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "0";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("interventionTarget", out var interventionTarget) &&
+                interventionTarget.ValueKind == JsonValueKind.Object &&
+                interventionTarget.TryGetProperty("acknowledgedStreak", out var acknowledgedStreakProperty) &&
+                acknowledgedStreakProperty.ValueKind == JsonValueKind.Number &&
+                acknowledgedStreakProperty.TryGetInt32(out var acknowledgedStreak))
+            {
+                return acknowledgedStreak.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            return "0";
+        }
+        catch (JsonException)
+        {
+            return "0";
         }
     }
 
