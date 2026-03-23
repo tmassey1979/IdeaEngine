@@ -54,6 +54,7 @@ main() {
   install_wrapper "dragon-tail-logs" "pi-tail-logs.sh"
   install_wrapper "dragon-status-dashboard" "pi-status-dashboard.sh"
   install_wrapper "dragon-doctor" "pi-service-doctor.sh"
+  install_wrapper "dragon-share-status" "pi-share-status.sh"
 
   print_path_hint
 }

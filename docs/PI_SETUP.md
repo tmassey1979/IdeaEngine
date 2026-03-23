@@ -95,6 +95,7 @@ dragon-reinstall-service
 dragon-tail-logs
 dragon-status-dashboard
 dragon-doctor
+dragon-share-status
 dragon-report --json
 ~/dragon/IdeaEngine/scripts/pi-report.sh
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
@@ -107,7 +108,7 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, and `dragon-doctor`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -119,6 +120,7 @@ What those do:
 - `pi-tail-logs.sh` follows the main service journal by default and can include backup/update/alert service logs with `--all`
 - `pi-status-dashboard.sh` gives a richer human-readable status page with report highlights, timer state, alert-check result, latest activity, and the next commands to run
 - `pi-service-doctor.sh` interprets the current Pi status and suggests the most likely next commands when service health, timers, or queue state need attention
+- `pi-share-status.sh` writes a lightweight support bundle with the report JSON, dashboard, doctor output, alert-check output, git status, and recent service logs
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update/alert timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -201,6 +203,7 @@ Status dashboard:
 ```bash
 dragon-status-dashboard
 dragon-doctor
+dragon-share-status
 ```
 
 Notes:

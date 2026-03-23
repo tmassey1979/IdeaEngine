@@ -24,6 +24,7 @@ Core commands:
   dragon-alert-check
   dragon-configure-alerts
   dragon-doctor
+  dragon-share-status
 
 Service control:
   sudo systemctl start ${SERVICE_NAME}
@@ -41,6 +42,7 @@ Timers:
 Recovery:
   dragon-firstaid
   dragon-doctor
+  dragon-share-status
   ~/dragon/IdeaEngine/scripts/pi-reset-state.sh
   ~/dragon/IdeaEngine/scripts/collect-pi-diagnostics.sh
 
