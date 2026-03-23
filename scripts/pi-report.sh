@@ -1,0 +1,378 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_DIR="${REPO_DIR:-$HOME/dragon/IdeaEngine}"
+SERVICE_NAME="${SERVICE_NAME:-dragon-idea-engine}"
+BACKUP_TIMER_NAME="${BACKUP_TIMER_NAME:-dragon-backup}"
+STATUS_URL="${STATUS_URL:-http://127.0.0.1:5078/status}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5078/health}"
+STATUS_SNAPSHOT_PATH="${STATUS_SNAPSHOT_PATH:-$REPO_DIR/.dragon/status/runtime-status.json}"
+BACKUP_ROOT="${BACKUP_ROOT:-$REPO_DIR/.tmp/pi-backups}"
+
+STATUS_FILE=""
+STATUS_SOURCE="unavailable"
+
+print_heading() {
+  local title="$1"
+  echo
+  echo "== ${title} =="
+}
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+cleanup() {
+  if [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]]; then
+    rm -f "${STATUS_FILE}"
+  fi
+}
+
+json_query() {
+  local path="$1"
+  local default_value="${2:-}"
+
+  if [[ -z "${STATUS_FILE}" || ! -f "${STATUS_FILE}" ]]; then
+    printf '%s\n' "${default_value}"
+    return
+  fi
+
+  if command_exists jq; then
+    jq -r --arg path "${path}" --arg defaultValue "${default_value}" '
+      def walk_path($segments):
+        reduce $segments[] as $segment (.;
+          if . == null then null
+          elif ($segment | test("^[0-9]+$")) then
+            if type == "array" then .[$segment | tonumber] else null end
+          else
+            if type == "object" and has($segment) then .[$segment] else null end
+          end
+        );
+
+      walk_path($path | split(".")) // $defaultValue
+    ' "${STATUS_FILE}"
+    return
+  fi
+
+  if command_exists python3; then
+    python3 - "${STATUS_FILE}" "${path}" "${default_value}" <<'PY'
+import json
+import sys
+
+status_file, path, default_value = sys.argv[1:4]
+
+try:
+    with open(status_file, "r", encoding="utf-8") as handle:
+        value = json.load(handle)
+    for segment in path.split("."):
+        if isinstance(value, list):
+            if not segment.isdigit():
+                value = default_value
+                break
+            index = int(segment)
+            value = value[index] if 0 <= index < len(value) else default_value
+            continue
+        if isinstance(value, dict):
+            value = value.get(segment, default_value)
+            continue
+        value = default_value
+        break
+except Exception:
+    value = default_value
+
+if value is None:
+    print("")
+elif isinstance(value, (dict, list)):
+    print(json.dumps(value))
+else:
+    print(value)
+PY
+    return
+  fi
+
+  printf '%s\n' "${default_value}"
+}
+
+emit_status_assignments() {
+  if [[ -z "${STATUS_FILE}" || ! -f "${STATUS_FILE}" ]]; then
+    return
+  fi
+
+  if command_exists python3; then
+    python3 - "${STATUS_FILE}" <<'PY'
+import json
+import shlex
+import sys
+
+status_file = sys.argv[1]
+
+with open(status_file, "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+issues = payload.get("issues") or []
+quarantined_issues = [issue for issue in issues if str(issue.get("overallStatus", "")).lower() == "quarantined"]
+actionable_quarantined = sum(1 for issue in quarantined_issues if int(issue.get("queuedJobCount") or 0) > 0)
+inactive_quarantined = len(quarantined_issues) - actionable_quarantined
+
+fields = {
+    "GENERATED_AT": payload.get("generatedAt", ""),
+    "WORKER_MODE": payload.get("workerMode", ""),
+    "WORKER_STATE": payload.get("workerState", ""),
+    "WORKER_REASON": payload.get("workerCompletionReason", ""),
+    "HEALTH": payload.get("health", ""),
+    "ATTENTION_SUMMARY": payload.get("attentionSummary", ""),
+    "QUEUED_JOBS": payload.get("queuedJobs", 0),
+    "FAILED_ISSUES": ((payload.get("rollup") or {}).get("failedIssues", 0)),
+    "IN_PROGRESS_ISSUES": ((payload.get("rollup") or {}).get("inProgressIssues", 0)),
+    "QUARANTINED_ISSUES": ((payload.get("rollup") or {}).get("quarantinedIssues", 0)),
+    "VALIDATED_ISSUES": ((payload.get("rollup") or {}).get("validatedIssues", 0)),
+    "ACTIONABLE_QUARANTINED_ISSUES": actionable_quarantined,
+    "INACTIVE_QUARANTINED_ISSUES": inactive_quarantined,
+    "QUEUE_DIRECTION": payload.get("queueDirection", ""),
+    "QUEUE_DELTA": payload.get("queueDelta", 0),
+    "QUEUE_COMPARED_AT": payload.get("queueComparedAt", ""),
+    "LATEST_ISSUE_NUMBER": ((payload.get("latestActivity") or {}).get("issueNumber", "")),
+    "LATEST_ISSUE_TITLE": ((payload.get("latestActivity") or {}).get("issueTitle", "")),
+    "LATEST_ISSUE_STAGE": ((payload.get("latestActivity") or {}).get("currentStage", "")),
+    "LATEST_ISSUE_SUMMARY": ((payload.get("latestActivity") or {}).get("summary", "")),
+    "LATEST_ISSUE_RECORDED_AT": ((payload.get("latestActivity") or {}).get("recordedAt", "")),
+}
+
+for key, value in fields.items():
+    print(f"{key}={shlex.quote(str(value))}")
+PY
+  fi
+}
+
+fetch_status() {
+  STATUS_FILE="$(mktemp)"
+
+  if command_exists curl && curl -fsS "${STATUS_URL}" > "${STATUS_FILE}" 2>/dev/null; then
+    STATUS_SOURCE="http"
+    return
+  fi
+
+  if [[ -f "${STATUS_SNAPSHOT_PATH}" ]]; then
+    cp "${STATUS_SNAPSHOT_PATH}" "${STATUS_FILE}"
+    STATUS_SOURCE="snapshot"
+    return
+  fi
+
+  rm -f "${STATUS_FILE}"
+  STATUS_FILE=""
+}
+
+service_state() {
+  local subcommand="$1"
+  if command_exists systemctl; then
+    local result
+    result="$(systemctl "${subcommand}" "${SERVICE_NAME}.service" 2>/dev/null || true)"
+    if [[ -n "${result}" ]]; then
+      echo "${result}"
+    else
+      echo "unknown"
+    fi
+  else
+    echo "unavailable"
+  fi
+}
+
+timer_state() {
+  local subcommand="$1"
+  if command_exists systemctl; then
+    local result
+    result="$(systemctl "${subcommand}" "${BACKUP_TIMER_NAME}.timer" 2>/dev/null || true)"
+    if [[ -n "${result}" ]]; then
+      echo "${result}"
+    else
+      echo "unknown"
+    fi
+  else
+    echo "unavailable"
+  fi
+}
+
+timer_schedule() {
+  if ! command_exists systemctl; then
+    echo "systemctl unavailable"
+    return
+  fi
+
+  local next_elapse
+  local last_trigger
+  next_elapse="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
+  last_trigger="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
+
+  echo "next=${next_elapse:-unknown}"
+  echo "last=${last_trigger:-unknown}"
+}
+
+compose_summary() {
+  if [[ ! -d "${REPO_DIR}" ]] || ! command_exists docker; then
+    echo "docker compose unavailable"
+    return
+  fi
+
+  local output
+  output="$(cd "${REPO_DIR}" && docker compose ps --format json 2>/dev/null || true)"
+  if [[ -z "${output}" ]]; then
+    echo "docker compose ps returned no data"
+    return
+  fi
+
+  if command_exists python3; then
+    python3 - <<'PY' <<<"${output}"
+import json
+import sys
+
+raw = sys.stdin.read().strip()
+if not raw:
+    print("docker compose ps returned no data")
+    raise SystemExit(0)
+
+try:
+    data = json.loads(raw)
+except json.JSONDecodeError:
+    lines = [line for line in raw.splitlines() if line.strip()]
+    data = [json.loads(line) for line in lines]
+
+if isinstance(data, dict):
+    data = [data]
+
+for item in data:
+    name = item.get("Name", "unknown")
+    state = item.get("State", "unknown")
+    health = item.get("Health", "")
+    status = item.get("Status", "")
+    summary = f"{name}: {state}"
+    if health:
+      summary += f" ({health})"
+    if status:
+      summary += f" - {status}"
+    print(summary)
+PY
+    return
+  fi
+
+  echo "${output}"
+}
+
+newest_backup() {
+  if [[ ! -d "${BACKUP_ROOT}" ]]; then
+    echo "none found"
+    return
+  fi
+
+  local latest
+  latest="$(find "${BACKUP_ROOT}" -maxdepth 1 -type f -name 'dragon-pi-backup-*.tar.gz' | sort | tail -n 1)"
+  if [[ -z "${latest}" ]]; then
+    echo "none found"
+    return
+  fi
+
+  ls -lh "${latest}" 2>/dev/null || echo "${latest}"
+}
+
+print_endpoint_status() {
+  local url="$1"
+  local label="$2"
+
+  if command_exists curl && curl -fsS "${url}" >/dev/null 2>&1; then
+    echo "${label}: reachable"
+  else
+    echo "${label}: unreachable"
+  fi
+}
+
+main() {
+  trap cleanup EXIT
+
+  fetch_status
+
+  local service_active service_enabled timer_active timer_enabled
+  service_active="$(service_state is-active)"
+  service_enabled="$(service_state is-enabled)"
+  timer_active="$(timer_state is-active)"
+  timer_enabled="$(timer_state is-enabled)"
+
+  print_heading "Dragon Pi Report"
+  echo "timestamp: $(date -Is)"
+  echo "repo_dir: ${REPO_DIR}"
+  echo "status_source: ${STATUS_SOURCE}"
+
+  print_heading "Systemd"
+  echo "service_active: ${service_active}"
+  echo "service_enabled: ${service_enabled}"
+  echo "backup_timer_active: ${timer_active}"
+  echo "backup_timer_enabled: ${timer_enabled}"
+  timer_schedule
+
+  print_heading "Endpoints"
+  print_endpoint_status "${HEALTH_URL}" "health"
+  print_endpoint_status "${STATUS_URL}" "status"
+
+  print_heading "Worker"
+  if [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]] && command_exists python3; then
+    # shellcheck disable=SC1090
+    source <(emit_status_assignments)
+    echo "generated_at: ${GENERATED_AT:-unknown}"
+    echo "worker_mode: ${WORKER_MODE:-unknown}"
+    echo "worker_state: ${WORKER_STATE:-unknown}"
+    if [[ -n "${WORKER_REASON:-}" && "${WORKER_REASON}" != "None" ]]; then
+      echo "worker_completion_reason: ${WORKER_REASON}"
+    fi
+    echo "health: ${HEALTH:-unknown}"
+    echo "attention_summary: ${ATTENTION_SUMMARY:-none}"
+    echo "queued_jobs: ${QUEUED_JOBS:-0}"
+    echo "failed_issues: ${FAILED_ISSUES:-0}"
+    echo "in_progress_issues: ${IN_PROGRESS_ISSUES:-0}"
+    echo "quarantined_issues: ${QUARANTINED_ISSUES:-0}"
+    echo "actionable_quarantined_issues: ${ACTIONABLE_QUARANTINED_ISSUES:-0}"
+    echo "inactive_quarantined_issues: ${INACTIVE_QUARANTINED_ISSUES:-0}"
+    echo "validated_issues: ${VALIDATED_ISSUES:-0}"
+    echo "queue_direction: ${QUEUE_DIRECTION:-unknown}"
+    echo "queue_delta: ${QUEUE_DELTA:-0}"
+    if [[ -n "${QUEUE_COMPARED_AT:-}" ]]; then
+      echo "queue_compared_at: ${QUEUE_COMPARED_AT}"
+    fi
+  elif [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]]; then
+    echo "status_json_available: yes"
+    echo "health: $(json_query health unknown)"
+    echo "queued_jobs: $(json_query queuedJobs 0)"
+    echo "quarantined_issues: $(json_query rollup.quarantinedIssues 0)"
+    echo "validated_issues: $(json_query rollup.validatedIssues 0)"
+  else
+    echo "status_json_available: no"
+  fi
+
+  print_heading "Latest Activity"
+  if [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]]; then
+    local issue_number issue_title issue_stage issue_summary issue_recorded_at
+    issue_number="$(json_query latestActivity.issueNumber "")"
+    issue_title="$(json_query latestActivity.issueTitle "")"
+    issue_stage="$(json_query latestActivity.currentStage "")"
+    issue_summary="$(json_query latestActivity.summary "")"
+    issue_recorded_at="$(json_query latestActivity.recordedAt "")"
+
+    if [[ -n "${issue_number}" || -n "${issue_title}" ]]; then
+      echo "issue: #${issue_number} ${issue_title}"
+      echo "stage: ${issue_stage:-unknown}"
+      echo "recorded_at: ${issue_recorded_at:-unknown}"
+      if [[ -n "${issue_summary}" ]]; then
+        echo "summary: ${issue_summary//$'\n'/ }"
+      fi
+    else
+      echo "No latest activity recorded."
+    fi
+  else
+    echo "No status snapshot available."
+  fi
+
+  print_heading "Compose"
+  compose_summary
+
+  print_heading "Backups"
+  newest_backup
+}
+
+main "$@"
