@@ -95,8 +95,9 @@ if actionable_quarantined > max_actionable_quarantined:
     )
 
 next_delayed_retry_at = status.get("nextDelayedRetryAt")
+next_wake_reason = status.get("nextWakeReason")
 delayed_retry_minutes = 0
-if next_delayed_retry_at:
+if next_wake_reason == "delayed-provider-retry" and next_delayed_retry_at:
     try:
         delayed_retry_at = datetime.fromisoformat(next_delayed_retry_at.replace("Z", "+00:00"))
         delayed_retry_minutes = max(0, (delayed_retry_at - datetime.now(timezone.utc)).total_seconds() / 60)

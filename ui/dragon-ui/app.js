@@ -396,6 +396,7 @@ function workerNote(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
   const completion = workerCompletionInfo(snapshot);
   const nextPollLabel = snapshot.nextPollAt ? formatTimestamp(snapshot.nextPollAt) : "the next scheduled interval";
+  const nextWakeReason = nextWakeReasonLabel(snapshot);
   const cadenceLabel = snapshot.pollIntervalSeconds
     ? `every ${snapshot.pollIntervalSeconds} second${snapshot.pollIntervalSeconds === 1 ? "" : "s"}`
     : null;
@@ -445,12 +446,16 @@ function workerNote(snapshot) {
     : "";
 
   if (state === "waiting") {
+    const waitingReasonLabel = nextWakeReason === "waiting for delayed provider retry"
+      ? `because it is ${nextWakeReason}`
+      : "between passes";
+
     return {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is paused ${waitingReasonLabel}, polling ${cadenceLabel}, and is scheduled to wake again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
+        : `Worker is paused ${waitingReasonLabel} and is scheduled to wake again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
