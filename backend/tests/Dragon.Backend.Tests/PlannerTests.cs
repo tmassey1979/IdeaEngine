@@ -2153,6 +2153,7 @@ public sealed class PlannerTests
 
         Assert.NotNull(annotated.InterventionTarget);
         Assert.Equal(3, annotated.InterventionTarget!.AcknowledgedStreak);
+        Assert.Contains("remains critical after acknowledgment for 3 consecutive status snapshots", annotated.InterventionEscalationNote, StringComparison.Ordinal);
     }
 
     [Fact]

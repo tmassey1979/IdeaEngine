@@ -2097,7 +2097,7 @@ public sealed class SelfBuildLoop
         };
     }
 
-    private static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget)
+    internal static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget)
     {
         if (interventionTarget is null || string.IsNullOrWhiteSpace(interventionTarget.Escalation))
         {
@@ -2106,8 +2106,14 @@ public sealed class SelfBuildLoop
 
         return interventionTarget.Escalation switch
         {
-            "critical" => $"Escalation: global intervention target is critical. {interventionTarget.Summary}",
-            "warning" => $"Escalation: global intervention target is aging and should be reviewed soon. {interventionTarget.Summary}",
+            "critical" when interventionTarget.Acknowledged && interventionTarget.AcknowledgedStreak > 1
+                => $"Escalation: global intervention target remains critical after acknowledgment for {interventionTarget.AcknowledgedStreak} consecutive status snapshots. {interventionTarget.Summary}",
+            "critical" when interventionTarget.Acknowledged
+                => $"Escalation: global intervention target remains critical after acknowledgment. {interventionTarget.Summary}",
+            "critical"
+                => $"Escalation: global intervention target is critical. {interventionTarget.Summary}",
+            "warning"
+                => $"Escalation: global intervention target is aging and should be reviewed soon. {interventionTarget.Summary}",
             _ => null
         };
     }
@@ -2465,10 +2471,10 @@ public static class StatusSnapshotTrend
     {
         var interventionEscalationStreak = ComputeInterventionEscalationStreak(current, previous);
         var interventionAcknowledgedStreak = ComputeInterventionAcknowledgedStreak(current, previous);
-        var interventionEscalationNote = BuildPersistedInterventionEscalationNote(current.InterventionEscalationNote, current.InterventionTarget, interventionEscalationStreak);
         var interventionTarget = current.InterventionTarget is null
             ? null
             : current.InterventionTarget with { AcknowledgedStreak = interventionAcknowledgedStreak };
+        var interventionEscalationNote = BuildPersistedInterventionEscalationNote(current.InterventionEscalationNote, interventionTarget, interventionEscalationStreak);
 
         if (previous is null)
         {
@@ -2565,18 +2571,20 @@ public static class StatusSnapshotTrend
         InterventionTargetSnapshot? interventionTarget,
         int interventionEscalationStreak)
     {
-        if (string.IsNullOrWhiteSpace(currentNote))
+        var baseNote = SelfBuildLoop.BuildInterventionEscalationNote(interventionTarget) ?? currentNote;
+
+        if (string.IsNullOrWhiteSpace(baseNote))
         {
-            return currentNote;
+            return baseNote;
         }
 
         if (!string.Equals(interventionTarget?.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
             interventionEscalationStreak <= 1)
         {
-            return currentNote;
+            return baseNote;
         }
 
-        return $"{currentNote} Persisting across {interventionEscalationStreak} consecutive status snapshots.";
+        return $"{baseNote} Persisting across {interventionEscalationStreak} consecutive status snapshots.";
     }
 }
 
