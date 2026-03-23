@@ -3703,6 +3703,7 @@ public sealed class PlannerTests
     public void SyncQuarantinedWorkflow_ShowsRecoveryWritebackRetryWhenRecoveryChildSyncIsPending()
     {
         var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 30, 0, TimeSpan.Zero);
         Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
         File.WriteAllText(
             Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
@@ -3724,9 +3725,9 @@ public sealed class PlannerTests
             "quarantined",
             new Dictionary<string, WorkflowStageState>
             {
-                ["developer"] = new("failed", "job-1", DateTimeOffset.UtcNow.AddMinutes(-30), "boom")
+                ["developer"] = new("failed", "job-1", now.AddMinutes(-30), "boom")
             },
-            DateTimeOffset.UtcNow,
+            now,
             "Quarantined after repeated failures.",
             null,
             [500]
@@ -3746,7 +3747,8 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500 (queued", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 
     [Fact]

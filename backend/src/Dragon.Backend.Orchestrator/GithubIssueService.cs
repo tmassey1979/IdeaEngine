@@ -582,48 +582,74 @@ public sealed class GithubIssueService
 
     private static string DescribeRecoveryWritebackState(IssueWorkflowState workflow, string rootDirectory)
     {
-        var pendingIssueNumbers = ReadPendingGithubSyncIssueNumbers(rootDirectory);
-        if (pendingIssueNumbers.Count == 0)
+        var pending = ReadPendingGithubSync(rootDirectory);
+        if (pending.Count == 0)
         {
             return "clear";
         }
 
         if (workflow.SourceIssueNumber is not null)
         {
-            if (pendingIssueNumbers.Contains(workflow.IssueNumber))
+            var currentRecoveryPending = pending
+                .Where(item => item.IssueNumber == workflow.IssueNumber)
+                .OrderBy(item => item.RecordedAt)
+                .FirstOrDefault();
+            if (currentRecoveryPending is not null)
             {
-                return $"retry pending for current recovery issue #{workflow.IssueNumber}";
+                return $"retry pending for current recovery issue #{workflow.IssueNumber} ({FormatPendingGithubSyncAge(currentRecoveryPending, workflow.UpdatedAt)})";
             }
 
-            if (pendingIssueNumbers.Contains(workflow.SourceIssueNumber.Value))
+            var parentPending = pending
+                .Where(item => item.IssueNumber == workflow.SourceIssueNumber.Value)
+                .OrderBy(item => item.RecordedAt)
+                .FirstOrDefault();
+            if (parentPending is not null)
             {
-                return $"retry pending for parent issue #{workflow.SourceIssueNumber.Value}";
+                return $"retry pending for parent issue #{workflow.SourceIssueNumber.Value} ({FormatPendingGithubSyncAge(parentPending, workflow.UpdatedAt)})";
             }
 
             return "clear";
         }
 
-        var pendingRecoveryChildren = (workflow.ActiveRecoveryIssueNumbers ?? [])
-            .Where(pendingIssueNumbers.Contains)
-            .OrderBy(value => value)
+        var activeRecoveryIssueNumbers = (workflow.ActiveRecoveryIssueNumbers ?? []).ToHashSet();
+        var pendingRecoveryChildren = pending
+            .Where(item => activeRecoveryIssueNumbers.Contains(item.IssueNumber))
+            .OrderBy(item => item.RecordedAt)
             .ToArray();
 
         if (pendingRecoveryChildren.Length > 0)
         {
-            return pendingRecoveryChildren.Length == 1
-                ? $"retry pending for recovery child #{pendingRecoveryChildren[0]}"
-                : $"retry pending for recovery children {string.Join(", ", pendingRecoveryChildren.Select(value => $"#{value}"))}";
+            if (pendingRecoveryChildren.Length == 1)
+            {
+                var pendingChild = pendingRecoveryChildren[0];
+                return $"retry pending for recovery child #{pendingChild.IssueNumber} ({FormatPendingGithubSyncAge(pendingChild, workflow.UpdatedAt)})";
+            }
+
+            var oldestPendingChild = pendingRecoveryChildren.OrderBy(item => item.RecordedAt).First();
+            return $"retry pending for recovery children {string.Join(", ", pendingRecoveryChildren.Select(value => $"#{value.IssueNumber}"))} (oldest {FormatPendingGithubSyncAge(oldestPendingChild, workflow.UpdatedAt)})";
         }
 
-        if (pendingIssueNumbers.Contains(workflow.IssueNumber))
+        var workflowPending = pending
+            .Where(item => item.IssueNumber == workflow.IssueNumber)
+            .OrderBy(item => item.RecordedAt)
+            .FirstOrDefault();
+        if (workflowPending is not null)
         {
-            return $"retry pending for issue #{workflow.IssueNumber}";
+            return $"retry pending for issue #{workflow.IssueNumber} ({FormatPendingGithubSyncAge(workflowPending, workflow.UpdatedAt)})";
         }
 
         return "clear";
     }
 
-    private static HashSet<int> ReadPendingGithubSyncIssueNumbers(string rootDirectory)
+    private static string FormatPendingGithubSyncAge(PendingGithubSyncSnapshot pending, DateTimeOffset referenceTime)
+    {
+        var elapsed = referenceTime >= pending.RecordedAt
+            ? referenceTime - pending.RecordedAt
+            : TimeSpan.Zero;
+        return $"queued {FormatElapsed(elapsed)} ago";
+    }
+
+    private static IReadOnlyList<PendingGithubSyncSnapshot> ReadPendingGithubSync(string rootDirectory)
     {
         var statusPath = Path.Combine(rootDirectory, ".dragon", "status", "pending-github-sync.json");
         if (!File.Exists(statusPath))
@@ -633,14 +659,12 @@ public sealed class GithubIssueService
 
         try
         {
-            var pending = JsonSerializer.Deserialize<List<PendingGithubSyncSnapshot>>(
+            return JsonSerializer.Deserialize<List<PendingGithubSyncSnapshot>>(
                 File.ReadAllText(statusPath),
                 new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }) ?? [];
-
-            return pending.Select(item => item.IssueNumber).ToHashSet();
         }
         catch (JsonException)
         {
