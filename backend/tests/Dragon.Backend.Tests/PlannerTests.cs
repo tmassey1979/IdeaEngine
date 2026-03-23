@@ -1256,7 +1256,9 @@ public sealed class PlannerTests
         Assert.Single(replayResults);
         Assert.False(replayResults[0].Attempted);
         Assert.False(replayResults[0].Updated);
+        Assert.Contains("Deferred GitHub replay", replayResults[0].Summary, StringComparison.Ordinal);
         Assert.Equal(1, status.PendingGithubSyncCount);
+        Assert.Null(status.LatestGithubSync);
         Assert.NotNull(status.LatestGithubReplay);
         Assert.Equal(0, status.LatestGithubReplay!.AttemptedCount);
         Assert.Equal(0, status.LatestGithubReplay.UpdatedCount);

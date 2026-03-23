@@ -762,6 +762,17 @@ public sealed class SelfBuildLoop
             return [];
         }
 
+        if (ShouldDeferGithubReplayForProviderBackoff())
+        {
+            WriteLatestGithubReplay(0, 0, 0, pending.Length);
+            return pending
+                .Select(item => new GithubSyncResult(
+                    false,
+                    false,
+                    $"Deferred GitHub replay for issue #{item.IssueNumber} while waiting for delayed provider retry."))
+                .ToArray();
+        }
+
         var results = new List<GithubSyncResult>(pending.Length);
         foreach (var item in pending)
         {
@@ -783,6 +794,36 @@ public sealed class SelfBuildLoop
 
     public void RecordPendingGithubSyncForTests(int issueNumber, string summary) =>
         RecordPendingGithubSync(issueNumber, summary);
+
+    private bool ShouldDeferGithubReplayForProviderBackoff()
+    {
+        var runtimeStatusPath = Path.Combine(RootDirectory, ".dragon", "status", "runtime-status.json");
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var nextWakeReason = root.TryGetProperty("nextWakeReason", out var nextWakeReasonProperty) &&
+                nextWakeReasonProperty.ValueKind == JsonValueKind.String
+                ? nextWakeReasonProperty.GetString()
+                : null;
+            var delayedRetryUrgency = root.TryGetProperty("delayedRetryUrgency", out var delayedRetryUrgencyProperty) &&
+                delayedRetryUrgencyProperty.ValueKind == JsonValueKind.String
+                ? delayedRetryUrgencyProperty.GetString()
+                : null;
+
+            return string.Equals(nextWakeReason, "delayed-provider-retry", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(delayedRetryUrgency, "alert", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 
     private GithubSyncResult? TrySyncWorkflow(string? githubOwner, string repo, IssueWorkflowState workflow, bool syncValidatedWorkflows)
     {
