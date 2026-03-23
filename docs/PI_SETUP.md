@@ -282,6 +282,7 @@ Notes:
 - Set `ALERT_WEBHOOK_URL` in `.env` if you want the alert-check service to send webhook notifications on failures.
 - Set `MAX_DELAYED_RETRY_MINUTES` in `.env` if you want long provider backoff windows to count as alertable health drift; `0` disables that check.
 - Set `MAX_PENDING_GITHUB_RETRY_OVERDUE_MINUTES` in `.env` if you want pending GitHub writeback retries to become alertable once they are overdue; `0` disables that check.
+- `dragon-report`, `dragon-status-dashboard`, `dragon-alert-check`, and `dragon-doctor` now surface the backend-owned `waitSignal`, so provider backoff and writeback replay waits use the same wording across UI, Pi tooling, alerts, and GitHub summaries.
 - `update-pi.sh` creates a backup before updating by default and exits if the checkout is dirty unless `ALLOW_DIRTY_WORKTREE=true`.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
 - `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

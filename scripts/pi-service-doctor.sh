@@ -61,6 +61,7 @@ quarantined_issues = rollup.get("quarantinedIssues", 0)
 next_wake_reason = status.get("nextWakeReason")
 next_delayed_retry_at = status.get("nextDelayedRetryAt")
 delayed_retry_urgency = status.get("delayedRetryUrgency")
+wait_signal = status.get("waitSignal")
 
 if service_active not in {"active", "inactive"}:
     issues.append(f"service state is {service_active}")
@@ -76,7 +77,22 @@ if isinstance(restart_count, int) and restart_count > 0:
 if worker_health not in {"healthy", "idle"}:
     issues.append(f"worker health is {worker_health}")
 
-if next_wake_reason == "delayed-provider-retry":
+if wait_signal:
+    if "provider backoff" in wait_signal.lower():
+        delayed_retry_issue = f"worker wait signal: {wait_signal}"
+        if delayed_retry_urgency == "alert":
+            issues.append(f"{delayed_retry_issue} (long backoff)")
+            actions.append("dragon-status-dashboard")
+            actions.append("dragon-tail-logs --all")
+        else:
+            issues.append(delayed_retry_issue)
+            actions.append("dragon-report")
+    elif "writeback replay" in wait_signal.lower():
+        issues.append(f"worker wait signal: {wait_signal}")
+        actions.append("dragon-status-dashboard")
+        if "overdue" in wait_signal.lower() or "prioritized" in wait_signal.lower():
+            actions.append("dragon-tail-logs --all")
+elif next_wake_reason == "delayed-provider-retry":
     delayed_retry_issue = "worker is waiting on delayed provider retry"
     if delayed_retry_urgency == "alert":
         issues.append(f"{delayed_retry_issue} (long backoff)")
@@ -127,6 +143,8 @@ print(f"Worker: {worker_health}")
 print(f"Alert check: {alert_status}")
 if next_wake_reason:
     print(f"Next wake reason: {next_wake_reason}")
+if wait_signal:
+    print(f"Wait signal: {wait_signal}")
 if next_delayed_retry_at:
     print(f"Next delayed retry: {next_delayed_retry_at}")
 print()

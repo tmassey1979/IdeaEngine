@@ -98,6 +98,7 @@ if actionable_quarantined > max_actionable_quarantined:
 
 next_delayed_retry_at = status.get("nextDelayedRetryAt")
 next_wake_reason = status.get("nextWakeReason")
+wait_signal = status.get("waitSignal") or ""
 delayed_retry_minutes = 0
 if next_wake_reason == "delayed-provider-retry" and next_delayed_retry_at:
     try:
@@ -131,6 +132,7 @@ print(f"worker_health={worker_health}")
 print(f"failed_issues={failed_issues}")
 print(f"actionable_quarantined={actionable_quarantined}")
 print(f"delayed_retry_minutes={int(delayed_retry_minutes)}")
+print(f"wait_signal={wait_signal or 'none'}")
 print(f"pending_github_sync_retry_state={pending_github_sync_retry_state}")
 print(f"pending_github_sync_retry_overdue_minutes={pending_github_sync_retry_overdue_minutes}")
 PY
