@@ -664,10 +664,18 @@ public sealed class GithubIssueService
                     ? $"- changed paths: {string.Join(", ", GetMeaningfulChangedPaths(executionRecords, rootDirectory))}"
                     : "- changed paths: none recorded",
                 "",
-                "Recovery checklist:",
-                "- inspect the blocked stage and reproduce the failure or stall locally",
-                "- decide whether the issue needs a narrower follow-up story or a direct fix",
-                "- update this issue with the chosen recovery path before removing quarantine"
+                quarantinedProviderBackoff.IsStalled
+                    ? "Provider backoff guidance:"
+                    : "Recovery checklist:",
+                quarantinedProviderBackoff.IsStalled
+                    ? $"- next retry unlock: {quarantinedProviderBackoff.UnlockAt?.ToString("O") ?? "not recorded"}"
+                    : "- inspect the blocked stage and reproduce the failure or stall locally",
+                quarantinedProviderBackoff.IsStalled
+                    ? "- current action: wait for the delayed provider retry window to reopen before creating a new remediation path"
+                    : "- decide whether the issue needs a narrower follow-up story or a direct fix",
+                quarantinedProviderBackoff.IsStalled
+                    ? "- operator action: none unless provider backoff persists after the next retry window"
+                    : "- update this issue with the chosen recovery path before removing quarantine",
             ]
         );
 
@@ -730,7 +738,7 @@ public sealed class GithubIssueService
             var reason = nextDelayedRetryAt is null
                 ? "provider backoff is delaying GitHub replay for queued recovery writeback drift"
                 : $"provider backoff is delaying GitHub replay until {nextDelayedRetryAt.Value:O}";
-            return new QuarantinedProviderBackoffState(true, reason);
+            return new QuarantinedProviderBackoffState(true, reason, nextDelayedRetryAt);
         }
         catch (JsonException)
         {
@@ -3668,7 +3676,8 @@ public sealed record StallState(
 
 public sealed record QuarantinedProviderBackoffState(
     bool IsStalled,
-    string? Reason)
+    string? Reason,
+    DateTimeOffset? UnlockAt = null)
 {
     public static QuarantinedProviderBackoffState NotStalled { get; } = new(false, null);
 }
