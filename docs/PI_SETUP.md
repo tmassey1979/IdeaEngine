@@ -211,6 +211,8 @@ Optional webhook notification:
 ALERT_WEBHOOK_URL=https://example.invalid/webhook dragon-alert-notify
 ```
 
+Webhook payloads now distinguish `provider-backoff`, `ready-github-writeback-retry`, and `overdue-github-writeback-retry` in `alertCause`.
+
 Configure alert settings:
 
 ```bash
