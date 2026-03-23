@@ -7,7 +7,7 @@ RUN dotnet publish backend/src/Dragon.Backend.Cli/Dragon.Backend.Cli.csproj \
     -o /app/publish \
     /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg bash \
     && mkdir -p /etc/apt/keyrings \

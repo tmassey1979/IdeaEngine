@@ -12,6 +12,7 @@ MAX_CYCLES="${DRAGON_MAX_CYCLES:-100}"
 GITHUB_OWNER="${DRAGON_GITHUB_OWNER:-}"
 GITHUB_REPO="${DRAGON_GITHUB_REPO:-}"
 SYNC_GITHUB="${DRAGON_SYNC_GITHUB:-false}"
+RELEASE_QUARANTINED_ON_START="${DRAGON_RELEASE_QUARANTINED_ON_START:-false}"
 STATUS_PID=""
 
 cleanup() {
@@ -136,4 +137,27 @@ run_worker() {
 }
 
 echo "Starting Dragon worker in ${RUN_MODE} mode"
+
+if [[ "${RELEASE_QUARANTINED_ON_START}" == "true" ]]; then
+  case "${RUN_MODE}" in
+    github-watch|github-polling|github-idle)
+      if [[ -z "${GITHUB_OWNER}" || -z "${GITHUB_REPO}" ]]; then
+        echo "DRAGON_GITHUB_OWNER and DRAGON_GITHUB_REPO are required to release quarantined work in GitHub modes." >&2
+        exit 1
+      fi
+
+      echo "Releasing quarantined workflows before worker start"
+      release_args=(--owner "${GITHUB_OWNER}" --repo "${GITHUB_REPO}" "${base_args[@]}" "${status_args[@]}")
+      if [[ "${SYNC_GITHUB}" == "true" ]]; then
+        release_args+=(--sync-github)
+      fi
+      dotnet /app/Dragon.Backend.Cli.dll github-release-quarantined "${release_args[@]}"
+      ;;
+    *)
+      echo "Releasing quarantined workflows before worker start"
+      dotnet /app/Dragon.Backend.Cli.dll release-quarantined "${base_args[@]}" "${status_args[@]}"
+      ;;
+  esac
+fi
+
 run_worker

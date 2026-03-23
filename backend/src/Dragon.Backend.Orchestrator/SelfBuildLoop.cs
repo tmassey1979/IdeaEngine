@@ -348,6 +348,80 @@ public sealed class SelfBuildLoop
     public IReadOnlyList<GithubIssue> LoadGithubIssues(string owner, string repo) =>
         githubIssueService.ListStoryIssues(owner, repo, RootDirectory);
 
+    public QuarantineReleaseResult ReleaseQuarantinedIssues(
+        IReadOnlyList<GithubIssue> issues,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine",
+        string? githubOwner = null,
+        bool syncValidatedWorkflows = false)
+    {
+        var released = new List<ReleasedQuarantineIssue>();
+        var queuedIssueNumbers = queueStore.ReadAll().Select(job => job.Issue).ToHashSet();
+
+        foreach (var workflow in workflowStateStore.ReadAll().Values.OrderBy(item => item.IssueNumber))
+        {
+            if (!string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (workflow.ActiveRecoveryIssueNumbers?.Any() == true)
+            {
+                continue;
+            }
+
+            if (queuedIssueNumbers.Contains(workflow.IssueNumber))
+            {
+                continue;
+            }
+
+            var issue = issues.FirstOrDefault(candidate => candidate.Number == workflow.IssueNumber);
+            if (issue is null)
+            {
+                continue;
+            }
+
+            var retryAgent = FailurePolicy.InferCurrentStage(workflow);
+            if (string.Equals(retryAgent, "complete", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(retryAgent, "unknown", StringComparison.OrdinalIgnoreCase))
+            {
+                retryAgent = RecommendAgent(issue);
+            }
+
+            var changedPaths = retryAgent.Equals("review", StringComparison.OrdinalIgnoreCase)
+                ? ReadLatestSuccessfulChangedPaths(workflow.IssueNumber)
+                : [];
+
+            var updatedWorkflow = workflowStateStore.ReleaseQuarantineForRetry(
+                workflow.IssueNumber,
+                $"Released from quarantine for retry at {retryAgent} after environment recovery.");
+            var job = SelfBuildJobFactory.CreateRetry(issue, retryAgent, repo, project, changedPaths);
+            queueStore.Enqueue(job);
+            queuedIssueNumbers.Add(workflow.IssueNumber);
+            var githubSync = TrySyncWorkflow(githubOwner, repo, updatedWorkflow, syncValidatedWorkflows);
+
+            released.Add(new ReleasedQuarantineIssue(
+                workflow.IssueNumber,
+                workflow.IssueTitle,
+                retryAgent,
+                job.Action,
+                changedPaths,
+                githubSync));
+        }
+
+        return new QuarantineReleaseResult(released);
+    }
+
+    public QuarantineReleaseResult ReleaseQuarantinedIssuesFromGithub(
+        string owner,
+        string repo,
+        string project = "DragonIdeaEngine",
+        bool syncValidatedWorkflows = false)
+    {
+        var issues = LoadGithubIssues(owner, repo);
+        return ReleaseQuarantinedIssues(issues, repo, project, owner, syncValidatedWorkflows);
+    }
+
     public SelfBuildJob SeedNext(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
     {
         var nextIssue = SelectNextIssue(issues);
@@ -1645,6 +1719,19 @@ public sealed class SelfBuildLoop
         return string.IsNullOrWhiteSpace(latestObserved.Key) ? "unknown" : latestObserved.Key;
     }
 
+    private IReadOnlyList<string> ReadLatestSuccessfulChangedPaths(int issueNumber)
+    {
+        return executionRecordStore.Read(issueNumber)
+            .Where(record =>
+                string.Equals(record.Status, "success", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(record.JobAgent, "review", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(record.JobAgent, "test", StringComparison.OrdinalIgnoreCase) &&
+                record.ChangedPaths.Count > 0)
+            .OrderByDescending(record => record.RecordedAt)
+            .Select(record => record.ChangedPaths)
+            .FirstOrDefault() ?? [];
+    }
+
     private static bool ShouldPrioritizeRecoveryIssue(
         GithubIssue issue,
         IReadOnlyDictionary<int, IssueWorkflowState> workflows)
@@ -2618,3 +2705,18 @@ public sealed record IssueStatusSnapshot(
     string? LatestExecutionNotes,
     DateTimeOffset? LatestExecutionRecordedAt
 );
+
+public sealed record ReleasedQuarantineIssue(
+    int IssueNumber,
+    string IssueTitle,
+    string Agent,
+    string Action,
+    IReadOnlyList<string> ChangedPaths,
+    GithubSyncResult? GithubSync
+);
+
+public sealed record QuarantineReleaseResult(
+    IReadOnlyList<ReleasedQuarantineIssue> ReleasedIssues)
+{
+    public int ReleasedCount => ReleasedIssues.Count;
+}

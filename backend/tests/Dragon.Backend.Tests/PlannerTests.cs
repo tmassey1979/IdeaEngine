@@ -94,6 +94,110 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ExecuteDeveloper_DoesNotDuplicateIdenticalAppendTextOperations()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        var executor = new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty));
+        var operation = new DeveloperOperation(
+            "append_text",
+            "docs/SDK.md",
+            """
+
+            ## Developer Operations
+
+            The developer agent supports bounded `write_file`, `append_text`, and `replace_text` operations for deterministic self-improvement tasks.
+            """
+        );
+        var job = new SelfBuildJob(
+            "developer",
+            "implement",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            999,
+            new SelfBuildJobPayload(
+                "[Story] Dragon Idea Engine Master Codex Addendum: Developer Agent",
+                ["story"],
+                "Developer Agent",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md",
+                [operation]
+            ),
+            new Dictionary<string, string>()
+        );
+
+        var first = executor.Execute(root, job);
+        var second = executor.Execute(root, job);
+
+        var content = File.ReadAllText(Path.Combine(root, "docs", "SDK.md"));
+        Assert.Equal(1, CountOccurrences(content, "## Developer Operations"));
+        Assert.Single(first.ChangedPaths!);
+        Assert.Empty(second.ChangedPaths!);
+    }
+
+    [Fact]
+    public void ReleaseQuarantinedIssues_RequeuesFailedTestStage()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var now = DateTimeOffset.UtcNow;
+
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", now, ["docs/ARCHITECTURE.md"]));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "reviewed", now.AddSeconds(1)));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "failed", "sdk missing", now.AddSeconds(2)));
+        store.OverrideOverallStatus(22, "quarantined", "Quarantined after repeated failed test executions.");
+
+        var loop = new SelfBuildLoop(root);
+        var result = loop.ReleaseQuarantinedIssues(
+            [
+                new GithubIssue(
+                    22,
+                    "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+                    "OPEN",
+                    ["story"],
+                    "",
+                    "Core System Principles",
+                    "codex/sections/01-dragon-idea-engine-master-codex.md")
+            ]);
+
+        Assert.Equal(1, result.ReleasedCount);
+        var released = Assert.Single(result.ReleasedIssues);
+        Assert.Equal("test", released.Agent);
+        Assert.Equal("test_issue", released.Action);
+
+        var queued = Assert.Single(loop.ReadQueue());
+        Assert.Equal("test", queued.Agent);
+        Assert.Equal("test_issue", queued.Action);
+
+        var workflow = store.ReadAll()[22];
+        Assert.Equal("in_progress", workflow.OverallStatus);
+        Assert.DoesNotContain("test", workflow.Stages.Keys, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("Released from quarantine for retry at test", workflow.Note, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseQuarantinedIssues_SkipsIssuesWithActiveRecoveryChildren()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var now = DateTimeOffset.UtcNow;
+
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "failed", "blocked", now));
+        store.OverrideOverallStatus(22, "quarantined", "Quarantined after repeated failed test executions.");
+        store.Update(122, "[Recovery] Issue #22", "developer", new JobExecutionResult("job-recovery", "developer", "failed", "still blocked", now.AddSeconds(1)), 22);
+
+        var loop = new SelfBuildLoop(root);
+        var result = loop.ReleaseQuarantinedIssues(
+            [
+                new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Core System Principles", "OPEN", ["story"]),
+                new GithubIssue(122, "[Recovery] Issue #22: Core System Principles", "OPEN", ["story", "recovery"], SourceIssueNumber: 22)
+            ]);
+
+        Assert.Equal(0, result.ReleasedCount);
+        Assert.Empty(loop.ReadQueue());
+        Assert.Equal("quarantined", store.ReadAll()[22].OverallStatus);
+    }
+
+    [Fact]
     public void CreateDeveloperJob_IncludesPlannedOperations()
     {
         var index = BacklogIndexLoader.Load(FindRepoRoot());
@@ -6176,6 +6280,24 @@ public sealed class PlannerTests
         var path = Path.Combine(Path.GetTempPath(), $"dragon-backend-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private static int CountOccurrences(string value, string needle)
+    {
+        if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(needle))
+        {
+            return 0;
+        }
+
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
+        {
+            count += 1;
+            index += needle.Length;
+        }
+
+        return count;
     }
 
     private static string CreateLocalHttpPrefix()

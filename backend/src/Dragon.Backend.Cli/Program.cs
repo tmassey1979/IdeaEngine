@@ -15,11 +15,13 @@ return command switch
     "serve-status" => RunServeStatus(options),
     "queue" => RunQueue(options),
     "cycle-once" => RunCycleOnce(options),
+    "release-quarantined" => RunReleaseQuarantined(options),
     "run-until-idle" => RunUntilIdle(options),
     "run-polling" => RunPolling(options),
     "run-watch" => RunWatch(options),
     "github-issues" => RunGithubIssues(options),
     "github-cycle-once" => RunGithubCycleOnce(options),
+    "github-release-quarantined" => RunGithubReleaseQuarantined(options),
     "github-run-until-idle" => RunGithubRunUntilIdle(options),
     "github-run-polling" => RunGithubRunPolling(options),
     "github-run-watch" => RunGithubRunWatch(options),
@@ -175,6 +177,17 @@ static int RunCycleOnce(IReadOnlyDictionary<string, string> options)
     return 0;
 }
 
+static int RunReleaseQuarantined(IReadOnlyDictionary<string, string> options)
+{
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
+    var stories = BacklogStoryCatalog.LoadStories(root);
+    var loop = new SelfBuildLoop(root);
+    var result = loop.ReleaseQuarantinedIssues(stories);
+    ExportStatusIfRequested(loop, root, options, "release-quarantined");
+    PrintJson(result);
+    return 0;
+}
+
 static int RunUntilIdle(IReadOnlyDictionary<string, string> options)
 {
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
@@ -307,6 +320,24 @@ static int RunGithubCycleOnce(IReadOnlyDictionary<string, string> options)
     var loop = new SelfBuildLoop(root);
     var result = loop.CycleOnceFromGithub(owner!, repo!, syncValidatedWorkflows: GetBoolean(options, "sync-github"));
     ExportStatusIfRequested(loop, root, options, "github-cycle-once");
+    PrintJson(result);
+    return 0;
+}
+
+static int RunGithubReleaseQuarantined(IReadOnlyDictionary<string, string> options)
+{
+    if (!TryGetRepoOptions(options, out var owner, out var repo))
+    {
+        return 1;
+    }
+
+    var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
+    var loop = new SelfBuildLoop(root);
+    var result = loop.ReleaseQuarantinedIssuesFromGithub(
+        owner!,
+        repo!,
+        syncValidatedWorkflows: GetBoolean(options, "sync-github"));
+    ExportStatusIfRequested(loop, root, options, "github-release-quarantined");
     PrintJson(result);
     return 0;
 }
@@ -682,11 +713,13 @@ static int ShowHelp()
           serve-status [--root <repo-root>] [--prefix http://127.0.0.1:5078/] [--snapshot-file <path>]
           queue [--root <repo-root>]
           cycle-once [--root <repo-root>] [--status-out <path>]
+          release-quarantined [--root <repo-root>] [--status-out <path>]
           run-until-idle [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           run-polling [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           run-watch [--poll-seconds 30] [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           github-issues --owner <owner> --repo <repo> [--root <repo-root>]
           github-cycle-once --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>] [--status-out <path>]
+          github-release-quarantined --owner <owner> --repo <repo> [--sync-github] [--root <repo-root>] [--status-out <path>]
           github-run-until-idle --owner <owner> --repo <repo> [--sync-github] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           github-run-polling --owner <owner> --repo <repo> [--sync-github] [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]
           github-run-watch --owner <owner> --repo <repo> [--sync-github] [--poll-seconds 30] [--max-passes 10] [--idle-passes 2] [--max-cycles 100] [--root <repo-root>] [--status-out <path>]

@@ -11,3 +11,7 @@ This document tracks the shared backend helper surface that supports self-build 
 - GitHub synchronization helpers for heartbeat, quarantine, recovery, and completion flows
 
 Near-term scope stays local-first so the backend can keep iterating on self-build behavior before more distributed infrastructure is added.
+
+## Developer Operations
+
+The developer agent supports bounded `write_file`, `append_text`, and `replace_text` operations for deterministic self-improvement tasks.

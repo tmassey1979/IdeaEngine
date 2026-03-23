@@ -76,7 +76,7 @@ public static class FailurePolicy
         );
     }
 
-    private static string InferCurrentStage(IssueWorkflowState workflow)
+    public static string InferCurrentStage(IssueWorkflowState workflow)
     {
         if (workflow.Stages.TryGetValue("developer", out var developer) &&
             string.Equals(developer.Status, "failed", StringComparison.OrdinalIgnoreCase))

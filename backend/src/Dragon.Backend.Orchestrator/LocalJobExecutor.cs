@@ -114,9 +114,17 @@ public sealed class LocalJobExecutor
             {
                 case "write_file":
                     File.WriteAllText(fullPath, operation.Content ?? string.Empty);
+                    touchedPaths.Add(operation.Path);
                     break;
                 case "append_text":
-                    File.AppendAllText(fullPath, operation.Content ?? string.Empty);
+                    var appendContent = operation.Content ?? string.Empty;
+                    var existingContent = File.Exists(fullPath) ? File.ReadAllText(fullPath) : string.Empty;
+                    if (string.IsNullOrEmpty(appendContent) || !existingContent.Contains(appendContent, StringComparison.Ordinal))
+                    {
+                        File.AppendAllText(fullPath, appendContent);
+                        touchedPaths.Add(operation.Path);
+                    }
+
                     break;
                 case "replace_text":
                     var source = File.Exists(fullPath) ? File.ReadAllText(fullPath) : string.Empty;
@@ -126,12 +134,11 @@ public sealed class LocalJobExecutor
                     }
 
                     File.WriteAllText(fullPath, source.Replace(operation.SearchText, operation.ReplaceWith ?? string.Empty, StringComparison.Ordinal));
+                    touchedPaths.Add(operation.Path);
                     break;
                 default:
                     throw new InvalidOperationException($"Unsupported developer operation: {operation.Type}");
             }
-
-            touchedPaths.Add(operation.Path);
         }
 
         return touchedPaths;
