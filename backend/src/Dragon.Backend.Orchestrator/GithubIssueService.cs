@@ -346,6 +346,7 @@ public sealed class GithubIssueService
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
                 $"- worker rollup delta: {DescribeGlobalWorkerRollupDelta(rootDirectory)}",
                 $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
+                $"- worker queue compared at: {DescribeGlobalQueueComparedAt(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -545,6 +546,7 @@ public sealed class GithubIssueService
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
                 $"- worker rollup delta: {DescribeGlobalWorkerRollupDelta(rootDirectory)}",
                 $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
+                $"- worker queue compared at: {DescribeGlobalQueueComparedAt(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -1305,6 +1307,34 @@ public sealed class GithubIssueService
             return parts.Count == 0
                 ? "not recorded"
                 : string.Join(" · ", parts);
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalQueueComparedAt(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var comparedAt = root.TryGetProperty("queueComparedAt", out var comparedAtProperty) &&
+                comparedAtProperty.ValueKind == JsonValueKind.String &&
+                comparedAtProperty.TryGetDateTimeOffset(out var parsedComparedAt)
+                ? parsedComparedAt
+                : (DateTimeOffset?)null;
+
+            return comparedAt is null
+                ? "not recorded"
+                : comparedAt.Value.ToString("O");
         }
         catch (JsonException)
         {
