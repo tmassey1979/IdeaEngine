@@ -178,6 +178,91 @@ public sealed class SelfBuildLoop
         return snapshot;
     }
 
+    public SelfBuildJob? EnqueuePersistentInterventionEscalationFollowUp(
+        StatusSnapshot snapshot,
+        int minimumCriticalStreak = 3,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine")
+    {
+        if (snapshot.InterventionTarget is null ||
+            !string.Equals(snapshot.InterventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
+            snapshot.InterventionEscalationStreak < minimumCriticalStreak)
+        {
+            return null;
+        }
+
+        var issueNumber = snapshot.InterventionTarget.IssueNumber ??
+            snapshot.InterventionTarget.RecoveryIssueNumber ??
+            snapshot.InterventionTarget.PendingGithubSyncIssueNumber;
+        if (issueNumber is null)
+        {
+            return null;
+        }
+
+        var signature = BuildInterventionTargetSignature(snapshot.InterventionTarget);
+        if (queueStore.ReadAll().Any(job =>
+                string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(job.Metadata.GetValueOrDefault("interventionSignature"), signature, StringComparison.OrdinalIgnoreCase)))
+        {
+            return null;
+        }
+
+        var workflowTitle = workflowStateStore.ReadAll().TryGetValue(issueNumber.Value, out var workflow)
+            ? workflow.IssueTitle
+            : snapshot.InterventionTarget.Summary;
+        var targetArtifact = snapshot.InterventionTarget.TargetArtifact;
+        var targetOutcome = string.IsNullOrWhiteSpace(snapshot.InterventionTarget.TargetOutcome)
+            ? "Summarize the persistent critical intervention target and the next operator action."
+            : snapshot.InterventionTarget.TargetOutcome;
+        var agent = InferOperatorSummaryAgent(targetArtifact ?? string.Empty);
+        var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["requestedBy"] = "system",
+            ["source"] = "dragon-orchestrator-dotnet",
+            ["requestedPriority"] = "high",
+            ["requestedReason"] = "Persistent critical intervention target needs explicit operator summary.",
+            ["interventionEscalation"] = "true",
+            ["interventionSignature"] = signature,
+            ["interventionKind"] = snapshot.InterventionTarget.Kind,
+            ["interventionEscalationLevel"] = snapshot.InterventionTarget.Escalation ?? "critical",
+            ["interventionEscalationStreak"] = snapshot.InterventionEscalationStreak.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["workType"] = "operator-escalation"
+        };
+
+        if (!string.IsNullOrWhiteSpace(targetArtifact))
+        {
+            metadata["targetArtifact"] = targetArtifact;
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetOutcome))
+        {
+            metadata["targetOutcome"] = targetOutcome;
+        }
+
+        if (snapshot.InterventionTarget.ObservedAt is not null)
+        {
+            metadata["interventionObservedAt"] = snapshot.InterventionTarget.ObservedAt.Value.ToString("O");
+        }
+
+        var job = new SelfBuildJob(
+            agent,
+            "summarize_issue",
+            repo,
+            project,
+            issueNumber.Value,
+            new SelfBuildJobPayload(
+                workflowTitle,
+                ["story"],
+                workflowTitle,
+                null,
+                null),
+            metadata);
+
+        queueStore.Enqueue(job);
+        return job;
+    }
+
     private static void WriteTextAtomically(string outputPath, string contents)
     {
         var tempPath = $"{outputPath}.{Guid.NewGuid():N}.tmp";
@@ -1938,6 +2023,16 @@ public sealed class SelfBuildLoop
             _ => null
         };
     }
+
+    private static string BuildInterventionTargetSignature(InterventionTargetSnapshot interventionTarget) =>
+        string.Join(
+            "|",
+            interventionTarget.Kind,
+            interventionTarget.IssueNumber?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+            interventionTarget.RecoveryIssueNumber?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+            interventionTarget.PendingGithubSyncIssueNumber?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+            interventionTarget.TargetArtifact ?? string.Empty,
+            interventionTarget.TargetOutcome ?? string.Empty);
 
     private static string? FormatLeadQuarantineAge(LeadQuarantineSnapshot? leadQuarantine)
     {

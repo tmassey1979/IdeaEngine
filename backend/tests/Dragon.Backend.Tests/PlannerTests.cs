@@ -1876,6 +1876,135 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void EnqueuePersistentInterventionEscalationFollowUp_QueuesSingleOperatorSummaryForCriticalTarget()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var snapshot = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "github-run-watch",
+            "github-run-watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            3,
+            10,
+            "healthy",
+            "repairing drift",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("repairing", "repairing drift"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+                22,
+                500,
+                500,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "Summarize the persistent critical intervention target and the next operator action.",
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+            3);
+
+        var job = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+
+        Assert.NotNull(job);
+        Assert.Equal(22, job!.Issue);
+        Assert.Equal("summarize_issue", job.Action);
+        Assert.Equal("feedback", job.Agent);
+        Assert.Equal("true", job.Metadata["interventionEscalation"]);
+        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.", job.Metadata["interventionSignature"]);
+        Assert.Equal("3", job.Metadata["interventionEscalationStreak"]);
+        Assert.Equal("operator-escalation", job.Metadata["workType"]);
+        Assert.Single(loop.ReadQueue());
+    }
+
+    [Fact]
+    public void EnqueuePersistentInterventionEscalationFollowUp_DoesNotDuplicateExistingEscalationSummary()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var snapshot = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "github-run-watch",
+            "github-run-watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            3,
+            10,
+            "healthy",
+            "repairing drift",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("repairing", "repairing drift"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+                22,
+                500,
+                500,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "Summarize the persistent critical intervention target and the next operator action.",
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+            4);
+
+        var first = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+        var second = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+
+        Assert.NotNull(first);
+        Assert.Null(second);
+        Assert.Single(loop.ReadQueue());
+    }
+
+    [Fact]
     public void WriteStatus_IncludesLatestPassSummaryWhenProvided()
     {
         var root = CreateTempRoot();

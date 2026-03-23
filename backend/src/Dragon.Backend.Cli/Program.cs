@@ -514,7 +514,7 @@ static void ExportStartupStatusIfRequested(
     {
         Source = source
     };
-    WriteStatusSnapshot(resolvedOutputPath, snapshot);
+    WriteStatusSnapshot(loop, resolvedOutputPath, snapshot);
 }
 
 static Action<int, RunUntilIdleResult>? CreateStatusExporter(
@@ -562,7 +562,7 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
         {
             Source = source
         };
-        WriteStatusSnapshot(resolvedOutputPath, snapshot);
+        WriteStatusSnapshot(loop, resolvedOutputPath, snapshot);
     };
 }
 
@@ -611,11 +611,11 @@ static Action<int, RunUntilIdleResult, LatestGithubReplaySnapshot?>? CreateGithu
         {
             Source = source
         };
-        WriteStatusSnapshot(resolvedOutputPath, snapshot);
+        WriteStatusSnapshot(loop, resolvedOutputPath, snapshot);
     };
 }
 
-static void WriteStatusSnapshot(string outputPath, StatusSnapshot snapshot)
+static void WriteStatusSnapshot(SelfBuildLoop loop, string outputPath, StatusSnapshot snapshot)
 {
     StatusSnapshot? previousSnapshot = null;
     if (File.Exists(outputPath))
@@ -629,6 +629,7 @@ static void WriteStatusSnapshot(string outputPath, StatusSnapshot snapshot)
     }
 
     snapshot = StatusSnapshotTrend.Apply(snapshot, previousSnapshot);
+    loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
 
     var directory = Path.GetDirectoryName(outputPath);
     if (!string.IsNullOrWhiteSpace(directory))
