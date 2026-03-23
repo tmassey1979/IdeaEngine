@@ -568,6 +568,32 @@ function latestPassCycleState(snapshot) {
   return { label, state: "active" };
 }
 
+function latestPassReplayState(snapshot) {
+  const latestPass = snapshot.latestPass;
+  if (!latestPass) {
+    return { label: "No replay", state: "unknown" };
+  }
+
+  if ((latestPass.githubReplayAttemptedCount ?? 0) === 0) {
+    return { label: "No replay", state: "idle" };
+  }
+
+  const attempted = latestPass.githubReplayAttemptedCount ?? 0;
+  const updated = latestPass.githubReplayUpdatedCount ?? 0;
+  const failed = latestPass.githubReplayFailedCount ?? 0;
+  const label = `Replay ${updated}/${attempted}`;
+
+  if (failed > 0 && updated > 0) {
+    return { label, state: "partial" };
+  }
+
+  if (failed > 0) {
+    return { label, state: "failed" };
+  }
+
+  return { label, state: "recovered" };
+}
+
 function renderIssueCard(issue) {
   const workflowNote = issue.workflowNote ?? "none";
   const summary = issue.latestExecutionSummary ?? "none";
@@ -668,6 +694,7 @@ function renderStatusSnapshot(snapshot) {
   const latestPassNumber = document.getElementById("status-latest-pass-number");
   const latestPassCycles = document.getElementById("status-latest-pass-cycles");
   const latestPassWork = document.getElementById("status-latest-pass-work");
+  const latestPassReplay = document.getElementById("status-latest-pass-replay");
   const latestPassMixNode = document.getElementById("status-latest-pass-mix");
   const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
   const pendingGithubGroup = document.getElementById("status-pending-github-group");
@@ -763,6 +790,9 @@ function renderStatusSnapshot(snapshot) {
       ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume, replay ${snapshot.latestPass.githubReplayUpdatedCount}/${snapshot.latestPass.githubReplayAttemptedCount}`
       : `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 seed, 0 consume";
+  const latestPassReplayValue = latestPassReplayState(snapshot);
+  latestPassReplay.textContent = latestPassReplayValue.label;
+  latestPassReplay.className = `pass-replay ${latestPassReplayValue.state}`;
   const latestPassMixLabel = latestPassMix(snapshot);
   latestPassMixNode.textContent = latestPassMixLabel;
   latestPassMixNode.className = `pass-mix ${latestPassMixState(latestPassMixLabel)}`;
@@ -887,6 +917,7 @@ async function bootStatusMock() {
     const latestPassNumber = document.getElementById("status-latest-pass-number");
     const latestPassCycles = document.getElementById("status-latest-pass-cycles");
     const latestPassWork = document.getElementById("status-latest-pass-work");
+    const latestPassReplay = document.getElementById("status-latest-pass-replay");
     const latestPassMixNode = document.getElementById("status-latest-pass-mix");
     const latestPassOutcomeNode = document.getElementById("status-latest-pass-outcome");
     const pendingGithubSummary = document.getElementById("status-pending-github-summary");
@@ -962,6 +993,8 @@ async function bootStatusMock() {
     latestPassCycles.textContent = "Unavailable";
     latestPassCycles.className = "cycle-mix unavailable";
     latestPassWork.textContent = "Unavailable";
+    latestPassReplay.textContent = "Unavailable";
+    latestPassReplay.className = "pass-replay unavailable";
     latestPassMixNode.textContent = "Unavailable";
     latestPassMixNode.className = "pass-mix unavailable";
     latestPassOutcomeNode.textContent = "Could not load pass summary";
