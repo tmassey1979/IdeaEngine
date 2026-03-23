@@ -41,6 +41,17 @@ public static class FailurePolicy
             return new FailureDisposition(false, null);
         }
 
+        var repeatedProviderPressureFailures = repeatedAgentFailures.All(record =>
+            record.Summary.StartsWith("Transient model provider failure", StringComparison.OrdinalIgnoreCase));
+
+        if (repeatedProviderPressureFailures)
+        {
+            return new FailureDisposition(
+                true,
+                $"Quarantined after {repeatedAgentFailures.Count} repeated failed {latestFailure.JobAgent} executions caused by transient model provider pressure. Latest failure: {latestFailure.Summary}"
+            );
+        }
+
         return new FailureDisposition(
             true,
             $"Quarantined after {repeatedAgentFailures.Count} repeated failed {latestFailure.JobAgent} executions. Latest failure: {latestFailure.JobAgent} / {latestFailure.JobId}."

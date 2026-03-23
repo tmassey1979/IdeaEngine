@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using Dragon.Backend.Contracts;
@@ -64,7 +65,10 @@ public sealed class OpenAiResponsesProvider : IAgentModelProvider
 
         using var response = await httpClient.SendAsync(message, cancellationToken);
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw CreateProviderException(response, responseJson);
+        }
 
         return ParseResponse(responseJson, request.Model);
     }
@@ -143,5 +147,40 @@ public sealed class OpenAiResponsesProvider : IAgentModelProvider
         }
 
         return string.Empty;
+    }
+
+    private static AgentModelProviderException CreateProviderException(HttpResponseMessage response, string responseBody)
+    {
+        var retryAfter = response.Headers.RetryAfter?.Delta;
+        var reason = string.IsNullOrWhiteSpace(response.ReasonPhrase)
+            ? response.StatusCode.ToString()
+            : response.ReasonPhrase;
+        var details = string.IsNullOrWhiteSpace(responseBody)
+            ? null
+            : responseBody.Trim();
+        var message = details is null
+            ? $"OpenAI Responses request failed with HTTP {(int)response.StatusCode} ({reason})."
+            : $"OpenAI Responses request failed with HTTP {(int)response.StatusCode} ({reason}): {details}";
+
+        return new AgentModelProviderException(
+            "openai-responses",
+            message,
+            IsTransientStatusCode(response.StatusCode),
+            response.StatusCode,
+            retryAfter);
+    }
+
+    private static bool IsTransientStatusCode(HttpStatusCode statusCode)
+    {
+        return statusCode switch
+        {
+            HttpStatusCode.RequestTimeout => true,
+            HttpStatusCode.TooManyRequests => true,
+            HttpStatusCode.BadGateway => true,
+            HttpStatusCode.ServiceUnavailable => true,
+            HttpStatusCode.GatewayTimeout => true,
+            var code when code >= HttpStatusCode.InternalServerError => true,
+            _ => false
+        };
     }
 }

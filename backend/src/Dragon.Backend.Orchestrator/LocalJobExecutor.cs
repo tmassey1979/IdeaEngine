@@ -66,7 +66,7 @@ public sealed class LocalJobExecutor
         }
         catch (Exception exception)
         {
-            return new JobExecutionResult(jobId, job.Agent, "failed", exception.Message, DateTimeOffset.UtcNow);
+            return new JobExecutionResult(jobId, job.Agent, "failed", FormatFailureSummary(exception), DateTimeOffset.UtcNow);
         }
     }
 
@@ -355,6 +355,7 @@ public sealed class LocalJobExecutor
     {
         return exception switch
         {
+            AgentModelProviderException providerException => providerException.IsTransient,
             HttpRequestException httpRequestException => IsTransientStatusCode(httpRequestException.StatusCode),
             TaskCanceledException => true,
             TimeoutException => true,
@@ -374,6 +375,45 @@ public sealed class LocalJobExecutor
             var code when code is >= HttpStatusCode.InternalServerError => true,
             _ => false
         };
+    }
+
+    private static string FormatFailureSummary(Exception exception)
+    {
+        if (exception is AgentModelProviderException providerException)
+        {
+            var status = providerException.StatusCode is null
+                ? null
+                : $"HTTP {(int)providerException.StatusCode.Value}";
+            var retryAfter = providerException.RetryAfter is null
+                ? null
+                : $"retry after {FormatRetryAfter(providerException.RetryAfter.Value)}";
+            var qualifiers = new[] { status, retryAfter }
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToArray();
+            var suffix = qualifiers.Length == 0 ? string.Empty : $" ({string.Join(", ", qualifiers)})";
+            var prefix = providerException.IsTransient
+                ? "Transient model provider failure"
+                : "Model provider failure";
+
+            return $"{prefix} from {providerException.Provider}{suffix}: {providerException.Message}";
+        }
+
+        return exception.Message;
+    }
+
+    private static string FormatRetryAfter(TimeSpan retryAfter)
+    {
+        if (retryAfter.TotalMinutes >= 1 && retryAfter.Seconds == 0)
+        {
+            return $"{Math.Floor(retryAfter.TotalMinutes)}m";
+        }
+
+        if (retryAfter.TotalSeconds >= 1)
+        {
+            return $"{Math.Ceiling(retryAfter.TotalSeconds)}s";
+        }
+
+        return "0s";
     }
 
     private sealed record ExecutionOutcome(

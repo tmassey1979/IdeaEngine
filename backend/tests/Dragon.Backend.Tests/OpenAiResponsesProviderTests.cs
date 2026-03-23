@@ -1,5 +1,8 @@
 using Dragon.Backend.Contracts;
 using Dragon.Backend.Orchestrator;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace Dragon.Backend.Tests;
 
@@ -93,5 +96,49 @@ public sealed class OpenAiResponsesProviderTests
         var response = OpenAiResponsesProvider.ParseResponse(json, "gpt-5");
 
         Assert.Equal("Recovered content from output array.", response.OutputText);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ThrowsProviderException_WithRetryAfterMetadata()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("""{"error":{"message":"Rate limit reached."}}""")
+            };
+            response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(45));
+            return response;
+        });
+        var httpClient = new HttpClient(handler);
+        var provider = new OpenAiResponsesProvider(new OpenAiResponsesOptions("test-key"), httpClient);
+        var request = new AgentModelRequest(
+            "architect",
+            "implement_issue",
+            "gpt-5",
+            "You are the architect agent.",
+            [new AgentModelMessage("user", "Implement story #22.")]);
+
+        var exception = await Assert.ThrowsAsync<AgentModelProviderException>(() => provider.GenerateAsync(request));
+
+        Assert.Equal("openai-responses", exception.Provider);
+        Assert.True(exception.IsTransient);
+        Assert.Equal(HttpStatusCode.TooManyRequests, exception.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(45), exception.RetryAfter);
+    }
+
+    private sealed class StubHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> handler;
+
+        public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler)
+        {
+            this.handler = handler;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(handler(request));
+        }
     }
 }

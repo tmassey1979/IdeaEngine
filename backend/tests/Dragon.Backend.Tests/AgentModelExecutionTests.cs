@@ -1978,6 +1978,38 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_FormatsTransientProviderFailures_WithProviderMetadata()
+    {
+        var issue = new GithubIssue(
+            505,
+            "[Story] Dragon Idea Engine Master Codex: Architect Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "architect", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FailingThenSuccessfulAgentModelProvider(
+            failuresBeforeSuccess: 3,
+            new AgentModelProviderException(
+                "openai-responses",
+                "OpenAI Responses request failed with HTTP 429 (Too Many Requests).",
+                true,
+                HttpStatusCode.TooManyRequests,
+                TimeSpan.FromSeconds(30)));
+        var executor = new LocalJobExecutor(
+            (_, _, _) => new CommandResult(0, "ok", string.Empty),
+            provider,
+            new ModelExecutionRetryOptions(MaxAttempts: 3, BaseDelayMilliseconds: 0));
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("failed", result.Status);
+        Assert.Contains("Transient model provider failure from openai-responses", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("HTTP 429", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("retry after 30s", result.Summary, StringComparison.Ordinal);
+        Assert.Equal(3, provider.AttemptCount);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReturnsNullForPlainText()
     {
         var parsed = AgentStructuredResultParser.Parse("plain text result");

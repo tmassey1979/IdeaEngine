@@ -6046,6 +6046,24 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void FailurePolicy_IdentifiesTransientModelProviderPressure()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var records = new[]
+        {
+            new ExecutionRecord(22, "Core", "architect", "implement_issue", "job-1", "failed", "Transient model provider failure from openai-responses (HTTP 429, retry after 30s): OpenAI Responses request failed with HTTP 429 (Too Many Requests).", now.AddMinutes(-2), [], []),
+            new ExecutionRecord(22, "Core", "architect", "implement_issue", "job-2", "failed", "Transient model provider failure from openai-responses (HTTP 429, retry after 30s): OpenAI Responses request failed with HTTP 429 (Too Many Requests).", now.AddMinutes(-1), [], []),
+            new ExecutionRecord(22, "Core", "architect", "implement_issue", "job-3", "failed", "Transient model provider failure from openai-responses (HTTP 429, retry after 30s): OpenAI Responses request failed with HTTP 429 (Too Many Requests).", now, [], [])
+        };
+
+        var disposition = FailurePolicy.Evaluate(records);
+
+        Assert.True(disposition.Quarantined);
+        Assert.Contains("transient model provider pressure", disposition.Reason, StringComparison.Ordinal);
+        Assert.Contains("HTTP 429", disposition.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FailurePolicy_QuarantinesLongStalledWorkflow()
     {
         var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
