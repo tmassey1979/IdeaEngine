@@ -602,9 +602,38 @@ public sealed class PlannerTests
         Assert.Equal(22, status.LeadJob!.IssueNumber);
         Assert.True(status.LeadJob.Delayed);
         Assert.Equal(retryNotBefore, status.LeadJob.RetryNotBeforeUtc);
+        Assert.Equal("attention", status.Health);
+        Assert.Contains("Provider retry remains delayed", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
         Assert.Equal($"Next delayed provider retry unlocks at {retryNotBefore:O}.", status.DelayedRetrySummary);
         Assert.Equal($"Waiting for provider retry window on issue #22 until {retryNotBefore:O}.", status.WorkerActivity);
+    }
+
+    [Fact]
+    public void ReadStatus_TreatsShortDelayedProviderRetryAsHealthy()
+    {
+        var root = CreateTempRoot();
+        var retryNotBefore = DateTimeOffset.UtcNow.AddMinutes(2);
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Architect Agent", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = retryNotBefore.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                ["workType"] = "story"
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.Equal("healthy", status.Health);
+        Assert.Contains("Waiting for the next provider retry window", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
     }
 
     [Fact]

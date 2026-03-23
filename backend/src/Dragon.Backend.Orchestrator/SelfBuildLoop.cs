@@ -6,6 +6,7 @@ namespace Dragon.Backend.Orchestrator;
 public sealed class SelfBuildLoop
 {
     private const int MaxTransientProviderRequeuesPerJob = 2;
+    private static readonly TimeSpan LongDelayedRetryAttentionThreshold = TimeSpan.FromMinutes(15);
 
     private static readonly JsonSerializerOptions StatusSerializerOptions = new()
     {
@@ -115,8 +116,8 @@ public sealed class SelfBuildLoop
                 ReadRetryNotBeforeUtc(leadJob),
                 readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
-        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget);
+        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, DateTimeOffset.UtcNow);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, DateTimeOffset.UtcNow);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
@@ -1935,7 +1936,9 @@ public sealed class SelfBuildLoop
         IReadOnlyList<IssueStatusSnapshot> issues,
         LeadQuarantineSnapshot? leadQuarantine,
         LatestGithubReplaySnapshot? latestGithubReplay,
-        InterventionTargetSnapshot? interventionTarget)
+        InterventionTargetSnapshot? interventionTarget,
+        DateTimeOffset? nextDelayedRetryAt,
+        DateTimeOffset now)
     {
         if (leadQuarantine is not null)
         {
@@ -1957,6 +1960,13 @@ public sealed class SelfBuildLoop
             string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase))
         {
             return "attention";
+        }
+
+        if (nextDelayedRetryAt is not null)
+        {
+            return nextDelayedRetryAt.Value - now >= LongDelayedRetryAttentionThreshold
+                ? "attention"
+                : "healthy";
         }
 
         if (interventionTarget is not null &&
@@ -1984,10 +1994,15 @@ public sealed class SelfBuildLoop
         string health,
         LeadQuarantineSnapshot? leadQuarantine,
         LatestGithubReplaySnapshot? latestGithubReplay,
-        InterventionTargetSnapshot? interventionTarget)
+        InterventionTargetSnapshot? interventionTarget,
+        DateTimeOffset? nextDelayedRetryAt,
+        DateTimeOffset now)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
         var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
+        var delayedRetryAge = nextDelayedRetryAt is null
+            ? (TimeSpan?)null
+            : nextDelayedRetryAt.Value - now;
 
         return health switch
         {
@@ -2000,10 +2015,14 @@ public sealed class SelfBuildLoop
                 interventionTarget.Acknowledged &&
                 string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) =>
                 $"Critical intervention target remains acknowledged but unresolved. {interventionTarget.Summary}",
+            "attention" when delayedRetryAge is not null =>
+                $"Provider retry remains delayed for {FormatElapsed(delayedRetryAge.Value)} before the next execution window.",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
             "healthy" when queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay) =>
                 $"{latestGithubReplay!.AttemptedCount} GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
+            "healthy" when delayedRetryAge is not null =>
+                $"Waiting for the next provider retry window in {FormatElapsed(delayedRetryAge.Value)}.",
             "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
             _ => "No queued work and no active issue workflows."
         };
