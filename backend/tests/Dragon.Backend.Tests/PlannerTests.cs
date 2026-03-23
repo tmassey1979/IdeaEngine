@@ -252,6 +252,12 @@ public sealed class PlannerTests
         Assert.Equal("high", status.LeadJob.Priority);
         Assert.True(status.LeadJob.Blocking);
         Assert.Equal("story", status.LeadJob.WorkType);
+        Assert.NotNull(status.InterventionTarget);
+        Assert.Equal("implementation", status.InterventionTarget!.Kind);
+        Assert.Equal(500, status.InterventionTarget.IssueNumber);
+        Assert.Equal("docs/generated/provider-notes.md", status.InterventionTarget.TargetArtifact);
+        Assert.Equal("refresh provider notes summary", status.InterventionTarget.TargetOutcome);
+        Assert.Contains("refresh provider notes summary", status.InterventionTarget.Summary, StringComparison.Ordinal);
         var issue = Assert.Single(status.Issues);
         Assert.Equal(500, issue.IssueNumber);
         Assert.Equal(1, issue.QueuedJobCount);
@@ -348,6 +354,11 @@ public sealed class PlannerTests
         Assert.Equal("[Recovery] Provider Notes", status.LeadQuarantine.RecoveryIssueTitle);
         Assert.Equal("recovery-active", status.LeadQuarantine.State);
         Assert.Contains("Recovery issue #500", status.LeadQuarantine.Summary, StringComparison.Ordinal);
+        Assert.NotNull(status.InterventionTarget);
+        Assert.Equal("recovery-work", status.InterventionTarget!.Kind);
+        Assert.Equal(22, status.InterventionTarget.IssueNumber);
+        Assert.Equal(500, status.InterventionTarget.RecoveryIssueNumber);
+        Assert.Contains("Recovery issue #500", status.InterventionTarget.Summary, StringComparison.Ordinal);
         Assert.Equal("blocked", status.RecentLoopSignal.Mode);
         Assert.Contains("issue #22 via recovery #500", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
@@ -404,6 +415,12 @@ public sealed class PlannerTests
         Assert.NotNull(status.LeadQuarantine);
         Assert.Equal("sync-drift", status.LeadQuarantine!.State);
         Assert.Contains("GitHub updates for recovery #500", status.LeadQuarantine.Summary, StringComparison.Ordinal);
+        Assert.NotNull(status.InterventionTarget);
+        Assert.Equal("github-replay-drift", status.InterventionTarget!.Kind);
+        Assert.Equal(22, status.InterventionTarget.IssueNumber);
+        Assert.Equal(500, status.InterventionTarget.RecoveryIssueNumber);
+        Assert.Equal(500, status.InterventionTarget.PendingGithubSyncIssueNumber);
+        Assert.Contains("GitHub updates for recovery #500", status.InterventionTarget.Summary, StringComparison.Ordinal);
         Assert.Contains("old", status.AttentionSummary, StringComparison.Ordinal);
         Assert.Contains("oldest writeback drift", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
@@ -852,6 +869,10 @@ public sealed class PlannerTests
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncSummary").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("latestGithubReplay").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSync").GetArrayLength());
+        Assert.Equal("implementation", rootElement.GetProperty("interventionTarget").GetProperty("kind").GetString());
+        Assert.Equal(610, rootElement.GetProperty("interventionTarget").GetProperty("issueNumber").GetInt32());
+        Assert.Equal("ui/dragon-ui/sample-status.json", rootElement.GetProperty("interventionTarget").GetProperty("targetArtifact").GetString());
+        Assert.Equal("refresh dashboard status snapshot", rootElement.GetProperty("interventionTarget").GetProperty("targetOutcome").GetString());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
         Assert.Equal(610, issueElement.GetProperty("issueNumber").GetInt32());

@@ -154,6 +154,19 @@ function leadQuarantineUrgency(snapshot) {
   return "normal";
 }
 
+function interventionTargetUrgency(snapshot) {
+  const kind = snapshot.interventionTarget?.kind;
+  if (kind === "github-replay-drift") {
+    return "alert";
+  }
+
+  if (kind === "recovery-work") {
+    return "caution";
+  }
+
+  return "normal";
+}
+
 function formatDelta(value) {
   if (value > 0) {
     return `+${value}`;
@@ -365,11 +378,11 @@ function workerNote(snapshot) {
   const pendingGithubSyncLabel = snapshot.pendingGithubSyncSummary
     ? ` ${snapshot.pendingGithubSyncSummary}`
     : "";
+  const interventionTargetLabel = snapshot.interventionTarget && snapshot.interventionTarget.kind !== "idle"
+    ? ` Lead intervention target: ${snapshot.interventionTarget.summary}`
+    : "";
   const leadQuarantineAgeLabel = snapshot.leadQuarantine?.oldestPendingGithubSyncAt
     ? ` Oldest recovery writeback drift: ${ageLabel(snapshot.leadQuarantine.oldestPendingGithubSyncAt)}.`
-    : "";
-  const leadQuarantinePriorityLabel = snapshot.leadQuarantine?.state === "sync-drift"
-    ? ` Lead intervention target: recovery writeback drift on issue #${snapshot.leadQuarantine.issueNumber}.`
     : "";
 
   if (state === "waiting") {
@@ -377,8 +390,8 @@ function workerNote(snapshot) {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -387,8 +400,8 @@ function workerNote(snapshot) {
       label: "Running",
       state: "running",
       text: cadenceLabel
-        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`
-        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -396,7 +409,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${leadQuarantinePriorityLabel}${leadQuarantineAgeLabel}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -719,6 +732,12 @@ function renderStatusSnapshot(snapshot) {
   const leadJobTarget = document.getElementById("status-lead-job-target");
   const leadJobOutcome = document.getElementById("status-lead-job-outcome");
   const leadJobPriority = document.getElementById("status-lead-job-priority");
+  const interventionTargetGroup = document.getElementById("status-intervention-target-group");
+  const interventionTargetIssue = document.getElementById("status-intervention-target-issue");
+  const interventionTargetKind = document.getElementById("status-intervention-target-kind");
+  const interventionTargetRecovery = document.getElementById("status-intervention-target-recovery");
+  const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
+  const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
   const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
   const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
   const leadQuarantineState = document.getElementById("status-lead-quarantine-state");
@@ -787,9 +806,11 @@ function renderStatusSnapshot(snapshot) {
   compareNote.className = `status-compare-note ${snapshot.comparisonMode ?? "backend"}`;
   const workerNoteState = workerNote(snapshot);
   const leadQuarantineUrgencyState = leadQuarantineUrgency(snapshot);
+  const interventionTargetUrgencyState = interventionTargetUrgency(snapshot);
   workerNoteLabel.textContent = workerNoteState.label;
   workerNoteText.textContent = workerNoteState.text;
-  workerNoteNode.className = `status-worker-note ${workerNoteState.state}${leadQuarantineUrgencyState !== "normal" ? ` drift-${leadQuarantineUrgencyState}` : ""}`;
+  const workerUrgencyState = interventionTargetUrgencyState !== "normal" ? interventionTargetUrgencyState : leadQuarantineUrgencyState;
+  workerNoteNode.className = `status-worker-note ${workerNoteState.state}${workerUrgencyState !== "normal" ? ` drift-${workerUrgencyState}` : ""}`;
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
@@ -815,6 +836,20 @@ function renderStatusSnapshot(snapshot) {
   leadJobOutcome.textContent = snapshot.leadJob?.targetOutcome ?? "none";
   leadJobPriority.textContent = snapshot.leadJob?.priority ?? "normal";
   leadJobGroup.className = "status-activity";
+  interventionTargetIssue.textContent = snapshot.interventionTarget?.issueNumber
+    ? `#${snapshot.interventionTarget.issueNumber}`
+    : snapshot.interventionTarget?.kind === "idle"
+      ? "No immediate target"
+      : "No issue target";
+  interventionTargetKind.textContent = snapshot.interventionTarget?.kind ?? "idle";
+  interventionTargetRecovery.textContent = snapshot.interventionTarget?.recoveryIssueNumber
+    ? `#${snapshot.interventionTarget.recoveryIssueNumber}`
+    : "none";
+  interventionTargetArtifact.textContent = snapshot.interventionTarget?.targetArtifact ?? "none";
+  interventionTargetSummary.textContent = snapshot.interventionTarget?.summary ?? "No immediate intervention target.";
+  interventionTargetGroup.className = snapshot.interventionTarget && snapshot.interventionTarget.kind !== "idle"
+    ? `status-activity ${interventionTargetUrgencyState === "alert" ? "alert" : interventionTargetUrgencyState === "caution" ? "caution" : ""}`.trim()
+    : "status-activity";
   leadQuarantineIssue.textContent = snapshot.leadQuarantine
     ? `#${snapshot.leadQuarantine.issueNumber} ${snapshot.leadQuarantine.issueTitle}`
     : "No actionable quarantine";
@@ -965,6 +1000,12 @@ async function bootStatusMock() {
     const leadJobTarget = document.getElementById("status-lead-job-target");
     const leadJobOutcome = document.getElementById("status-lead-job-outcome");
     const leadJobPriority = document.getElementById("status-lead-job-priority");
+    const interventionTargetGroup = document.getElementById("status-intervention-target-group");
+    const interventionTargetIssue = document.getElementById("status-intervention-target-issue");
+    const interventionTargetKind = document.getElementById("status-intervention-target-kind");
+    const interventionTargetRecovery = document.getElementById("status-intervention-target-recovery");
+    const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
+    const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
     const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
     const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
     const leadQuarantineState = document.getElementById("status-lead-quarantine-state");
@@ -1047,6 +1088,12 @@ async function bootStatusMock() {
     leadJobOutcome.textContent = "unavailable";
     leadJobPriority.textContent = "unavailable";
     leadJobGroup.className = "status-activity";
+    interventionTargetIssue.textContent = "Unavailable";
+    interventionTargetKind.textContent = "unavailable";
+    interventionTargetRecovery.textContent = "unavailable";
+    interventionTargetArtifact.textContent = "unavailable";
+    interventionTargetSummary.textContent = "Intervention target unavailable";
+    interventionTargetGroup.className = "status-activity";
     leadQuarantineIssue.textContent = "Unavailable";
     leadQuarantineState.textContent = "unavailable";
     leadQuarantineRecovery.textContent = "unavailable";

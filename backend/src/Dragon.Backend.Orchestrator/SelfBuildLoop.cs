@@ -92,6 +92,19 @@ public sealed class SelfBuildLoop
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
         var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
+        var leadJobSnapshot = leadJob is null
+            ? null
+            : new LeadJobSnapshot(
+                leadJob.Issue,
+                leadJob.Payload.Title,
+                leadJob.Agent,
+                leadJob.Action,
+                leadJob.Metadata.GetValueOrDefault("targetArtifact"),
+                leadJob.Metadata.GetValueOrDefault("targetOutcome"),
+                leadJob.Metadata.GetValueOrDefault("requestedPriority"),
+                string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
+                leadJob.Metadata.GetValueOrDefault("workType"));
+        var interventionTarget = BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync);
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -111,16 +124,7 @@ public sealed class SelfBuildLoop
             health,
             attentionSummary,
             rollup,
-            leadJob is null ? null : new LeadJobSnapshot(
-                leadJob.Issue,
-                leadJob.Payload.Title,
-                leadJob.Agent,
-                leadJob.Action,
-                leadJob.Metadata.GetValueOrDefault("targetArtifact"),
-                leadJob.Metadata.GetValueOrDefault("targetOutcome"),
-                leadJob.Metadata.GetValueOrDefault("requestedPriority"),
-                string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
-                leadJob.Metadata.GetValueOrDefault("workType")),
+            leadJobSnapshot,
             leadQuarantine,
             latestActivity,
             recentLoopSignal,
@@ -136,7 +140,8 @@ public sealed class SelfBuildLoop
             pendingGithubSync.Count,
             pendingGithubSync,
             workerActivity,
-            pendingGithubSyncSummary
+            pendingGithubSyncSummary,
+            interventionTarget
         );
     }
 
@@ -1730,6 +1735,68 @@ public sealed class SelfBuildLoop
             : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Oldest: issue #{oldest.IssueNumber} ({FormatElapsed(DateTimeOffset.UtcNow - oldest.RecordedAt)} old).";
     }
 
+    private static InterventionTargetSnapshot BuildInterventionTarget(
+        LeadQuarantineSnapshot? leadQuarantine,
+        LeadJobSnapshot? leadJob,
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+    {
+        if (leadQuarantine is not null &&
+            string.Equals(leadQuarantine.State, "sync-drift", StringComparison.OrdinalIgnoreCase))
+        {
+            var pendingIssueNumber = leadQuarantine.RecoveryIssueNumber ?? leadQuarantine.IssueNumber;
+            return new InterventionTargetSnapshot(
+                "github-replay-drift",
+                leadQuarantine.Summary ?? $"Replay queued GitHub updates for issue #{pendingIssueNumber}.",
+                leadQuarantine.IssueNumber,
+                leadQuarantine.RecoveryIssueNumber,
+                pendingIssueNumber);
+        }
+
+        if (leadQuarantine is not null)
+        {
+            return new InterventionTargetSnapshot(
+                "recovery-work",
+                leadQuarantine.Summary ?? $"Continue recovery work for issue #{leadQuarantine.IssueNumber}.",
+                leadQuarantine.IssueNumber,
+                leadQuarantine.RecoveryIssueNumber);
+        }
+
+        if (pendingGithubSync.Count > 0)
+        {
+            var oldest = pendingGithubSync
+                .OrderBy(item => item.RecordedAt)
+                .First();
+
+            return new InterventionTargetSnapshot(
+                "github-replay-drift",
+                $"Replay queued GitHub update for issue #{oldest.IssueNumber}.",
+                oldest.IssueNumber,
+                null,
+                oldest.IssueNumber);
+        }
+
+        if (leadJob is not null)
+        {
+            var kind = string.Equals(leadJob.Action, "implement_issue", StringComparison.OrdinalIgnoreCase)
+                ? "implementation"
+                : "queued-work";
+            var summary = leadJob.TargetOutcome is not null
+                ? $"Advance issue #{leadJob.IssueNumber}: {leadJob.TargetOutcome}."
+                : $"Advance issue #{leadJob.IssueNumber} via {leadJob.Action}.";
+
+            return new InterventionTargetSnapshot(
+                kind,
+                summary,
+                leadJob.IssueNumber,
+                null,
+                null,
+                leadJob.TargetArtifact,
+                leadJob.TargetOutcome);
+        }
+
+        return new InterventionTargetSnapshot("idle", "No immediate intervention target.");
+    }
+
     private static string? FormatLeadQuarantineAge(LeadQuarantineSnapshot? leadQuarantine)
     {
         if (leadQuarantine?.OldestPendingGithubSyncAt is null)
@@ -1918,7 +1985,8 @@ public sealed record StatusSnapshot(
     int PendingGithubSyncCount = 0,
     IReadOnlyList<PendingGithubSyncSnapshot>? PendingGithubSync = null,
     string? WorkerActivity = null,
-    string? PendingGithubSyncSummary = null
+    string? PendingGithubSyncSummary = null,
+    InterventionTargetSnapshot? InterventionTarget = null
 );
 
 public sealed record LatestPassSummary(
@@ -2010,6 +2078,16 @@ public sealed record PendingGithubSyncSnapshot(
     int AttemptCount = 1,
     DateTimeOffset? LastAttemptedAt = null,
     DateTimeOffset? NextRetryAt = null
+);
+
+public sealed record InterventionTargetSnapshot(
+    string Kind,
+    string Summary,
+    int? IssueNumber = null,
+    int? RecoveryIssueNumber = null,
+    int? PendingGithubSyncIssueNumber = null,
+    string? TargetArtifact = null,
+    string? TargetOutcome = null
 );
 
 public static class StatusSnapshotTrend

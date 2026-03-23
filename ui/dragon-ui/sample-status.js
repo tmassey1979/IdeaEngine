@@ -35,6 +35,15 @@ globalThis.__DRAGON_STATUS__ = {
     "targetOutcome": "document workflow state recovery behavior",
     "priority": "high"
   },
+  "interventionTarget": {
+    "kind": "github-replay-drift",
+    "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+    "issueNumber": 22,
+    "recoveryIssueNumber": 500,
+    "pendingGithubSyncIssueNumber": 500,
+    "targetArtifact": null,
+    "targetOutcome": null
+  },
   "latestActivity": {
     "issueNumber": 23,
     "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
@@ -94,7 +103,7 @@ globalThis.__DRAGON_STATUS__ = {
       "nextRetryAt": "2026-03-23T16:02:14.0000000+00:00"
     }
   ],
-  "pendingGithubSyncSummary": "2 GitHub updates are waiting for retry. Latest: issue #148.",
+  "pendingGithubSyncSummary": "2 GitHub updates are waiting for retry. Oldest: issue #147 (42m 44s old).",
   "queuedJobs": 1,
   "issues": [
     {
