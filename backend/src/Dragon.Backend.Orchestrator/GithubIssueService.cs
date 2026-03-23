@@ -351,6 +351,7 @@ public sealed class GithubIssueService
                 $"- worker queue compare age: {DescribeGlobalQueueCompareAge(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
+                $"- worker next poll in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -565,6 +566,7 @@ public sealed class GithubIssueService
                 $"- worker queue compare age: {DescribeGlobalQueueCompareAge(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
+                $"- worker next poll in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -1511,6 +1513,35 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerNextPollIn(string rootDirectory, DateTimeOffset referenceTime)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not scheduled";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("nextPollAt", out var nextPollProperty) &&
+                nextPollProperty.ValueKind == JsonValueKind.String &&
+                nextPollProperty.TryGetDateTimeOffset(out var nextPollAt))
+            {
+                var remaining = nextPollAt >= referenceTime
+                    ? nextPollAt - referenceTime
+                    : TimeSpan.Zero;
+                return FormatElapsed(remaining);
+            }
+
+            return "not scheduled";
+        }
+        catch (JsonException)
+        {
+            return "not scheduled";
         }
     }
 
