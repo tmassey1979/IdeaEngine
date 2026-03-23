@@ -88,6 +88,7 @@ dragon-update
 dragon-backup
 dragon-firstaid
 dragon-alert-check
+dragon-alert-notify
 dragon-report --json
 ~/dragon/IdeaEngine/scripts/pi-report.sh
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
@@ -100,11 +101,12 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, and `dragon-alert-check`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, and `dragon-alert-notify`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
 - `pi-alert-check.sh` evaluates `pi-report.sh --json` and exits nonzero for unhealthy states so you can plug it into timers, cron, or external monitoring
+- `pi-alert-notify.sh` sends an alert payload to a configured webhook and is called automatically by the alert-check service when the check fails
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update/alert timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -149,6 +151,12 @@ dragon-alert-check
 ALLOW_HEALTH_STATES=healthy,idle,attention MAX_FAILED_ISSUES=1 dragon-alert-check
 ```
 
+Optional webhook notification:
+
+```bash
+ALERT_WEBHOOK_URL=https://example.invalid/webhook dragon-alert-notify
+```
+
 Notes:
 
 - If the script adds your user to the `docker` group, log out and back in before running Docker without `sudo`.
@@ -159,6 +167,7 @@ Notes:
 - The setup script installs a nightly `dragon-backup.timer` by default.
 - Scheduled self-updates are available through `dragon-update.timer`, but installation is opt-in with `INSTALL_UPDATE_TIMER=true`.
 - Scheduled alert checks are available through `dragon-alert-check.timer`, but installation is opt-in with `INSTALL_ALERT_TIMER=true`.
+- Set `ALERT_WEBHOOK_URL` in `.env` if you want the alert-check service to send webhook notifications on failures.
 - `update-pi.sh` creates a backup before updating by default and exits if the checkout is dirty unless `ALLOW_DIRTY_WORKTREE=true`.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
 - `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

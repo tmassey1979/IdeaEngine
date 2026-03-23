@@ -47,6 +47,7 @@ main() {
   install_wrapper "dragon-diagnostics" "collect-pi-diagnostics.sh"
   install_wrapper "dragon-firstaid" "pi-firstaid.sh"
   install_wrapper "dragon-alert-check" "pi-alert-check.sh"
+  install_wrapper "dragon-alert-notify" "pi-alert-notify.sh"
 
   print_path_hint
 }

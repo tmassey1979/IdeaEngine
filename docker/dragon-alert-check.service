@@ -6,4 +6,4 @@ After=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=__REPO_DIR__
-ExecStart=/bin/bash -lc 'cd "__REPO_DIR__" && ./scripts/pi-alert-check.sh'
+ExecStart=/bin/bash -lc 'cd "__REPO_DIR__" && output="$(./scripts/pi-alert-check.sh 2>&1)" && printf "%s\n" "$output" || { status=$?; printf "%s\n" "$output"; ALERT_MESSAGE="$output" ./scripts/pi-alert-notify.sh || true; exit $status; }'
