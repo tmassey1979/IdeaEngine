@@ -60,7 +60,8 @@ public sealed class SelfBuildLoop
         string? workerActivity = null)
     {
         var queuedJobs = queueStore.ReadAll();
-        var leadJob = queueStore.Peek();
+        var readyLeadJob = queueStore.Peek();
+        var leadJob = readyLeadJob ?? queueStore.PeekAny();
         var workflows = workflowStateStore.ReadAll();
         var issues = workflows.Values
             .OrderBy(item => item.IssueNumber)
@@ -103,14 +104,16 @@ public sealed class SelfBuildLoop
                 leadJob.Metadata.GetValueOrDefault("targetOutcome"),
                 leadJob.Metadata.GetValueOrDefault("requestedPriority"),
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
-                leadJob.Metadata.GetValueOrDefault("workType"));
+                leadJob.Metadata.GetValueOrDefault("workType"),
+                ReadRetryNotBeforeUtc(leadJob),
+                readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
-            ? BuildDefaultWorkerActivity(workerState, interventionTarget)
+            ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot)
             : workerActivity;
 
         return new StatusSnapshot(
@@ -2204,8 +2207,16 @@ public sealed class SelfBuildLoop
         return "fresh";
     }
 
-    private static string? BuildDefaultWorkerActivity(string workerState, InterventionTargetSnapshot? interventionTarget)
+    private static string? BuildDefaultWorkerActivity(string workerState, InterventionTargetSnapshot? interventionTarget, LeadJobSnapshot? leadJob)
     {
+        if (string.Equals(workerState, "waiting", StringComparison.OrdinalIgnoreCase) &&
+            leadJob is not null &&
+            leadJob.Delayed &&
+            leadJob.RetryNotBeforeUtc is { } retryNotBeforeUtc)
+        {
+            return $"Waiting for provider retry window on issue #{leadJob.IssueNumber} until {retryNotBeforeUtc:O}.";
+        }
+
         if (interventionTarget is null)
         {
             return null;
@@ -2455,6 +2466,14 @@ public sealed class SelfBuildLoop
 
     private static bool IsOperatorEscalationJob(SelfBuildJob job) =>
         string.Equals(job.Metadata.GetValueOrDefault("workType"), "operator-escalation", StringComparison.OrdinalIgnoreCase);
+
+    private static DateTimeOffset? ReadRetryNotBeforeUtc(SelfBuildJob job)
+    {
+        return job.Metadata.TryGetValue("retryNotBeforeUtc", out var rawValue) &&
+            DateTimeOffset.TryParse(rawValue, null, System.Globalization.DateTimeStyles.RoundtripKind, out var retryNotBeforeUtc)
+                ? retryNotBeforeUtc
+                : null;
+    }
 }
 
 public sealed record CycleResult(
@@ -2561,7 +2580,9 @@ public sealed record LeadJobSnapshot(
     string? TargetOutcome,
     string? Priority,
     bool Blocking,
-    string? WorkType
+    string? WorkType,
+    DateTimeOffset? RetryNotBeforeUtc = null,
+    bool Delayed = false
 );
 
 public sealed record LeadQuarantineSnapshot(

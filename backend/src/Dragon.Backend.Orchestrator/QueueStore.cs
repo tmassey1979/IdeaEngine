@@ -89,6 +89,17 @@ public sealed class QueueStore
         return selectedIndex < 0 ? null : jobs[selectedIndex];
     }
 
+    public SelfBuildJob? PeekAny()
+    {
+        var jobs = ReadAll().ToList();
+        if (jobs.Count == 0)
+        {
+            return null;
+        }
+
+        return jobs[GetNextIndex(jobs)];
+    }
+
     public bool HasReadyJobs() => Peek() is not null;
 
     public bool HasAnyJobs() => ReadAll().Count > 0;

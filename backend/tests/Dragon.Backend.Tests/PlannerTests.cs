@@ -577,6 +577,35 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_ReportsDelayedProviderRetryWindow_WhenNoReadyJobsExist()
+    {
+        var root = CreateTempRoot();
+        var retryNotBefore = DateTimeOffset.UtcNow.AddHours(1);
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Architect Agent", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = retryNotBefore.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                ["workType"] = "story"
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.NotNull(status.LeadJob);
+        Assert.Equal(22, status.LeadJob!.IssueNumber);
+        Assert.True(status.LeadJob.Delayed);
+        Assert.Equal(retryNotBefore, status.LeadJob.RetryNotBeforeUtc);
+        Assert.Equal($"Waiting for provider retry window on issue #22 until {retryNotBefore:O}.", status.WorkerActivity);
+    }
+
+    [Fact]
     public void ReadStatus_TreatsQuarantineWithQueuedRecoveryChildWorkAsBlockedAndExposesLeadQuarantine()
     {
         var root = CreateTempRoot();
