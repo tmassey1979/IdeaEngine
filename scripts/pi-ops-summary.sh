@@ -17,6 +17,7 @@ Core commands:
   dragon-report
   dragon-report --json
   dragon-health
+  dragon-tail-logs
   dragon-update
   dragon-backup
   dragon-firstaid
@@ -28,7 +29,8 @@ Service control:
   sudo systemctl stop ${SERVICE_NAME}
   sudo systemctl restart ${SERVICE_NAME}
   sudo systemctl status ${SERVICE_NAME} --no-pager
-  sudo journalctl -u ${SERVICE_NAME} -f
+  dragon-tail-logs
+  dragon-tail-logs --all
 
 Timers:
   systemctl list-timers ${BACKUP_TIMER_NAME}.timer

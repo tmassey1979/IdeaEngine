@@ -24,6 +24,7 @@ WRAPPERS=(
   "dragon-configure-alerts"
   "dragon-ops-summary"
   "dragon-reinstall-service"
+  "dragon-tail-logs"
 )
 
 disable_unit_if_present() {
