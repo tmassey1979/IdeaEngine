@@ -1920,6 +1920,92 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void RunWatching_WaitsUntilDelayedRetryWindowWhenOnlyDelayedWorkRemains()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Delayed retry", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = now.AddMinutes(5).ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            }));
+        var loop = new SelfBuildLoop(root, nowProvider: () => now);
+        var delays = new List<TimeSpan>();
+
+        var result = loop.RunWatching(
+            [],
+            TimeSpan.FromSeconds(15),
+            maxPasses: 2,
+            idlePassesBeforeStop: 1,
+            maxCyclesPerPass: 10,
+            delayAction: delays.Add);
+
+        Assert.False(result.ReachedIdleThreshold);
+        Assert.True(result.ReachedMaxPasses);
+        Assert.Single(delays);
+        Assert.Equal(TimeSpan.FromMinutes(5), delays[0]);
+    }
+
+    [Fact]
+    public void RunWatchingFromGithub_CapsDelayedRetryWaitToPollInterval()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
+        Directory.CreateDirectory(Path.Combine(root, "planning"));
+        File.WriteAllText(
+            Path.Combine(root, "planning", "backlog.json"),
+            """
+            {
+              "stories": []
+            }
+            """);
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Delayed retry", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = now.AddMinutes(5).ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            }));
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            return string.Empty;
+        });
+        var loop = new SelfBuildLoop(root, githubIssueService: github, nowProvider: () => now);
+        var delays = new List<TimeSpan>();
+
+        var result = loop.RunWatchingFromGithub(
+            "tmassey1979",
+            "IdeaEngine",
+            TimeSpan.FromSeconds(15),
+            maxPasses: 2,
+            idlePassesBeforeStop: 1,
+            maxCyclesPerPass: 10,
+            delayAction: delays.Add);
+
+        Assert.False(result.ReachedIdleThreshold);
+        Assert.True(result.ReachedMaxPasses);
+        Assert.Single(delays);
+        Assert.Equal(TimeSpan.FromSeconds(15), delays[0]);
+    }
+
+    [Fact]
     public void BuildLatestPassSummary_CapturesPassOutcomeCounts()
     {
         var escalationFollowUp = new SelfBuildJob(

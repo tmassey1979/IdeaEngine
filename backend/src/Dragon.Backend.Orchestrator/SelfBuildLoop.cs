@@ -626,7 +626,7 @@ public sealed class SelfBuildLoop
 
             if (index + 1 < maxPasses)
             {
-                pause(pollInterval);
+                pause(DetermineWatchDelay(pollInterval, capToPollInterval: false));
             }
         }
 
@@ -726,7 +726,7 @@ public sealed class SelfBuildLoop
 
             if (index + 1 < maxPasses)
             {
-                pause(pollInterval);
+                pause(DetermineWatchDelay(pollInterval, capToPollInterval: true));
             }
         }
 
@@ -2028,6 +2028,19 @@ public sealed class SelfBuildLoop
             "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
             _ => "No queued work and no active issue workflows."
         };
+    }
+
+    private TimeSpan DetermineWatchDelay(TimeSpan pollInterval, bool capToPollInterval)
+    {
+        var delayedRetryWait = queueStore.GetNextReadyDelay();
+        if (delayedRetryWait is null || delayedRetryWait <= TimeSpan.Zero)
+        {
+            return pollInterval;
+        }
+
+        return capToPollInterval
+            ? delayedRetryWait.Value <= pollInterval ? delayedRetryWait.Value : pollInterval
+            : delayedRetryWait.Value;
     }
 
     private static string? DeriveDelayedRetryUrgency(DateTimeOffset? nextDelayedRetryAt, DateTimeOffset now)

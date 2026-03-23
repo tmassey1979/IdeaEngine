@@ -104,6 +104,20 @@ public sealed class QueueStore
 
     public bool HasAnyJobs() => ReadAll().Count > 0;
 
+    public TimeSpan? GetNextReadyDelay()
+    {
+        var now = nowProvider();
+        var nextRetryNotBefore = ReadAll()
+            .Select(ReadRetryNotBeforeUtc)
+            .Where(value => value is not null && value.Value > now)
+            .OrderBy(value => value)
+            .FirstOrDefault();
+
+        return nextRetryNotBefore is null
+            ? null
+            : nextRetryNotBefore.Value - now;
+    }
+
     private static int GetNextReadyIndex(IReadOnlyList<SelfBuildJob> jobs, DateTimeOffset now)
     {
         var readyJobs = jobs
@@ -137,6 +151,19 @@ public sealed class QueueStore
 
         return !DateTimeOffset.TryParse(rawValue, null, System.Globalization.DateTimeStyles.RoundtripKind, out var retryNotBefore) ||
             retryNotBefore <= now;
+    }
+
+    private static DateTimeOffset? ReadRetryNotBeforeUtc(SelfBuildJob job)
+    {
+        if (!job.Metadata.TryGetValue("retryNotBeforeUtc", out var rawValue) ||
+            string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        return DateTimeOffset.TryParse(rawValue, null, System.Globalization.DateTimeStyles.RoundtripKind, out var retryNotBefore)
+            ? retryNotBefore
+            : null;
     }
 
     private static int GetNextIndex(IReadOnlyList<SelfBuildJob> jobs) => jobs
