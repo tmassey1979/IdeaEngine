@@ -1901,12 +1901,21 @@ public sealed class SelfBuildLoop
 
         if (leadJob is not null)
         {
-            var kind = string.Equals(leadJob.Action, "implement_issue", StringComparison.OrdinalIgnoreCase)
-                ? "implementation"
-                : "queued-work";
-            var summary = leadJob.TargetOutcome is not null
-                ? $"Advance issue #{leadJob.IssueNumber}: {leadJob.TargetOutcome}."
-                : $"Advance issue #{leadJob.IssueNumber} via {leadJob.Action}.";
+            var isOperatorEscalation = string.Equals(leadJob.WorkType, "operator-escalation", StringComparison.OrdinalIgnoreCase) ||
+                (string.Equals(leadJob.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(leadJob.Priority, "high", StringComparison.OrdinalIgnoreCase));
+            var kind = isOperatorEscalation
+                ? "operator-escalation"
+                : string.Equals(leadJob.Action, "implement_issue", StringComparison.OrdinalIgnoreCase)
+                    ? "implementation"
+                    : "queued-work";
+            var summary = isOperatorEscalation
+                ? leadJob.TargetOutcome is not null
+                    ? $"Escalate issue #{leadJob.IssueNumber}: {leadJob.TargetOutcome}."
+                    : $"Escalate persistent critical intervention for issue #{leadJob.IssueNumber}."
+                : leadJob.TargetOutcome is not null
+                    ? $"Advance issue #{leadJob.IssueNumber}: {leadJob.TargetOutcome}."
+                    : $"Advance issue #{leadJob.IssueNumber} via {leadJob.Action}.";
 
             return new InterventionTargetSnapshot(
                 kind,
@@ -1990,6 +1999,13 @@ public sealed class SelfBuildLoop
                 "running" => "Advancing the lead implementation target.",
                 "waiting" => "Waiting to advance the lead implementation target on the next pass.",
                 "complete" => "Completed the current run with queued implementation still remaining.",
+                _ => interventionTarget.Summary
+            },
+            "operator-escalation" => workerState switch
+            {
+                "running" => "Preparing an operator-facing escalation summary for a persistent critical target.",
+                "waiting" => "Waiting to prepare an operator-facing escalation summary on the next pass.",
+                "complete" => "Completed the current run with operator escalation follow-up still queued.",
                 _ => interventionTarget.Summary
             },
             "queued-work" => workerState switch

@@ -199,6 +199,46 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void QueueStore_PrioritizesInterventionEscalationSummariesAheadOfOrdinarySummaries()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("Issue 22", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["workType"] = "operator-escalation",
+                ["interventionEscalation"] = "true",
+                ["targetOutcome"] = "Summarize the persistent critical intervention target and the next operator action."
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            23,
+            new SelfBuildJobPayload("Issue 23", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["workType"] = "story",
+                ["targetOutcome"] = "Summarize the broader operator impact."
+            }));
+
+        var next = queue.Peek();
+
+        Assert.NotNull(next);
+        Assert.Equal(22, next!.Issue);
+        Assert.Equal("true", next.Metadata["interventionEscalation"]);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesQueuedCountsAndLatestExecutionNotes()
     {
         var root = CreateTempRoot();
@@ -266,6 +306,39 @@ public sealed class PlannerTests
         Assert.Equal("documentation", issue.CurrentStage);
         Assert.Equal("updated", issue.LatestExecutionSummary);
         Assert.Contains("Superseded implementation issues: 499", issue.LatestExecutionNotes, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReadStatus_UsesOperatorEscalationAsInterventionTarget()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("Core", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["workType"] = "operator-escalation",
+                ["interventionEscalation"] = "true",
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                ["targetOutcome"] = "Summarize the persistent critical intervention target and the next operator action."
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.NotNull(status.LeadJob);
+        Assert.Equal("operator-escalation", status.LeadJob!.WorkType);
+        Assert.NotNull(status.InterventionTarget);
+        Assert.Equal("operator-escalation", status.InterventionTarget!.Kind);
+        Assert.Equal(22, status.InterventionTarget.IssueNumber);
+        Assert.Contains("Escalate issue #22", status.InterventionTarget.Summary, StringComparison.Ordinal);
+        Assert.Equal("Waiting to prepare an operator-facing escalation summary on the next pass.", status.WorkerActivity);
     }
 
     [Fact]

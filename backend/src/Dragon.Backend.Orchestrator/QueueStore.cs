@@ -169,12 +169,22 @@ public sealed class QueueStore
              artifact.EndsWith(".js", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static int GetActionRank(SelfBuildJob job) => job.Action.ToLowerInvariant() switch
+    private static int GetActionRank(SelfBuildJob job)
     {
-        "implement_issue" => 0,
-        "summarize_issue" => 1,
-        _ => 2
-    };
+        if (string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase)
+                ? 1
+                : 2;
+        }
+
+        return 3;
+    }
 
     private static int GetRollupBreadthRank(SelfBuildJob job)
     {
