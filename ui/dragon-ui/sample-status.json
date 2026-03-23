@@ -69,14 +69,16 @@
       "summary": "GitHub writeback retry queued after recovery issue creation was rejected by createIssue permissions.",
       "recordedAt": "2026-03-23T15:44:18.0000000+00:00",
       "attemptCount": 3,
-      "lastAttemptedAt": "2026-03-23T16:02:11.0000000+00:00"
+      "lastAttemptedAt": "2026-03-23T16:02:11.0000000+00:00",
+      "nextRetryAt": "2026-03-23T16:02:41.0000000+00:00"
     },
     {
       "issueNumber": 148,
       "summary": "GitHub writeback retry queued after issue sync returned HTTP 403 for comment or label updates.",
       "recordedAt": "2026-03-23T15:45:02.0000000+00:00",
       "attemptCount": 2,
-      "lastAttemptedAt": "2026-03-23T16:01:44.0000000+00:00"
+      "lastAttemptedAt": "2026-03-23T16:01:44.0000000+00:00",
+      "nextRetryAt": "2026-03-23T16:02:14.0000000+00:00"
     }
   ],
   "pendingGithubSyncSummary": "2 GitHub updates are waiting for retry. Latest: issue #148.",

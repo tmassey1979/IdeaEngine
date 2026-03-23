@@ -240,7 +240,7 @@ public sealed class PlannerTests
             []);
 
         var loop = new SelfBuildLoop(root);
-        var status = loop.ReadStatus();
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting", pollIntervalSeconds: 30);
 
         Assert.Equal(1, status.QueuedJobs);
         Assert.NotNull(status.LeadJob);
@@ -300,7 +300,7 @@ public sealed class PlannerTests
             }
         }
 
-        var status = loop.ReadStatus();
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting", pollIntervalSeconds: 30);
 
         Assert.NotNull(status.LatestGithubSync);
         Assert.Equal(22, status.LatestGithubSync!.IssueNumber);
@@ -313,6 +313,8 @@ public sealed class PlannerTests
         Assert.Contains("GitHub sync failed", pending.Summary, StringComparison.Ordinal);
         Assert.True(pending.AttemptCount >= 1);
         Assert.NotNull(pending.LastAttemptedAt);
+        Assert.NotNull(pending.NextRetryAt);
+        Assert.True(pending.NextRetryAt > pending.LastAttemptedAt);
         Assert.Equal("1 GitHub update is waiting for retry: issue #22.", status.PendingGithubSyncSummary);
     }
 
@@ -410,13 +412,15 @@ public sealed class PlannerTests
         var firstPending = Assert.Single(firstStatus.PendingGithubSync!);
 
         loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
-        var retriedStatus = loop.ReadStatus();
+        var retriedStatus = loop.ReadStatus(workerMode: "watch", workerState: "waiting", pollIntervalSeconds: 30);
         var retriedPending = Assert.Single(retriedStatus.PendingGithubSync!);
 
         Assert.Equal(2, retriedPending.AttemptCount);
         Assert.Equal(firstPending.RecordedAt, retriedPending.RecordedAt);
         Assert.NotNull(retriedPending.LastAttemptedAt);
         Assert.True(retriedPending.LastAttemptedAt >= firstPending.LastAttemptedAt);
+        Assert.NotNull(retriedPending.NextRetryAt);
+        Assert.True(retriedPending.NextRetryAt > retriedPending.LastAttemptedAt);
     }
 
     [Fact]
@@ -498,6 +502,7 @@ public sealed class PlannerTests
         Assert.Equal(0, rootElement.GetProperty("rollupDelta").GetProperty("inProgressIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncSummary").ValueKind);
+        Assert.Equal(0, rootElement.GetProperty("pendingGithubSync").GetArrayLength());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
         Assert.Equal(610, issueElement.GetProperty("issueNumber").GetInt32());

@@ -85,7 +85,7 @@ public sealed class SelfBuildLoop
         var latestActivity = BuildLatestActivity(issues);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
         var latestGithubSync = ReadLatestGithubSync();
-        var pendingGithubSync = ReadPendingGithubSync();
+        var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
 
         return new StatusSnapshot(
@@ -547,6 +547,33 @@ public sealed class SelfBuildLoop
         }
 
         File.WriteAllText(PendingGithubSyncPath, JsonSerializer.Serialize(pending, StatusSerializerOptions));
+    }
+
+    private static IReadOnlyList<PendingGithubSyncSnapshot> AnnotatePendingGithubSync(
+        IReadOnlyList<PendingGithubSyncSnapshot> pending,
+        int? pollIntervalSeconds)
+    {
+        if (pending.Count == 0)
+        {
+            return pending;
+        }
+
+        if (pollIntervalSeconds is null || pollIntervalSeconds <= 0)
+        {
+            return pending;
+        }
+
+        var retryDelay = TimeSpan.FromSeconds(pollIntervalSeconds.Value);
+        return pending
+            .Select(item =>
+            {
+                var baseline = item.LastAttemptedAt ?? item.RecordedAt;
+                return item with
+                {
+                    NextRetryAt = baseline.Add(retryDelay)
+                };
+            })
+            .ToArray();
     }
 
     private bool HasSchedulableWork(IReadOnlyList<GithubIssue> issues)
@@ -1623,7 +1650,8 @@ public sealed record PendingGithubSyncSnapshot(
     string Summary,
     DateTimeOffset RecordedAt,
     int AttemptCount = 1,
-    DateTimeOffset? LastAttemptedAt = null
+    DateTimeOffset? LastAttemptedAt = null,
+    DateTimeOffset? NextRetryAt = null
 );
 
 public static class StatusSnapshotTrend

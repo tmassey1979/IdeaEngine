@@ -777,6 +777,7 @@ function renderStatusSnapshot(snapshot) {
             <p class="status-timestamp">
               Attempt ${item.attemptCount ?? 1}
               ${item.lastAttemptedAt ? ` • last tried ${formatTimestamp(item.lastAttemptedAt)}` : ""}
+              ${item.nextRetryAt ? ` • next retry ${formatTimestamp(item.nextRetryAt)}` : ""}
               ${item.recordedAt ? ` • first queued ${formatTimestamp(item.recordedAt)}` : ""}
             </p>
           </div>
