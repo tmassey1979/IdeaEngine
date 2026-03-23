@@ -86,7 +86,7 @@ public sealed class SelfBuildLoop
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, leadQuarantine);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
-        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, leadQuarantine);
         var latestGithubSync = ReadLatestGithubSync();
         var latestGithubReplay = ReadLatestGithubReplay();
         var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
@@ -1700,16 +1700,23 @@ public sealed class SelfBuildLoop
             : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Latest: issue #{latest.IssueNumber}.";
     }
 
-    private static RecentLoopSignalSnapshot BuildRecentLoopSignal(int queuedJobs, string health, LatestActivitySnapshot? latestActivity)
+    private static RecentLoopSignalSnapshot BuildRecentLoopSignal(
+        int queuedJobs,
+        string health,
+        LatestActivitySnapshot? latestActivity,
+        LeadQuarantineSnapshot? leadQuarantine)
     {
+        if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase) && leadQuarantine is not null)
+        {
+            var recoverySuffix = leadQuarantine.RecoveryIssueNumber is not null
+                ? $" via recovery #{leadQuarantine.RecoveryIssueNumber.Value}"
+                : string.Empty;
+            return new RecentLoopSignalSnapshot("blocked", $"Loop is blocked by recovery work for issue #{leadQuarantine.IssueNumber}{recoverySuffix}.");
+        }
+
         if (latestActivity is null)
         {
             return new RecentLoopSignalSnapshot("idle", "No recorded executions yet.");
-        }
-
-        if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase))
-        {
-            return new RecentLoopSignalSnapshot("blocked", $"Loop is blocked after activity on issue #{latestActivity.IssueNumber}.");
         }
 
         if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase))

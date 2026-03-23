@@ -346,6 +346,8 @@ public sealed class PlannerTests
         Assert.Equal(1, status.LeadQuarantine.QueuedRecoveryJobs);
         Assert.Equal(500, status.LeadQuarantine.RecoveryIssueNumber);
         Assert.Equal("[Recovery] Provider Notes", status.LeadQuarantine.RecoveryIssueTitle);
+        Assert.Equal("blocked", status.RecentLoopSignal.Mode);
+        Assert.Contains("issue #22 via recovery #500", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
