@@ -4932,7 +4932,8 @@ public sealed class PlannerTests
               "interventionTarget": {
                 "kind": "operator-escalation",
                 "summary": "Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
-                "escalation": "critical"
+                "escalation": "critical",
+                "acknowledged": true
               }
             }
             """);
@@ -4961,7 +4962,7 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("worker focus: preparing operator escalation summary", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical, acknowledged)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 3", StringComparison.Ordinal));
     }
 

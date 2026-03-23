@@ -735,6 +735,10 @@ public sealed class GithubIssueService
             var escalation = interventionTarget.TryGetProperty("escalation", out var escalationProperty) && escalationProperty.ValueKind == JsonValueKind.String
                 ? escalationProperty.GetString()
                 : null;
+            var acknowledged = interventionTarget.TryGetProperty("acknowledged", out var acknowledgedProperty) &&
+                acknowledgedProperty.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? acknowledgedProperty.GetBoolean()
+                : (bool?)null;
 
             if (string.IsNullOrWhiteSpace(kind) && string.IsNullOrWhiteSpace(summary))
             {
@@ -748,10 +752,10 @@ public sealed class GithubIssueService
 
             if (string.IsNullOrWhiteSpace(summary))
             {
-                return AppendInterventionTargetAge(kind, ageSummary, escalation);
+                return AppendInterventionTargetAge(kind, ageSummary, escalation, acknowledged);
             }
 
-            return AppendInterventionTargetAge($"{kind}: {summary}", ageSummary, escalation);
+            return AppendInterventionTargetAge($"{kind}: {summary}", ageSummary, escalation, acknowledged);
         }
         catch (JsonException)
         {
@@ -811,24 +815,27 @@ public sealed class GithubIssueService
         }
     }
 
-    private static string AppendInterventionTargetAge(string value, string? ageSummary, string? escalation)
+    private static string AppendInterventionTargetAge(string value, string? ageSummary, string? escalation, bool? acknowledged)
     {
-        if (string.IsNullOrWhiteSpace(ageSummary) && string.IsNullOrWhiteSpace(escalation))
+        var details = new List<string>();
+        if (!string.IsNullOrWhiteSpace(ageSummary))
         {
-            return value;
+            details.Add(ageSummary);
         }
 
-        if (string.IsNullOrWhiteSpace(ageSummary))
+        if (!string.IsNullOrWhiteSpace(escalation))
         {
-            return $"{value} ({escalation})";
+            details.Add(escalation);
         }
 
-        if (string.IsNullOrWhiteSpace(escalation))
+        if (acknowledged is true)
         {
-            return $"{value} ({ageSummary})";
+            details.Add("acknowledged");
         }
 
-        return $"{value} ({ageSummary}, {escalation})";
+        return details.Count == 0
+            ? value
+            : $"{value} ({string.Join(", ", details)})";
     }
 
     private static string FormatPendingGithubSyncAge(PendingGithubSyncSnapshot pending, DateTimeOffset referenceTime)
