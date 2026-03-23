@@ -210,6 +210,7 @@ static int RunPolling(IReadOnlyDictionary<string, string> options)
         options,
         "run-polling",
         "running",
+        workerActivity: "Loading backlog stories for the next polling pass.",
         currentPassNumber: 0,
         maxPasses: maxPasses,
         passBudgetRemaining: maxPasses);
@@ -240,6 +241,7 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
         options,
         "run-watch",
         "running",
+        workerActivity: "Loading backlog stories for the next watch pass.",
         pollIntervalSeconds: (int)pollInterval.TotalSeconds,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
         idlePassesRemaining: Math.Max(1, idlePassesBeforeStop),
@@ -354,6 +356,7 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
         options,
         "github-run-polling",
         "running",
+        workerActivity: "Loading GitHub issues for the next polling pass.",
         currentPassNumber: 0,
         maxPasses: maxPasses,
         passBudgetRemaining: maxPasses);
@@ -390,6 +393,7 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         options,
         "github-run-watch",
         "running",
+        workerActivity: "Loading GitHub issues for the next watch pass.",
         pollIntervalSeconds: (int)pollInterval.TotalSeconds,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
         idlePassesRemaining: Math.Max(1, idlePassesBeforeStop),
@@ -479,6 +483,7 @@ static void ExportStartupStatusIfRequested(
     IReadOnlyDictionary<string, string> options,
     string source,
     string workerState,
+    string? workerActivity = null,
     int? pollIntervalSeconds = null,
     int idleTarget = 0,
     int? idlePassesRemaining = null,
@@ -506,7 +511,8 @@ static void ExportStartupStatusIfRequested(
         passBudgetRemaining,
         null,
         currentPassNumber,
-        maxPasses) with
+        maxPasses,
+        workerActivity) with
     {
         Source = source
     };

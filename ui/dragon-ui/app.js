@@ -677,6 +677,7 @@ function renderStatusSnapshot(snapshot) {
   const workerStateValue = workerStateInfo(snapshot);
   workerState.textContent = workerStateValue.label;
   workerState.className = `worker-state ${workerStateValue.state}`;
+  document.getElementById("status-worker-activity").textContent = snapshot.workerActivity ?? "Not recorded";
   const workerCompletionValue = workerCompletionInfo(snapshot);
   workerCompletion.textContent = workerCompletionValue.label;
   workerCompletion.className = `worker-completion ${workerCompletionValue.state}`;
@@ -858,6 +859,7 @@ async function bootStatusMock() {
     workerMode.className = "worker-mode unavailable";
     workerState.textContent = "unavailable";
     workerState.className = "worker-state unavailable";
+    document.getElementById("status-worker-activity").textContent = "unavailable";
     workerCompletion.textContent = "unavailable";
     workerCompletion.className = "worker-completion unavailable";
     document.getElementById("status-github-sync").textContent = "unavailable";
