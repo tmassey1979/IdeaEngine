@@ -407,6 +407,78 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_PrioritizesOldestPendingRecoveryWritebackDriftAsLeadQuarantine()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Provider Notes", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "22",
+                ["workType"] = "recovery",
+                ["requestedBlocking"] = "true"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            600,
+            new SelfBuildJobPayload("[Recovery] Queue Store", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "32",
+                ["workType"] = "recovery",
+                ["requestedBlocking"] = "true"
+            }));
+
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Provider Notes", "documentation", new JobExecutionResult("job-parent-1", "documentation", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "quarantined", "Parent is quarantined.");
+        store.Update(32, "Queue Store", "developer", new JobExecutionResult("job-parent-2", "developer", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(32, "quarantined", "Parent is quarantined.");
+        store.Update(500, "[Recovery] Provider Notes", "developer", new JobExecutionResult("job-recovery-1", "developer", "success", "started", DateTimeOffset.UtcNow), sourceIssueNumber: 22);
+        store.Update(600, "[Recovery] Queue Store", "developer", new JobExecutionResult("job-recovery-2", "developer", "success", "started", DateTimeOffset.UtcNow), sourceIssueNumber: 32);
+
+        var statusDirectory = Path.Combine(root, ".dragon", "status");
+        Directory.CreateDirectory(statusDirectory);
+        File.WriteAllText(
+            Path.Combine(statusDirectory, "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 600,
+                "summary": "GitHub sync failed for recovery issue #600.",
+                "recordedAt": "2026-03-23T12:05:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:06:00Z"
+              },
+              {
+                "issueNumber": 500,
+                "summary": "GitHub sync failed for recovery issue #500.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 3,
+                "lastAttemptedAt": "2026-03-23T12:06:30Z"
+              }
+            ]
+            """);
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(pollIntervalSeconds: 30);
+
+        Assert.NotNull(status.LeadQuarantine);
+        Assert.Equal(22, status.LeadQuarantine!.IssueNumber);
+        Assert.Equal(500, status.LeadQuarantine.RecoveryIssueNumber);
+        Assert.Equal(DateTimeOffset.Parse("2026-03-23T12:00:00Z"), status.LeadQuarantine.OldestPendingGithubSyncAt);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesLatestGithubSyncFailure()
     {
         var root = CreateTempRoot();

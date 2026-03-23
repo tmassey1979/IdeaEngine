@@ -81,15 +81,15 @@ public sealed class SelfBuildLoop
             })
             .ToArray();
 
-        var baseLeadQuarantine = BuildLeadQuarantine(workflows, queuedJobs);
+        var latestGithubSync = ReadLatestGithubSync();
+        var latestGithubReplay = ReadLatestGithubReplay();
+        var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
+        var baseLeadQuarantine = BuildLeadQuarantine(workflows, queuedJobs, pendingGithubSync);
         var health = DeriveStatusHealth(issues, baseLeadQuarantine);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine);
-        var latestGithubSync = ReadLatestGithubSync();
-        var latestGithubReplay = ReadLatestGithubReplay();
-        var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
         var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
 
@@ -1544,6 +1544,14 @@ public sealed class SelfBuildLoop
         IReadOnlyDictionary<int, IssueWorkflowState> workflows,
         IReadOnlyList<SelfBuildJob> queuedJobs)
     {
+        return BuildLeadQuarantine(workflows, queuedJobs, []);
+    }
+
+    private static LeadQuarantineSnapshot? BuildLeadQuarantine(
+        IReadOnlyDictionary<int, IssueWorkflowState> workflows,
+        IReadOnlyList<SelfBuildJob> queuedJobs,
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+    {
         return workflows.Values
             .Where(workflow => HasActionableRecoveryWork(workflow, queuedJobs))
             .Select(workflow =>
@@ -1563,10 +1571,16 @@ public sealed class SelfBuildLoop
                     Workflow = workflow,
                     QueuedRecoveryJobs = queuedRecoveryJobs,
                     RecoveryIssueNumber = hasRecoveryIssue ? recoveryIssueNumber : (int?)null,
-                    RecoveryIssueTitle = hasRecoveryIssue ? recoveryWorkflow?.IssueTitle : null
+                    RecoveryIssueTitle = hasRecoveryIssue ? recoveryWorkflow?.IssueTitle : null,
+                    OldestPendingGithubSyncAt = GetOldestPendingGithubSyncAt(
+                        workflow.IssueNumber,
+                        hasRecoveryIssue ? recoveryIssueNumber : (int?)null,
+                        pendingGithubSync)
                 };
             })
-            .OrderByDescending(candidate => candidate.QueuedRecoveryJobs)
+            .OrderBy(candidate => candidate.OldestPendingGithubSyncAt is null ? 1 : 0)
+            .ThenBy(candidate => candidate.OldestPendingGithubSyncAt)
+            .ThenByDescending(candidate => candidate.QueuedRecoveryJobs)
             .ThenByDescending(candidate => candidate.RecoveryIssueNumber ?? 0)
             .ThenBy(candidate => candidate.Workflow.IssueNumber)
             .Select(candidate => new LeadQuarantineSnapshot(
@@ -1575,7 +1589,20 @@ public sealed class SelfBuildLoop
                 candidate.Workflow.Note,
                 candidate.QueuedRecoveryJobs,
                 candidate.RecoveryIssueNumber,
-                candidate.RecoveryIssueTitle))
+                candidate.RecoveryIssueTitle,
+                OldestPendingGithubSyncAt: candidate.OldestPendingGithubSyncAt))
+            .FirstOrDefault();
+    }
+
+    private static DateTimeOffset? GetOldestPendingGithubSyncAt(
+        int issueNumber,
+        int? recoveryIssueNumber,
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+    {
+        return pendingGithubSync
+            .Where(item => item.IssueNumber == issueNumber || (recoveryIssueNumber is not null && item.IssueNumber == recoveryIssueNumber.Value))
+            .OrderBy(item => item.RecordedAt)
+            .Select(item => (DateTimeOffset?)item.RecordedAt)
             .FirstOrDefault();
     }
 
@@ -1903,7 +1930,8 @@ public sealed record LeadQuarantineSnapshot(
     int? RecoveryIssueNumber,
     string? RecoveryIssueTitle,
     string? State = null,
-    string? Summary = null
+    string? Summary = null,
+    DateTimeOffset? OldestPendingGithubSyncAt = null
 );
 
 public sealed record LatestActivitySnapshot(
