@@ -53,6 +53,7 @@ Routine maintenance:
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
 ~/dragon/IdeaEngine/scripts/update-pi.sh
 ~/dragon/IdeaEngine/scripts/collect-pi-diagnostics.sh
+~/dragon/IdeaEngine/scripts/backup-pi.sh
 ```
 
 What those do:
@@ -61,9 +62,20 @@ What those do:
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
 - `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, and backend snapshots
+- `backup-pi.sh` creates a timestamped backup of `.env`, `.dragon`, and Docker volumes
+- `restore-pi.sh` restores `.env`, `.dragon`, and Docker volumes from a chosen backup
+
+Backup and restore:
+
+```bash
+~/dragon/IdeaEngine/scripts/backup-pi.sh
+BACKUP_SOURCE=~/dragon/IdeaEngine/.tmp/pi-backups/dragon-pi-backup-YYYYMMDD-HHMMSS.tar.gz \
+  ~/dragon/IdeaEngine/scripts/restore-pi.sh
+```
 
 Notes:
 
 - If the script adds your user to the `docker` group, log out and back in before running Docker without `sudo`.
 - `AUTO_START=true` only works once the required credentials are present in `.env`.
 - The installed service runs `docker compose up --build` from the repo checkout and restarts automatically on boot.
+- Backup and restore stop the service by default to reduce the chance of inconsistent volume snapshots.
