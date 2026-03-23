@@ -5033,7 +5033,9 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("label create quarantined", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label in-progress", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label validated", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label waiting-follow-up", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label quarantined", StringComparison.Ordinal));
@@ -5045,6 +5047,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery state: awaiting recovery path", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: clear", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled: no", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("stalled reason: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: draining recovery work", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: #999", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("Recovery checklist", StringComparison.Ordinal));
