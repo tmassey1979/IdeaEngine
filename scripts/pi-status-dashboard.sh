@@ -56,10 +56,15 @@ pending_github_sync = status.get("pendingGithubSync") or []
 pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt") or ""
 pending_github_sync_last_attempt = ""
 pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or ""
+pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
 if pending_github_sync:
     pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt", "")
 wait_signal = None
-if next_wake_reason == "waiting for delayed provider retry":
+if pending_github_sync_retry_overdue_minutes >= 15:
+    wait_signal = "prioritizing overdue writeback replay"
+elif pending_github_sync_retry_state == "ready now":
+    wait_signal = "writeback replay ready"
+elif next_wake_reason == "waiting for delayed provider retry":
     wait_signal = "provider backoff"
     if delayed_retry_urgency == "alert":
         wait_signal = "provider backoff (long)"
