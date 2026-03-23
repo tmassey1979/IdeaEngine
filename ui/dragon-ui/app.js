@@ -247,7 +247,7 @@ function workerCompletionInfo(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
 
   if (!reason) {
-    if (state === "waiting") {
+    if (state === "waiting" || state === "running") {
       return { label: "active", state: "active" };
     }
 
@@ -312,6 +312,16 @@ function workerNote(snapshot) {
       text: cadenceLabel
         ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`
         : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`,
+    };
+  }
+
+  if (state === "running") {
+    return {
+      label: "Running",
+      state: "running",
+      text: cadenceLabel
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}`,
     };
   }
 

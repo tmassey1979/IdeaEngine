@@ -549,6 +549,18 @@ button {
   background: rgba(214, 139, 42, 0.14);
 }
 
+.status-worker-note.running {
+  color: #d9ebff;
+  background: rgba(56, 130, 246, 0.12);
+  border-color: rgba(56, 130, 246, 0.22);
+}
+
+.status-worker-note.running .status-worker-label {
+  color: #d9ebff;
+  border-color: rgba(56, 130, 246, 0.24);
+  background: rgba(56, 130, 246, 0.14);
+}
+
 .status-worker-note.complete {
   color: #d8f4e6;
   background: rgba(79, 181, 127, 0.06);
@@ -678,6 +690,12 @@ button {
   border-color: rgba(214, 139, 42, 0.24);
 }
 
+.worker-state.running {
+  color: #d9ebff;
+  background: rgba(56, 130, 246, 0.14);
+  border-color: rgba(56, 130, 246, 0.24);
+}
+
 .worker-state.unavailable {
   color: #f2c0c0;
   background: rgba(212, 20, 20, 0.14);
@@ -737,6 +755,12 @@ button {
   color: #f4d8bf;
   background: rgba(214, 139, 42, 0.14);
   border-color: rgba(214, 139, 42, 0.24);
+}
+
+.worker-progress.running {
+  color: #d9ebff;
+  background: rgba(56, 130, 246, 0.14);
+  border-color: rgba(56, 130, 246, 0.24);
 }
 
 .worker-progress.ready,
