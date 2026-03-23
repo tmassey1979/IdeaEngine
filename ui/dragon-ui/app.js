@@ -774,7 +774,11 @@ function renderStatusSnapshot(snapshot) {
           <div class="status-line">
             <span>#${item.issueNumber}</span>
             <strong>${item.summary}</strong>
-            <p class="status-timestamp">${formatTimestamp(item.recordedAt)}</p>
+            <p class="status-timestamp">
+              Attempt ${item.attemptCount ?? 1}
+              ${item.lastAttemptedAt ? ` • last tried ${formatTimestamp(item.lastAttemptedAt)}` : ""}
+              ${item.recordedAt ? ` • first queued ${formatTimestamp(item.recordedAt)}` : ""}
+            </p>
           </div>
         `)
         .join("")

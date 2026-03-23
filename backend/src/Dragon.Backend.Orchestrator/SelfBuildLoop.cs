@@ -513,11 +513,19 @@ public sealed class SelfBuildLoop
 
     private void RecordPendingGithubSync(int issueNumber, string summary)
     {
-        var pending = ReadPendingGithubSync()
-            .Where(item => item.IssueNumber != issueNumber)
-            .ToList();
+        var now = DateTimeOffset.UtcNow;
+        var pending = ReadPendingGithubSync().ToList();
+        var existing = pending.FirstOrDefault(item => item.IssueNumber == issueNumber);
+        pending.RemoveAll(item => item.IssueNumber == issueNumber);
 
-        pending.Add(new PendingGithubSyncSnapshot(issueNumber, summary, DateTimeOffset.UtcNow));
+        pending.Add(existing is null
+            ? new PendingGithubSyncSnapshot(issueNumber, summary, now, 1, now)
+            : existing with
+            {
+                Summary = summary,
+                AttemptCount = existing.AttemptCount + 1,
+                LastAttemptedAt = now
+            });
         WritePendingGithubSync(pending);
     }
 
@@ -1613,7 +1621,9 @@ public sealed record LatestGithubSyncSnapshot(
 public sealed record PendingGithubSyncSnapshot(
     int IssueNumber,
     string Summary,
-    DateTimeOffset RecordedAt
+    DateTimeOffset RecordedAt,
+    int AttemptCount = 1,
+    DateTimeOffset? LastAttemptedAt = null
 );
 
 public static class StatusSnapshotTrend
