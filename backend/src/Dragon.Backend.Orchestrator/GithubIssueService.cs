@@ -354,8 +354,10 @@ public sealed class GithubIssueService
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
                 $"- GitHub sync recorded at: {DescribeGlobalGithubSyncRecordedAt(rootDirectory)}",
+                $"- GitHub sync age: {DescribeGlobalGithubSyncAge(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
+                $"- GitHub replay age: {DescribeGlobalGithubReplayAge(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
                 $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
                 $"- pending GitHub sync oldest queued at: {DescribePendingGithubSyncOldestQueuedAt(rootDirectory)}",
@@ -564,8 +566,10 @@ public sealed class GithubIssueService
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
                 $"- GitHub sync recorded at: {DescribeGlobalGithubSyncRecordedAt(rootDirectory)}",
+                $"- GitHub sync age: {DescribeGlobalGithubSyncAge(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
+                $"- GitHub replay age: {DescribeGlobalGithubReplayAge(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
                 $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
                 $"- pending GitHub sync oldest queued at: {DescribePendingGithubSyncOldestQueuedAt(rootDirectory)}",
@@ -1671,6 +1675,45 @@ public sealed class GithubIssueService
         }
     }
 
+    private static string DescribeGlobalGithubSyncAge(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            if (!root.TryGetProperty("latestGithubSync", out var latestGithubSync) ||
+                latestGithubSync.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var recordedAt = latestGithubSync.TryGetProperty("recordedAt", out var recordedAtProperty) &&
+                recordedAtProperty.ValueKind == JsonValueKind.String &&
+                recordedAtProperty.TryGetDateTimeOffset(out var parsedRecordedAt)
+                ? parsedRecordedAt
+                : (DateTimeOffset?)null;
+            var generatedAt = root.TryGetProperty("generatedAt", out var generatedAtProperty) &&
+                generatedAtProperty.ValueKind == JsonValueKind.String &&
+                generatedAtProperty.TryGetDateTimeOffset(out var parsedGeneratedAt)
+                ? parsedGeneratedAt
+                : (DateTimeOffset?)null;
+
+            return recordedAt is null || generatedAt is null
+                ? "not recorded"
+                : FormatElapsed(generatedAt.Value - recordedAt.Value);
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
     private static string DescribeGlobalGithubReplay(string rootDirectory)
     {
         var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
@@ -1747,6 +1790,45 @@ public sealed class GithubIssueService
                 recordedAtProperty.TryGetDateTimeOffset(out var recordedAt)
                 ? recordedAt.ToString("O")
                 : "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalGithubReplayAge(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            if (!root.TryGetProperty("latestGithubReplay", out var latestGithubReplay) ||
+                latestGithubReplay.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var recordedAt = latestGithubReplay.TryGetProperty("recordedAt", out var recordedAtProperty) &&
+                recordedAtProperty.ValueKind == JsonValueKind.String &&
+                recordedAtProperty.TryGetDateTimeOffset(out var parsedRecordedAt)
+                ? parsedRecordedAt
+                : (DateTimeOffset?)null;
+            var generatedAt = root.TryGetProperty("generatedAt", out var generatedAtProperty) &&
+                generatedAtProperty.ValueKind == JsonValueKind.String &&
+                generatedAtProperty.TryGetDateTimeOffset(out var parsedGeneratedAt)
+                ? parsedGeneratedAt
+                : (DateTimeOffset?)null;
+
+            return recordedAt is null || generatedAt is null
+                ? "not recorded"
+                : FormatElapsed(generatedAt.Value - recordedAt.Value);
         }
         catch (JsonException)
         {
