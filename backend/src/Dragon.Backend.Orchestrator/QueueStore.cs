@@ -10,11 +10,13 @@ public sealed class QueueStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false
     };
+    private readonly Func<DateTimeOffset> nowProvider;
 
-    public QueueStore(string rootDirectory, string queueName = "dragon.jobs")
+    public QueueStore(string rootDirectory, string queueName = "dragon.jobs", Func<DateTimeOffset>? nowProvider = null)
     {
         RootDirectory = rootDirectory;
         QueueName = queueName;
+        this.nowProvider = nowProvider ?? (() => DateTimeOffset.UtcNow);
     }
 
     public string RootDirectory { get; }
@@ -50,7 +52,12 @@ public sealed class QueueStore
             return null;
         }
 
-        var selectedIndex = GetNextIndex(jobs);
+        var selectedIndex = GetNextReadyIndex(jobs, nowProvider());
+        if (selectedIndex < 0)
+        {
+            return null;
+        }
+
         var next = jobs[selectedIndex];
         jobs.RemoveAt(selectedIndex);
 
@@ -78,7 +85,47 @@ public sealed class QueueStore
             return null;
         }
 
-        return jobs[GetNextIndex(jobs)];
+        var selectedIndex = GetNextReadyIndex(jobs, nowProvider());
+        return selectedIndex < 0 ? null : jobs[selectedIndex];
+    }
+
+    public bool HasReadyJobs() => Peek() is not null;
+
+    public bool HasAnyJobs() => ReadAll().Count > 0;
+
+    private static int GetNextReadyIndex(IReadOnlyList<SelfBuildJob> jobs, DateTimeOffset now)
+    {
+        var readyJobs = jobs
+            .Select((job, index) => new { job, index })
+            .Where(item => IsReady(item.job, now))
+            .ToArray();
+
+        if (readyJobs.Length == 0)
+        {
+            return -1;
+        }
+
+        return readyJobs
+            .OrderBy(item => GetQueuePriorityRank(item.job))
+            .ThenBy(item => GetTargetingRank(item.job))
+            .ThenBy(item => GetRoleAlignmentRank(item.job))
+            .ThenBy(item => GetActionRank(item.job))
+            .ThenBy(item => GetRollupBreadthRank(item.job))
+            .ThenBy(item => item.index)
+            .First()
+            .index;
+    }
+
+    private static bool IsReady(SelfBuildJob job, DateTimeOffset now)
+    {
+        if (!job.Metadata.TryGetValue("retryNotBeforeUtc", out var rawValue) ||
+            string.IsNullOrWhiteSpace(rawValue))
+        {
+            return true;
+        }
+
+        return !DateTimeOffset.TryParse(rawValue, null, System.Globalization.DateTimeStyles.RoundtripKind, out var retryNotBefore) ||
+            retryNotBefore <= now;
     }
 
     private static int GetNextIndex(IReadOnlyList<SelfBuildJob> jobs) => jobs

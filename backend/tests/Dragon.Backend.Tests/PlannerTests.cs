@@ -6130,6 +6130,7 @@ public sealed class PlannerTests
     public void CycleOnce_RequeuesTransientProviderFailures_WithoutCountingThemAsOrdinaryFailures()
     {
         var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
         var stories = new[]
         {
             new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Architect Agent", "OPEN", ["story"], "", "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md")
@@ -6147,7 +6148,7 @@ public sealed class PlannerTests
             provider,
             new ModelExecutionRetryOptions(MaxAttempts: 1, BaseDelayMilliseconds: 0),
             _ => { });
-        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+        var loop = new SelfBuildLoop(root, jobExecutor: executor, nowProvider: () => now);
 
         var seeded = loop.CycleOnce(stories);
         var retried = loop.CycleOnce(stories);
@@ -6164,7 +6165,12 @@ public sealed class PlannerTests
         var queuedRetryJob = Assert.Single(queuedAfterRetry);
         Assert.Equal("architect", queuedRetryJob.Agent);
         Assert.Equal("1", queuedRetryJob.Metadata["transientProviderRetryCount"]);
+        Assert.Equal(retried.Execution.RetryNotBefore?.ToString("O", System.Globalization.CultureInfo.InvariantCulture), queuedRetryJob.Metadata["retryNotBeforeUtc"]);
 
+        var waiting = loop.CycleOnce(stories);
+        Assert.Equal("waiting", waiting.Mode);
+
+        now = retried.Execution.RetryNotBefore!.Value.AddSeconds(1);
         var recovered = loop.CycleOnce(stories);
 
         Assert.Equal("consume", recovered.Mode);
@@ -6172,6 +6178,32 @@ public sealed class PlannerTests
         Assert.Equal("in_progress", recovered.Workflow!.OverallStatus);
         Assert.Contains(loop.ReadQueue(), job => job.Agent == "review");
         Assert.Contains(loop.ReadQueue(), job => job.Agent == "test");
+    }
+
+    [Fact]
+    public void RunUntilIdle_DoesNotReportIdle_WhenOnlyDelayedRetryWorkRemains()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Delayed retry", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = now.AddMinutes(5).ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            }));
+        var loop = new SelfBuildLoop(root, nowProvider: () => now);
+
+        var result = loop.RunUntilIdle([]);
+
+        Assert.False(result.ReachedIdle);
+        Assert.False(result.ReachedMaxCycles);
+        Assert.Empty(result.Cycles);
     }
 
     [Fact]

@@ -50,7 +50,8 @@ public sealed record JobExecutionResult(
     string Summary,
     DateTimeOffset ObservedAt,
     IReadOnlyList<string>? ChangedPaths = null,
-    IReadOnlyList<RequestedFollowUp>? RequestedFollowUps = null
+    IReadOnlyList<RequestedFollowUp>? RequestedFollowUps = null,
+    DateTimeOffset? RetryNotBefore = null
 );
 
 public sealed record WorkflowStageState(

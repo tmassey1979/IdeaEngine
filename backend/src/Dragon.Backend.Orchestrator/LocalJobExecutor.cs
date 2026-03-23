@@ -69,7 +69,13 @@ public sealed class LocalJobExecutor
         }
         catch (Exception exception)
         {
-            return new JobExecutionResult(jobId, job.Agent, "failed", FormatFailureSummary(exception), DateTimeOffset.UtcNow);
+            return new JobExecutionResult(
+                jobId,
+                job.Agent,
+                "failed",
+                FormatFailureSummary(exception),
+                DateTimeOffset.UtcNow,
+                RetryNotBefore: ResolveRetryNotBefore(exception));
         }
     }
 
@@ -420,6 +426,15 @@ public sealed class LocalJobExecutor
         }
 
         return exception.Message;
+    }
+
+    private static DateTimeOffset? ResolveRetryNotBefore(Exception exception)
+    {
+        return exception is AgentModelProviderException providerException &&
+            providerException.RetryAfter is { } retryAfter &&
+            retryAfter > TimeSpan.Zero
+                ? DateTimeOffset.UtcNow.Add(retryAfter)
+                : null;
     }
 
     private static string FormatRetryAfter(TimeSpan retryAfter)

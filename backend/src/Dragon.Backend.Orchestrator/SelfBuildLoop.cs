@@ -24,10 +24,11 @@ public sealed class SelfBuildLoop
         string queueName = "dragon.jobs",
         GithubIssueService? githubIssueService = null,
         LocalJobExecutor? jobExecutor = null,
-        Func<string, string?>? environmentReader = null)
+        Func<string, string?>? environmentReader = null,
+        Func<DateTimeOffset>? nowProvider = null)
     {
         RootDirectory = rootDirectory;
-        queueStore = new QueueStore(rootDirectory, queueName);
+        queueStore = new QueueStore(rootDirectory, queueName, nowProvider);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
         this.jobExecutor = jobExecutor ?? LocalJobExecutor.CreateDefault(environmentReader ?? Environment.GetEnvironmentVariable);
@@ -458,10 +459,15 @@ public sealed class SelfBuildLoop
         RemoveSupersededSummaryJobs();
         RemoveSupersededImplementationJobs();
 
-        if (queueStore.ReadAll().Count == 0)
+        if (!queueStore.HasReadyJobs())
         {
-            var seeded = SeedNext(issues, repo, project);
-            return new CycleResult("seed", seeded, null, []);
+            if (HasSchedulableWork(issues))
+            {
+                var seeded = SeedNext(issues, repo, project);
+                return new CycleResult("seed", seeded, null, []);
+            }
+
+            return new CycleResult("waiting", null, null, []);
         }
 
         var job = queueStore.Dequeue()!;
@@ -506,9 +512,9 @@ public sealed class SelfBuildLoop
         var cycles = new List<CycleResult>();
         for (var index = 0; index < maxCycles; index += 1)
         {
-            if (queueStore.ReadAll().Count == 0 && !HasSchedulableWork(issues))
+            if (!queueStore.HasReadyJobs() && !HasSchedulableWork(issues))
             {
-                return new RunUntilIdleResult(cycles, true, false);
+                return new RunUntilIdleResult(cycles, !queueStore.HasAnyJobs(), false);
             }
 
             cycles.Add(CycleOnce(issues, repo, project, githubOwner, syncValidatedWorkflows));
@@ -528,9 +534,9 @@ public sealed class SelfBuildLoop
         for (var index = 0; index < maxCycles; index += 1)
         {
             var issues = LoadGithubIssues(owner, repo);
-            if (queueStore.ReadAll().Count == 0 && !HasSchedulableWork(issues))
+            if (!queueStore.HasReadyJobs() && !HasSchedulableWork(issues))
             {
-                return new RunUntilIdleResult(cycles, true, false);
+                return new RunUntilIdleResult(cycles, !queueStore.HasAnyJobs(), false);
             }
 
             cycles.Add(CycleOnce(issues, repo, project, owner, syncValidatedWorkflows));
@@ -935,6 +941,9 @@ public sealed class SelfBuildLoop
     private GithubIssue SelectNextIssue(IReadOnlyList<GithubIssue> issues)
     {
         var workflows = workflowStateStore.ReadAll();
+        var queuedIssueNumbers = queueStore.ReadAll()
+            .Select(job => job.Issue)
+            .ToHashSet();
         var latestRecoveryIssuesByParent = issues
             .Where(IsRecoveryIssue)
             .Where(issue => issue.SourceIssueNumber is not null)
@@ -943,6 +952,7 @@ public sealed class SelfBuildLoop
 
         return issues
             .Where(IsSchedulableStoryIssue)
+            .Where(issue => !queuedIssueNumbers.Contains(issue.Number))
             .Where(issue => !workflows.TryGetValue(issue.Number, out var workflow) || (
                 !string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase) &&
@@ -991,6 +1001,11 @@ public sealed class SelfBuildLoop
         var metadata = job.Metadata.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
         metadata["transientProviderRetryCount"] = (currentRetryCount + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
         metadata["transientProviderRetryReason"] = execution.Summary;
+        if (execution.RetryNotBefore is { } retryNotBefore)
+        {
+            metadata["retryNotBeforeUtc"] = retryNotBefore.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         queueStore.Enqueue(job with { Metadata = metadata });
 
         workflow = workflowStateStore.ResetStageForRetry(
