@@ -380,6 +380,7 @@ public sealed class GithubIssueService
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync retry state: {DescribePendingGithubSyncRetryState(rootDirectory)}",
                 $"- pending GitHub sync retry overdue: {DescribePendingGithubSyncRetryOverdue(rootDirectory)}",
+                $"- pending GitHub sync priority: {DescribeReplayPriorityReason(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -635,6 +636,7 @@ public sealed class GithubIssueService
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync retry state: {DescribePendingGithubSyncRetryState(rootDirectory)}",
                 $"- pending GitHub sync retry overdue: {DescribePendingGithubSyncRetryOverdue(rootDirectory)}",
+                $"- pending GitHub sync priority: {DescribeReplayPriorityReason(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -2281,6 +2283,29 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not overdue";
+        }
+    }
+
+    private static string DescribeReplayPriorityReason(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "none";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("replayPriorityReason", out var replayPriorityReasonProperty) &&
+                replayPriorityReasonProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(replayPriorityReasonProperty.GetString())
+                ? replayPriorityReasonProperty.GetString()!
+                : "none";
+        }
+        catch (JsonException)
+        {
+            return "none";
         }
     }
 
