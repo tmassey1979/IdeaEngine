@@ -5,6 +5,7 @@ REPO_DIR="${REPO_DIR:-$HOME/dragon/IdeaEngine}"
 SERVICE_NAME="${SERVICE_NAME:-dragon-idea-engine}"
 BACKUP_TIMER_NAME="${BACKUP_TIMER_NAME:-dragon-backup}"
 UPDATE_TIMER_NAME="${UPDATE_TIMER_NAME:-dragon-update}"
+ALERT_TIMER_NAME="${ALERT_TIMER_NAME:-dragon-alert-check}"
 STATUS_URL="${STATUS_URL:-http://127.0.0.1:5078/status}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5078/health}"
 STATUS_SNAPSHOT_PATH="${STATUS_SNAPSHOT_PATH:-$REPO_DIR/.dragon/status/runtime-status.json}"
@@ -423,7 +424,7 @@ emit_json_report() {
   failure_json="$(recent_service_failures_json)"
   newest_backup_value="$(newest_backup)"
 
-  python3 - "${STATUS_FILE:-}" "${STATUS_SOURCE}" "${REPO_DIR}" "${SERVICE_NAME}" "${BACKUP_TIMER_NAME}" "${UPDATE_TIMER_NAME}" "${service_active}" "${service_enabled}" "${service_substate}" "${service_result}" "${service_exec_status}" "${service_restart_count}" "${backup_timer_active}" "${backup_timer_enabled}" "${backup_timer_next}" "${backup_timer_last}" "${update_timer_active}" "${update_timer_enabled}" "${update_timer_next}" "${update_timer_last}" "${health_endpoint_state}" "${status_endpoint_state}" "${compose_json}" "${failure_json}" "${newest_backup_value}" <<'PY'
+  python3 - "${STATUS_FILE:-}" "${STATUS_SOURCE}" "${REPO_DIR}" "${SERVICE_NAME}" "${BACKUP_TIMER_NAME}" "${UPDATE_TIMER_NAME}" "${ALERT_TIMER_NAME}" "${service_active}" "${service_enabled}" "${service_substate}" "${service_result}" "${service_exec_status}" "${service_restart_count}" "${backup_timer_active}" "${backup_timer_enabled}" "${backup_timer_next}" "${backup_timer_last}" "${update_timer_active}" "${update_timer_enabled}" "${update_timer_next}" "${update_timer_last}" "${alert_timer_active}" "${alert_timer_enabled}" "${alert_timer_next}" "${alert_timer_last}" "${health_endpoint_state}" "${status_endpoint_state}" "${compose_json}" "${failure_json}" "${newest_backup_value}" <<'PY'
 import json
 import os
 import sys
@@ -435,6 +436,7 @@ import sys
     service_name,
     backup_timer_name,
     update_timer_name,
+    alert_timer_name,
     service_active,
     service_enabled,
     service_substate,
@@ -449,6 +451,10 @@ import sys
     update_timer_enabled,
     update_timer_next,
     update_timer_last,
+    alert_timer_active,
+    alert_timer_enabled,
+    alert_timer_next,
+    alert_timer_last,
     health_endpoint_state,
     status_endpoint_state,
     compose_json,
@@ -493,6 +499,13 @@ report = {
             "next": update_timer_next,
             "last": update_timer_last,
         },
+        "alert": {
+            "name": alert_timer_name,
+            "active": alert_timer_active,
+            "enabled": alert_timer_enabled,
+            "next": alert_timer_next,
+            "last": alert_timer_last,
+        },
     },
     "endpoints": {
         "health": health_endpoint_state,
@@ -527,8 +540,10 @@ main() {
   local service_substate service_result service_exec_status service_restart_count
   local backup_timer_active backup_timer_enabled
   local update_timer_active update_timer_enabled
+  local alert_timer_active alert_timer_enabled
   local backup_timer_next backup_timer_last
   local update_timer_next update_timer_last
+  local alert_timer_next alert_timer_last
   local health_endpoint_state status_endpoint_state
   service_active="$(service_state is-active)"
   service_enabled="$(service_state is-enabled)"
@@ -540,14 +555,20 @@ main() {
   backup_timer_enabled="$(timer_state is-enabled "${BACKUP_TIMER_NAME}")"
   update_timer_active="$(timer_state is-active "${UPDATE_TIMER_NAME}")"
   update_timer_enabled="$(timer_state is-enabled "${UPDATE_TIMER_NAME}")"
+  alert_timer_active="$(timer_state is-active "${ALERT_TIMER_NAME}")"
+  alert_timer_enabled="$(timer_state is-enabled "${ALERT_TIMER_NAME}")"
   backup_timer_next="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
   backup_timer_last="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
   update_timer_next="$(systemctl show "${UPDATE_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
   update_timer_last="$(systemctl show "${UPDATE_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
+  alert_timer_next="$(systemctl show "${ALERT_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
+  alert_timer_last="$(systemctl show "${ALERT_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
   backup_timer_next="${backup_timer_next:-unknown}"
   backup_timer_last="${backup_timer_last:-unknown}"
   update_timer_next="${update_timer_next:-unknown}"
   update_timer_last="${update_timer_last:-unknown}"
+  alert_timer_next="${alert_timer_next:-unknown}"
+  alert_timer_last="${alert_timer_last:-unknown}"
   health_endpoint_state="$(endpoint_state "${HEALTH_URL}")"
   status_endpoint_state="$(endpoint_state "${STATUS_URL}")"
 
@@ -576,6 +597,10 @@ main() {
   echo "update_timer_enabled: ${update_timer_enabled}"
   echo "update_timer_next=${update_timer_next}"
   echo "update_timer_last=${update_timer_last}"
+  echo "alert_timer_active: ${alert_timer_active}"
+  echo "alert_timer_enabled: ${alert_timer_enabled}"
+  echo "alert_timer_next=${alert_timer_next}"
+  echo "alert_timer_last=${alert_timer_last}"
   recent_service_failures
 
   print_heading "Endpoints"
