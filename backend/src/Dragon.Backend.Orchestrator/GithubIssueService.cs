@@ -344,6 +344,7 @@ public sealed class GithubIssueService
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
+                $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -541,6 +542,7 @@ public sealed class GithubIssueService
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
+                $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -1206,6 +1208,66 @@ public sealed class GithubIssueService
             var validatedIssues = ReadInt32Property(rollup, "validatedIssues");
 
             return $"queued {queuedJobs} · in-progress {inProgressIssues} · failed {failedIssues} · quarantined {quarantinedIssues} ({actionableQuarantinedIssues} actionable, {inactiveQuarantinedIssues} inactive) · validated {validatedIssues}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalQueueTrend(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var direction = root.TryGetProperty("queueDirection", out var directionProperty) &&
+                directionProperty.ValueKind == JsonValueKind.String
+                ? directionProperty.GetString()
+                : null;
+            var delta = root.TryGetProperty("queueDelta", out var deltaProperty) &&
+                deltaProperty.ValueKind == JsonValueKind.Number &&
+                deltaProperty.TryGetInt32(out var parsedDelta)
+                ? parsedDelta
+                : (int?)null;
+            var comparedAt = root.TryGetProperty("queueComparedAt", out var comparedAtProperty) &&
+                comparedAtProperty.ValueKind == JsonValueKind.String &&
+                comparedAtProperty.TryGetDateTimeOffset(out var parsedComparedAt)
+                ? parsedComparedAt
+                : (DateTimeOffset?)null;
+
+            if (string.IsNullOrWhiteSpace(direction) && delta is null && comparedAt is null)
+            {
+                return "not recorded";
+            }
+
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(direction))
+            {
+                parts.Add(direction!);
+            }
+
+            if (delta is not null)
+            {
+                parts.Add(delta.Value >= 0
+                    ? $"+{delta.Value}"
+                    : delta.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            if (comparedAt is not null)
+            {
+                parts.Add($"vs {comparedAt.Value:O}");
+            }
+
+            return parts.Count == 0
+                ? "not recorded"
+                : string.Join(" · ", parts);
         }
         catch (JsonException)
         {
