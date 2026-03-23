@@ -344,6 +344,7 @@ public sealed class GithubIssueService
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
+                $"- worker rollup delta: {DescribeGlobalWorkerRollupDelta(rootDirectory)}",
                 $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
@@ -542,6 +543,7 @@ public sealed class GithubIssueService
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
+                $"- worker rollup delta: {DescribeGlobalWorkerRollupDelta(rootDirectory)}",
                 $"- worker queue trend: {DescribeGlobalQueueTrend(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
@@ -1214,6 +1216,41 @@ public sealed class GithubIssueService
             return "not recorded";
         }
     }
+
+    private static string DescribeGlobalWorkerRollupDelta(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            if (!root.TryGetProperty("rollupDelta", out var rollupDelta) || rollupDelta.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var failedIssues = ReadInt32Property(rollupDelta, "failedIssues");
+            var quarantinedIssues = ReadInt32Property(rollupDelta, "quarantinedIssues");
+            var inProgressIssues = ReadInt32Property(rollupDelta, "inProgressIssues");
+            var validatedIssues = ReadInt32Property(rollupDelta, "validatedIssues");
+
+            return $"failed {FormatSignedDelta(failedIssues)} · quarantined {FormatSignedDelta(quarantinedIssues)} · in-progress {FormatSignedDelta(inProgressIssues)} · validated {FormatSignedDelta(validatedIssues)}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string FormatSignedDelta(int value) =>
+        value >= 0
+            ? $"+{value}"
+            : value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private static string DescribeGlobalQueueTrend(string rootDirectory)
     {

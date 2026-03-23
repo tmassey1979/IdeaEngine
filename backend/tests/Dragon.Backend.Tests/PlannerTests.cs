@@ -4697,6 +4697,12 @@ public sealed class PlannerTests
                 "inProgressIssues": 0,
                 "validatedIssues": 0
               },
+              "rollupDelta": {
+                "failedIssues": 0,
+                "quarantinedIssues": 1,
+                "inProgressIssues": -1,
+                "validatedIssues": 0
+              },
               "queuedJobs": 1,
               "queueDirection": "down",
               "queueDelta": -2,
@@ -4770,6 +4776,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: issue #22 · recovery #500 · 1 queued recovery job · sync-drift · Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker latest activity: issue #500 · stage review · Recovery review is waiting on GitHub writeback replay. · 2026-03-23T12:01:40.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker rollup: queued 1 · in-progress 0 · failed 0 · quarantined 1 (1 actionable, 0 inactive) · validated 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker rollup delta: failed +0 · quarantined +1 · in-progress -1 · validated +0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue trend: down · -2 · vs 2026-03-23T11:59:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
@@ -5144,6 +5151,12 @@ public sealed class PlannerTests
                 "inProgressIssues": 1,
                 "validatedIssues": 0
               },
+              "rollupDelta": {
+                "failedIssues": 0,
+                "quarantinedIssues": 0,
+                "inProgressIssues": 1,
+                "validatedIssues": 0
+              },
               "queuedJobs": 1,
               "queueDirection": "flat",
               "queueDelta": 0,
@@ -5226,6 +5239,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: none active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker latest activity: issue #22 · stage review · Implementation advanced into review. · 2026-03-16T15:26:18.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker rollup: queued 1 · in-progress 1 · failed 0 · quarantined 0 (0 actionable, 0 inactive) · validated 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker rollup delta: failed +0 · quarantined +0 · in-progress +1 · validated +0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue trend: flat · +0 · vs 2026-03-16T15:20:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
@@ -5322,6 +5336,12 @@ public sealed class PlannerTests
                 "inProgressIssues": 1,
                 "validatedIssues": 0
               },
+              "rollupDelta": {
+                "failedIssues": 0,
+                "quarantinedIssues": 0,
+                "inProgressIssues": 0,
+                "validatedIssues": 0
+              },
               "queuedJobs": 1,
               "queueDirection": "up",
               "queueDelta": 1,
@@ -5391,6 +5411,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: issue #22 · recovery #500 · 1 queued recovery job · recovery-active · Recovery issue #500 is actively draining work for parent issue #22.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker latest activity: issue #22 · stage review · Operator escalation summary remains the active checkpoint. · 2026-03-16T15:30:32.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker rollup: queued 1 · in-progress 1 · failed 0 · quarantined 1 (1 actionable, 0 inactive) · validated 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker rollup delta: failed +0 · quarantined +0 · in-progress +0 · validated +0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue trend: up · +1 · vs 2026-03-16T15:25:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
@@ -5464,6 +5485,12 @@ public sealed class PlannerTests
                 "inProgressIssues": 0,
                 "validatedIssues": 1
               },
+              "rollupDelta": {
+                "failedIssues": 0,
+                "quarantinedIssues": 0,
+                "inProgressIssues": -1,
+                "validatedIssues": 1
+              },
               "queuedJobs": 0,
               "queueDirection": "unknown",
               "queueDelta": 0,
@@ -5525,6 +5552,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: none active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker latest activity: issue #22 · stage complete · Idle confirmation pass completed after validation. · 2026-03-16T15:30:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker rollup: queued 0 · in-progress 0 · failed 0 · quarantined 0 (0 actionable, 0 inactive) · validated 1", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker rollup delta: failed +0 · quarantined +0 · in-progress -1 · validated +1", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker queue trend: unknown · +0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
