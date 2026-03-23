@@ -336,6 +336,7 @@ public sealed class GithubIssueService
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
+                $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -510,6 +511,7 @@ public sealed class GithubIssueService
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
+                $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -748,6 +750,32 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "none";
+        }
+    }
+
+    private static string DescribeGlobalInterventionEscalationStreak(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "0";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("interventionEscalationStreak", out var streakProperty) &&
+                streakProperty.ValueKind == JsonValueKind.Number &&
+                streakProperty.TryGetInt32(out var streak))
+            {
+                return streak.ToString();
+            }
+
+            return "0";
+        }
+        catch (JsonException)
+        {
+            return "0";
         }
     }
 

@@ -1766,6 +1766,113 @@ public sealed class PlannerTests
         Assert.Equal("high", annotated.LeadJob.Priority);
         Assert.True(annotated.LeadJob.Blocking);
         Assert.Equal("story", annotated.LeadJob.WorkType);
+        Assert.Equal(0, annotated.InterventionEscalationStreak);
+    }
+
+    [Fact]
+    public void StatusSnapshotTrend_IncrementsCriticalInterventionEscalationStreakForSameTarget()
+    {
+        var previous = new StatusSnapshot(
+            DateTimeOffset.UtcNow.AddMinutes(-5),
+            "status",
+            "run-watch",
+            "watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            8,
+            1,
+            8,
+            "healthy",
+            "previous",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("repairing", "previous"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Replay queued GitHub update for issue #147.",
+                147,
+                null,
+                147,
+                null,
+                null,
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Replay queued GitHub update for issue #147.",
+            2);
+
+        var current = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "run-watch",
+            "watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            2,
+            8,
+            "healthy",
+            "current",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("repairing", "current"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Replay queued GitHub update for issue #147.",
+                147,
+                null,
+                147,
+                null,
+                null,
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Replay queued GitHub update for issue #147.");
+
+        var annotated = StatusSnapshotTrend.Apply(current, previous);
+
+        Assert.Equal(3, annotated.InterventionEscalationStreak);
+        Assert.Contains("Persisting across 3 consecutive status snapshots", annotated.InterventionEscalationNote, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3921,6 +4028,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 
@@ -4276,6 +4384,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker focus: shipping implementation work", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: implementation: Advance issue #22: refresh architecture docs. (fresh)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: none", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));

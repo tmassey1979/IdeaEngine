@@ -2137,7 +2137,8 @@ public sealed record StatusSnapshot(
     string? WorkerActivity = null,
     string? PendingGithubSyncSummary = null,
     InterventionTargetSnapshot? InterventionTarget = null,
-    string? InterventionEscalationNote = null
+    string? InterventionEscalationNote = null,
+    int InterventionEscalationStreak = 0
 );
 
 public sealed record LatestPassSummary(
@@ -2248,6 +2249,9 @@ public static class StatusSnapshotTrend
 {
     public static StatusSnapshot Apply(StatusSnapshot current, StatusSnapshot? previous)
     {
+        var interventionEscalationStreak = ComputeInterventionEscalationStreak(current, previous);
+        var interventionEscalationNote = BuildPersistedInterventionEscalationNote(current.InterventionEscalationNote, current.InterventionTarget, interventionEscalationStreak);
+
         if (previous is null)
         {
             return current with
@@ -2255,7 +2259,9 @@ public static class StatusSnapshotTrend
                 QueueDirection = "unknown",
                 QueueDelta = 0,
                 QueueComparedAt = null,
-                RollupDelta = new StatusRollupDelta(0, 0, 0, 0)
+                RollupDelta = new StatusRollupDelta(0, 0, 0, 0),
+                InterventionEscalationStreak = interventionEscalationStreak,
+                InterventionEscalationNote = interventionEscalationNote
             };
         }
 
@@ -2277,8 +2283,55 @@ public static class StatusSnapshotTrend
                 current.Rollup.QuarantinedIssues - previous.Rollup.QuarantinedIssues,
                 current.Rollup.InProgressIssues - previous.Rollup.InProgressIssues,
                 current.Rollup.ValidatedIssues - previous.Rollup.ValidatedIssues
-            )
+            ),
+            InterventionEscalationStreak = interventionEscalationStreak,
+            InterventionEscalationNote = interventionEscalationNote
         };
+    }
+
+    private static int ComputeInterventionEscalationStreak(StatusSnapshot current, StatusSnapshot? previous)
+    {
+        if (!string.Equals(current.InterventionTarget?.Escalation, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (previous is null ||
+            !string.Equals(previous.InterventionTarget?.Escalation, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        var sameKind = string.Equals(current.InterventionTarget?.Kind, previous.InterventionTarget?.Kind, StringComparison.OrdinalIgnoreCase);
+        var sameIssue = current.InterventionTarget?.IssueNumber == previous.InterventionTarget?.IssueNumber;
+        var sameRecovery = current.InterventionTarget?.RecoveryIssueNumber == previous.InterventionTarget?.RecoveryIssueNumber;
+        var samePendingSync = current.InterventionTarget?.PendingGithubSyncIssueNumber == previous.InterventionTarget?.PendingGithubSyncIssueNumber;
+
+        if (sameKind && sameIssue && sameRecovery && samePendingSync)
+        {
+            return Math.Max(1, previous.InterventionEscalationStreak) + 1;
+        }
+
+        return 1;
+    }
+
+    private static string? BuildPersistedInterventionEscalationNote(
+        string? currentNote,
+        InterventionTargetSnapshot? interventionTarget,
+        int interventionEscalationStreak)
+    {
+        if (string.IsNullOrWhiteSpace(currentNote))
+        {
+            return currentNote;
+        }
+
+        if (!string.Equals(interventionTarget?.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
+            interventionEscalationStreak <= 1)
+        {
+            return currentNote;
+        }
+
+        return $"{currentNote} Persisting across {interventionEscalationStreak} consecutive status snapshots.";
     }
 }
 
