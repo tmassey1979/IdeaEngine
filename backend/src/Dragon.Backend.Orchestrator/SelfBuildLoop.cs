@@ -769,7 +769,7 @@ public sealed class SelfBuildLoop
                 .Select(item => new GithubSyncResult(
                     false,
                     false,
-                    $"Deferred GitHub replay for issue #{item.IssueNumber} while waiting for delayed provider retry."))
+                    $"Intentionally deferring GitHub replay for issue #{item.IssueNumber} while provider backoff remains active."))
                 .ToArray();
         }
 
@@ -910,7 +910,7 @@ public sealed class SelfBuildLoop
     {
         var summary = attemptedCount == 0
             ? deferredCount > 0
-                ? $"Deferred replay for {deferredCount} pending GitHub update{(deferredCount == 1 ? string.Empty : "s")} while waiting for delayed provider retry."
+                ? $"Intentionally deferring replay for {deferredCount} pending GitHub update{(deferredCount == 1 ? string.Empty : "s")} while provider backoff remains active."
                 : "No pending GitHub updates needed replay."
             : deferredCount > 0
                 ? $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing, {deferredCount} deferred."
@@ -2448,7 +2448,7 @@ public sealed class SelfBuildLoop
         latestGithubReplay.AttemptedCount == 0 &&
         latestGithubReplay.UpdatedCount == 0 &&
         latestGithubReplay.FailedCount == 0 &&
-        latestGithubReplay.Summary.Contains("Deferred replay", StringComparison.OrdinalIgnoreCase);
+        latestGithubReplay.Summary.Contains("provider backoff", StringComparison.OrdinalIgnoreCase);
 
     internal static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget)
     {

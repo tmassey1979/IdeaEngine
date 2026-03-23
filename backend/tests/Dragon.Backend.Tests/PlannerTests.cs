@@ -1256,14 +1256,14 @@ public sealed class PlannerTests
         Assert.Single(replayResults);
         Assert.False(replayResults[0].Attempted);
         Assert.False(replayResults[0].Updated);
-        Assert.Contains("Deferred GitHub replay", replayResults[0].Summary, StringComparison.Ordinal);
+        Assert.Contains("Intentionally deferring GitHub replay", replayResults[0].Summary, StringComparison.Ordinal);
         Assert.Equal(1, status.PendingGithubSyncCount);
         Assert.Null(status.LatestGithubSync);
         Assert.NotNull(status.LatestGithubReplay);
         Assert.Equal(0, status.LatestGithubReplay!.AttemptedCount);
         Assert.Equal(0, status.LatestGithubReplay.UpdatedCount);
         Assert.Equal(0, status.LatestGithubReplay.FailedCount);
-        Assert.Contains("Deferred replay for 1 pending GitHub update", status.LatestGithubReplay.Summary, StringComparison.Ordinal);
+        Assert.Contains("Intentionally deferring replay for 1 pending GitHub update", status.LatestGithubReplay.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1294,7 +1294,7 @@ public sealed class PlannerTests
               "attemptedCount": 0,
               "updatedCount": 0,
               "failedCount": 0,
-              "summary": "Deferred replay for 1 pending GitHub update while waiting for delayed provider retry."
+              "summary": "Intentionally deferring replay for 1 pending GitHub update while provider backoff remains active."
             }
             """);
         var store = new WorkflowStateStore(root);
@@ -1312,7 +1312,7 @@ public sealed class PlannerTests
         Assert.Equal("waiting", status.RecentLoopSignal.Mode);
         Assert.Contains("intentionally deferring pending GitHub replay", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
         Assert.NotNull(status.LatestGithubReplay);
-        Assert.Contains("Deferred replay for 1 pending GitHub update", status.LatestGithubReplay!.Summary, StringComparison.Ordinal);
+        Assert.Contains("Intentionally deferring replay for 1 pending GitHub update", status.LatestGithubReplay!.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -5123,7 +5123,7 @@ public sealed class PlannerTests
               "lastCommand": "github-run-watch",
               "workerMode": "watch",
               "workerState": "waiting",
-              "workerActivity": "Replaying pending GitHub updates before the next watch pass.",
+              "workerActivity": "Waiting to replay pending GitHub updates after provider backoff clears.",
               "leadJob": {
                 "issueNumber": 500,
                 "agent": "documentation",
@@ -5162,10 +5162,10 @@ public sealed class PlannerTests
                 "recordedAt": "2026-03-23T12:01:00Z"
               },
               "latestGithubReplay": {
-                "attemptedCount": 3,
-                "updatedCount": 3,
+                "attemptedCount": 0,
+                "updatedCount": 0,
                 "failedCount": 0,
-                "summary": "Replayed 3 pending GitHub updates.",
+                "summary": "Intentionally deferring replay for 1 pending GitHub update while provider backoff remains active.",
                 "recordedAt": "2026-03-23T12:01:30Z"
               },
               "pendingGithubSync": [
@@ -5205,7 +5205,7 @@ public sealed class PlannerTests
               "queueDelta": -2,
               "queueComparedAt": "2026-03-23T11:59:00Z",
               "health": "healthy",
-              "attentionSummary": "3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
+              "attentionSummary": "Provider backoff is delaying GitHub replay for the oldest queued writeback drift.",
               "latestPass": {
                 "passNumber": 4,
                 "cycleCount": 0,
@@ -5213,15 +5213,15 @@ public sealed class PlannerTests
                 "consumedCycles": 0,
                 "reachedIdle": false,
                 "reachedMaxCycles": false,
-                "githubReplayAttemptedCount": 3,
-                "githubReplayUpdatedCount": 3,
+                "githubReplayAttemptedCount": 0,
+                "githubReplayUpdatedCount": 0,
                 "githubReplayFailedCount": 0,
                 "operatorEscalationQueuedCount": 0,
                 "operatorEscalationConsumedCount": 0
               },
               "recentLoopSignal": {
-                "mode": "repairing",
-                "summary": "Replayed 3 pending GitHub updates and waiting for a quiet confirmation pass."
+                "mode": "waiting",
+                "summary": "Loop is intentionally deferring pending GitHub replay while provider backoff remains active."
               },
               "interventionEscalationNote": "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
               "interventionTarget": {
@@ -5269,7 +5269,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker snapshot age: 28m 15s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker activity: Replaying pending GitHub updates before the next watch pass.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker activity: Waiting to replay pending GitHub updates after provider backoff clears.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead job: issue #500 · documentation:review_issue · docs/generated/provider-notes.md · stabilize provider notes recovery summary · priority high · blocking · recovery", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: issue #22 · recovery #500 · 1 queued recovery job · sync-drift · Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead quarantine drift age: 30m 0s", StringComparison.Ordinal));
@@ -5289,7 +5289,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub sync: issue #500 pending: GitHub sync failed for recovery issue #500.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub sync recorded at: 2026-03-23T12:01:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub sync age: 45s", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("GitHub replay: 3/3 updated: Replayed 3 pending GitHub updates.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: Intentionally deferring replay for 1 pending GitHub update while provider backoff remains active.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-23T12:01:30.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay age: 15s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 1", StringComparison.Ordinal));
@@ -5300,12 +5300,12 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("pending GitHub sync last attempt: 2026-03-23T12:01:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync next retry: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: 1 pending GitHub update remains queued for retry.", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 seed, 0 consume, replay 3/3", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 cycles, 0 seed, 0 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker attention: 3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker loop mode: repairing", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker loop summary: Replayed 3 pending GitHub updates and waiting for a quiet confirmation pass.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker attention: Provider backoff is delaying GitHub replay for the oldest queued writeback drift.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop mode: waiting", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is intentionally deferring pending GitHub replay while provider backoff remains active.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention age: 4h 30m old", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention escalation level: critical", StringComparison.Ordinal));
