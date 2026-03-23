@@ -32,6 +32,13 @@ import sys
 
 report_file, alert_file, alert_status = sys.argv[1:4]
 
+def describe_wake_reason(value: str | None) -> str | None:
+    if value == "delayed-provider-retry":
+        return "waiting for delayed provider retry"
+    if value == "poll-interval":
+        return "scheduled poll interval"
+    return value
+
 with open(report_file, "r", encoding="utf-8") as handle:
     report = json.load(handle)
 
@@ -43,6 +50,15 @@ timers = report.get("timers") or {}
 status = report.get("status") or {}
 rollup = status.get("rollup") or {}
 latest = status.get("latestActivity") or {}
+next_wake_reason = describe_wake_reason(status.get("nextWakeReason"))
+delayed_retry_urgency = status.get("delayedRetryUrgency")
+wait_signal = None
+if next_wake_reason == "waiting for delayed provider retry":
+    wait_signal = "provider backoff"
+    if delayed_retry_urgency == "alert":
+        wait_signal = "provider backoff (long)"
+elif next_wake_reason == "scheduled poll interval":
+    wait_signal = "routine poll wait"
 
 print("Dragon Pi Status Dashboard")
 print()
@@ -51,8 +67,10 @@ print(f"  service: {service.get('active', 'unknown')} ({service.get('result', 'u
 print(f"  worker: {status.get('health', 'unknown')}")
 print(f"  alert_check: {alert_status}")
 print(f"  attention: {status.get('attentionSummary', 'none')}")
-if status.get("nextWakeReason"):
-    print(f"  next_wake_reason: {status.get('nextWakeReason')}")
+if wait_signal:
+    print(f"  wait_signal: {wait_signal}")
+if next_wake_reason:
+    print(f"  next_wake_reason: {next_wake_reason}")
 if status.get("nextDelayedRetryAt"):
     print(f"  next_delayed_retry: {status.get('nextDelayedRetryAt')}")
 if status.get("delayedRetryUrgency"):

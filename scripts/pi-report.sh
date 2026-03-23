@@ -650,6 +650,15 @@ main() {
     echo "worker_activity: $(json_query workerActivity unknown)"
     echo "health: $(json_query health unknown)"
     echo "next_wake_reason: $(json_query nextWakeReason '')"
+    if [[ "$(json_query nextWakeReason '')" == "delayed-provider-retry" ]]; then
+      if [[ "$(json_query delayedRetryUrgency '')" == "alert" ]]; then
+        echo "wait_signal: provider backoff (long)"
+      else
+        echo "wait_signal: provider backoff"
+      fi
+    elif [[ "$(json_query nextWakeReason '')" == "poll-interval" ]]; then
+      echo "wait_signal: routine poll wait"
+    fi
     echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
     echo "delayed_retry_urgency: $(json_query delayedRetryUrgency '')"
     echo "delayed_retry_summary: $(json_query delayedRetrySummary '')"
