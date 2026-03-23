@@ -378,6 +378,7 @@ public sealed class GithubIssueService
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- global intervention age: {DescribeGlobalInterventionAge(rootDirectory)}",
                 $"- global intervention escalation level: {DescribeGlobalInterventionEscalationLevel(rootDirectory)}",
+                $"- global intervention acknowledged: {DescribeGlobalInterventionAcknowledged(rootDirectory)}",
                 $"- global intervention acknowledged streak: {DescribeGlobalInterventionAcknowledgedStreak(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
@@ -597,6 +598,7 @@ public sealed class GithubIssueService
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- global intervention age: {DescribeGlobalInterventionAge(rootDirectory)}",
                 $"- global intervention escalation level: {DescribeGlobalInterventionEscalationLevel(rootDirectory)}",
+                $"- global intervention acknowledged: {DescribeGlobalInterventionAcknowledged(rootDirectory)}",
                 $"- global intervention acknowledged streak: {DescribeGlobalInterventionAcknowledgedStreak(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
@@ -2666,6 +2668,33 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "0";
+        }
+    }
+
+    private static string DescribeGlobalInterventionAcknowledged(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "no";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("interventionTarget", out var interventionTarget) &&
+                interventionTarget.ValueKind == JsonValueKind.Object &&
+                interventionTarget.TryGetProperty("acknowledged", out var acknowledgedProperty) &&
+                acknowledgedProperty.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return acknowledgedProperty.GetBoolean() ? "yes" : "no";
+            }
+
+            return "no";
+        }
+        catch (JsonException)
+        {
+            return "no";
         }
     }
 
