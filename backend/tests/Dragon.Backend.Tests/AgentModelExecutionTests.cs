@@ -1,5 +1,6 @@
 using Dragon.Backend.Contracts;
 using Dragon.Backend.Orchestrator;
+using System.Net;
 
 namespace Dragon.Backend.Tests;
 
@@ -1927,6 +1928,56 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_RetriesTransientModelFailures_AndEventuallySucceeds()
+    {
+        var issue = new GithubIssue(
+            503,
+            "[Story] Dragon Idea Engine Master Codex: Architect Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "architect", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FailingThenSuccessfulAgentModelProvider(
+            failuresBeforeSuccess: 2,
+            new HttpRequestException("429 Too Many Requests", null, HttpStatusCode.TooManyRequests));
+        var executor = new LocalJobExecutor(
+            (_, _, _) => new CommandResult(0, "ok", string.Empty),
+            provider,
+            new ModelExecutionRetryOptions(MaxAttempts: 3, BaseDelayMilliseconds: 0));
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Equal("Recovered after retry.", result.Summary);
+        Assert.Equal(3, provider.AttemptCount);
+    }
+
+    [Fact]
+    public void Execute_DoesNotRetryNonTransientModelFailures()
+    {
+        var issue = new GithubIssue(
+            504,
+            "[Story] Dragon Idea Engine Master Codex: Architect Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "architect", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FailingThenSuccessfulAgentModelProvider(
+            failuresBeforeSuccess: 1,
+            new InvalidOperationException("prompt schema rejected"));
+        var executor = new LocalJobExecutor(
+            (_, _, _) => new CommandResult(0, "ok", string.Empty),
+            provider,
+            new ModelExecutionRetryOptions(MaxAttempts: 3, BaseDelayMilliseconds: 0));
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("failed", result.Status);
+        Assert.Equal("prompt schema rejected", result.Summary);
+        Assert.Equal(1, provider.AttemptCount);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReturnsNullForPlainText()
     {
         var parsed = AgentStructuredResultParser.Parse("plain text result");
@@ -2011,6 +2062,34 @@ public sealed class AgentModelExecutionTests
         {
             var output = outputs.Count > 0 ? outputs.Dequeue() : """{"summary":"No output configured."}""";
             return Task.FromResult(new AgentModelResponse("fake", request.Model, "resp_test", output, "completed"));
+        }
+    }
+
+    private sealed class FailingThenSuccessfulAgentModelProvider : IAgentModelProvider
+    {
+        private readonly int failuresBeforeSuccess;
+        private readonly Exception exception;
+
+        public FailingThenSuccessfulAgentModelProvider(int failuresBeforeSuccess, Exception exception)
+        {
+            this.failuresBeforeSuccess = failuresBeforeSuccess;
+            this.exception = exception;
+        }
+
+        public int AttemptCount { get; private set; }
+
+        public AgentModelProviderDescriptor Describe() =>
+            new("fake", "memory", "gpt-5", "OPENAI_API_KEY", "test provider");
+
+        public Task<AgentModelResponse> GenerateAsync(AgentModelRequest request, CancellationToken cancellationToken = default)
+        {
+            AttemptCount++;
+            if (AttemptCount <= failuresBeforeSuccess)
+            {
+                throw exception;
+            }
+
+            return Task.FromResult(new AgentModelResponse("fake", request.Model, "resp_test", "Recovered after retry.", "completed"));
         }
     }
 }

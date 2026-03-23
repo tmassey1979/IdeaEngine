@@ -1,5 +1,6 @@
 using Dragon.Backend.Contracts;
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 
 namespace Dragon.Backend.Orchestrator;
@@ -7,6 +8,7 @@ namespace Dragon.Backend.Orchestrator;
 public delegate CommandResult LocalCommandRunner(string fileName, string arguments, string workingDirectory);
 
 public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
+public sealed record ModelExecutionRetryOptions(int MaxAttempts = 3, int BaseDelayMilliseconds = 1000);
 
 public sealed class LocalJobExecutor
 {
@@ -17,11 +19,16 @@ public sealed class LocalJobExecutor
 
     private readonly LocalCommandRunner commandRunner;
     private readonly IAgentModelProvider? modelProvider;
+    private readonly ModelExecutionRetryOptions modelRetryOptions;
 
-    public LocalJobExecutor(LocalCommandRunner? commandRunner = null, IAgentModelProvider? modelProvider = null)
+    public LocalJobExecutor(
+        LocalCommandRunner? commandRunner = null,
+        IAgentModelProvider? modelProvider = null,
+        ModelExecutionRetryOptions? modelRetryOptions = null)
     {
         this.commandRunner = commandRunner ?? RunCommand;
         this.modelProvider = modelProvider;
+        this.modelRetryOptions = modelRetryOptions ?? new ModelExecutionRetryOptions();
     }
 
     public static LocalJobExecutor CreateDefault(Func<string, string?> environmentReader, LocalCommandRunner? commandRunner = null)
@@ -71,7 +78,7 @@ public sealed class LocalJobExecutor
         }
 
         var request = AgentPromptFactory.Build(job, modelProvider.Describe().DefaultModel);
-        var response = modelProvider.GenerateAsync(request).GetAwaiter().GetResult();
+        var response = ExecuteModelRequestWithRetry(request);
         var structuredResult = AgentStructuredResultParser.Parse(response.OutputText);
         var summary = !string.IsNullOrWhiteSpace(structuredResult?.Summary)
             ? structuredResult.Summary
@@ -86,6 +93,27 @@ public sealed class LocalJobExecutor
         }
 
         return new ExecutionOutcome(summary, [], structuredResult?.FollowUps ?? []);
+    }
+
+    private AgentModelResponse ExecuteModelRequestWithRetry(AgentModelRequest request)
+    {
+        Exception? lastException = null;
+        var maxAttempts = Math.Max(1, modelRetryOptions.MaxAttempts);
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                return modelProvider!.GenerateAsync(request).GetAwaiter().GetResult();
+            }
+            catch (Exception exception) when (attempt < maxAttempts && IsTransientModelFailure(exception))
+            {
+                lastException = exception;
+                SleepBeforeModelRetry(attempt);
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("Model execution failed without an exception.");
     }
 
     private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
@@ -309,6 +337,43 @@ public sealed class LocalJobExecutor
         process.WaitForExit();
 
         return new CommandResult(process.ExitCode, stdout, stderr);
+    }
+
+    private void SleepBeforeModelRetry(int attempt)
+    {
+        var baseDelayMilliseconds = Math.Max(0, modelRetryOptions.BaseDelayMilliseconds);
+        if (baseDelayMilliseconds == 0)
+        {
+            return;
+        }
+
+        var multiplier = Math.Max(1, attempt);
+        Thread.Sleep(TimeSpan.FromMilliseconds(baseDelayMilliseconds * multiplier));
+    }
+
+    private static bool IsTransientModelFailure(Exception exception)
+    {
+        return exception switch
+        {
+            HttpRequestException httpRequestException => IsTransientStatusCode(httpRequestException.StatusCode),
+            TaskCanceledException => true,
+            TimeoutException => true,
+            _ => false
+        };
+    }
+
+    private static bool IsTransientStatusCode(HttpStatusCode? statusCode)
+    {
+        return statusCode switch
+        {
+            HttpStatusCode.RequestTimeout => true,
+            HttpStatusCode.TooManyRequests => true,
+            HttpStatusCode.BadGateway => true,
+            HttpStatusCode.ServiceUnavailable => true,
+            HttpStatusCode.GatewayTimeout => true,
+            var code when code is >= HttpStatusCode.InternalServerError => true,
+            _ => false
+        };
     }
 
     private sealed record ExecutionOutcome(
