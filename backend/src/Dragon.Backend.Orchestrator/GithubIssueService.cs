@@ -341,6 +341,7 @@ public sealed class GithubIssueService
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
+                $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
@@ -528,6 +529,7 @@ public sealed class GithubIssueService
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
+                $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
@@ -1011,6 +1013,61 @@ public sealed class GithubIssueService
                 "max_cycles_reached" => "cycle cap reached",
                 _ => reason.Replace("_", " ", StringComparison.Ordinal)
             };
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalGithubSync(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestGithubSync", out var latestGithubSync) ||
+                latestGithubSync.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var issueNumber = latestGithubSync.TryGetProperty("issueNumber", out var issueNumberProperty) &&
+                issueNumberProperty.ValueKind == JsonValueKind.Number &&
+                issueNumberProperty.TryGetInt32(out var parsedIssueNumber)
+                ? parsedIssueNumber
+                : (int?)null;
+            var attempted = latestGithubSync.TryGetProperty("attempted", out var attemptedProperty) &&
+                attemptedProperty.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? attemptedProperty.GetBoolean()
+                : (bool?)null;
+            var updated = latestGithubSync.TryGetProperty("updated", out var updatedProperty) &&
+                updatedProperty.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? updatedProperty.GetBoolean()
+                : (bool?)null;
+            var summary = latestGithubSync.TryGetProperty("summary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(summaryProperty.GetString())
+                ? summaryProperty.GetString()!
+                : "summary unavailable";
+
+            var prefix = issueNumber is > 0
+                ? $"issue #{issueNumber.Value}"
+                : "latest result";
+            var state = attempted switch
+            {
+                false => "not attempted",
+                true when updated is true => "updated",
+                true when updated is false => "pending",
+                _ => "recorded"
+            };
+
+            return $"{prefix} {state}: {summary}";
         }
         catch (JsonException)
         {
