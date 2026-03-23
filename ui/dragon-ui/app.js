@@ -757,7 +757,9 @@ function renderStatusSnapshot(snapshot) {
   latestPassCycles.textContent = latestPassCycle.label;
   latestPassCycles.className = `cycle-mix ${latestPassCycle.state}`;
   latestPassWork.textContent = snapshot.latestPass
-    ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
+    ? snapshot.latestPass.githubReplayAttemptedCount > 0
+      ? `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume, replay ${snapshot.latestPass.githubReplayUpdatedCount}/${snapshot.latestPass.githubReplayAttemptedCount}`
+      : `${snapshot.latestPass.seededCycles} seed, ${snapshot.latestPass.consumedCycles} consume`
     : "0 seed, 0 consume";
   const latestPassMixLabel = latestPassMix(snapshot);
   latestPassMixNode.textContent = latestPassMixLabel;

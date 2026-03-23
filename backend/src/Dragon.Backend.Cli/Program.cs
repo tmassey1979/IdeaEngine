@@ -360,7 +360,7 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
         currentPassNumber: 0,
         maxPasses: maxPasses,
         passBudgetRemaining: maxPasses);
-    var statusExporter = CreateStatusExporter(loop, root, options, "github-run-polling", "complete", maxPasses: maxPasses);
+    var githubStatusExporter = CreateGithubStatusExporter(loop, root, options, "github-run-polling", "complete", maxPasses: maxPasses);
     var result = loop.RunPollingFromGithub(
         owner!,
         repo!,
@@ -368,7 +368,7 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
         maxPasses: maxPasses,
         idlePassesBeforeStop: GetInt(options, "idle-passes", 2),
         maxCyclesPerPass: GetInt(options, "max-cycles", 100),
-        passCompleted: statusExporter
+        passCompleted: githubStatusExporter
     );
     PrintJson(result);
     return 0;
@@ -400,7 +400,7 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         currentPassNumber: 0,
         maxPasses: maxPasses,
         passBudgetRemaining: maxPasses);
-    var statusExporter = CreateStatusExporter(
+    var statusExporter = CreateGithubStatusExporter(
         loop,
         root,
         options,
@@ -546,6 +546,55 @@ static Action<int, RunUntilIdleResult>? CreateStatusExporter(
     return (passNumber, result) =>
     {
         var latestPass = initialLatestPass ?? SelfBuildLoop.BuildLatestPassSummary(passNumber, result);
+        var workerStatus = workerStatusResolver?.Invoke(passNumber, result) ?? (defaultWorkerState, (DateTimeOffset?)null, initialWorkerCompletionReason);
+        var snapshot = loop.ReadStatus(
+            source,
+            source,
+            workerStatus.WorkerState,
+            workerStatus.WorkerCompletionReason,
+            workerStatus.NextPollAt,
+            initialPollIntervalSeconds,
+            currentIdleStreak?.Invoke() ?? 0,
+            idleTarget,
+            currentIdlePassesRemaining?.Invoke(),
+            currentPassBudgetRemaining?.Invoke(passNumber),
+            latestPass,
+            initialPassNumber ?? passNumber,
+            maxPasses) with
+        {
+            Source = source
+        };
+        WriteStatusSnapshot(resolvedOutputPath, snapshot);
+    };
+}
+
+static Action<int, RunUntilIdleResult, LatestGithubReplaySnapshot?>? CreateGithubStatusExporter(
+    SelfBuildLoop loop,
+    string root,
+    IReadOnlyDictionary<string, string> options,
+    string source,
+    string defaultWorkerState,
+    int? initialPollIntervalSeconds = null,
+    Func<int>? currentIdleStreak = null,
+    int idleTarget = 0,
+    Func<int>? currentIdlePassesRemaining = null,
+    int? maxPasses = null,
+    Func<int, int>? currentPassBudgetRemaining = null,
+    Func<int, RunUntilIdleResult, (string WorkerState, DateTimeOffset? NextPollAt, string? WorkerCompletionReason)>? workerStatusResolver = null,
+    LatestPassSummary? initialLatestPass = null,
+    int? initialPassNumber = null,
+    string? initialWorkerCompletionReason = null)
+{
+    var outputPath = GetNullable(options, "status-out");
+    if (string.IsNullOrWhiteSpace(outputPath))
+    {
+        return null;
+    }
+
+    var resolvedOutputPath = Path.GetFullPath(outputPath, root);
+    return (passNumber, result, latestReplay) =>
+    {
+        var latestPass = initialLatestPass ?? SelfBuildLoop.BuildLatestPassSummary(passNumber, result, latestReplay);
         var workerStatus = workerStatusResolver?.Invoke(passNumber, result) ?? (defaultWorkerState, (DateTimeOffset?)null, initialWorkerCompletionReason);
         var snapshot = loop.ReadStatus(
             source,

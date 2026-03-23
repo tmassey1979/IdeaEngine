@@ -59,7 +59,11 @@ globalThis.__DRAGON_STATUS__ = {
     "seededCycles": 1,
     "consumedCycles": 2,
     "reachedIdle": false,
-    "reachedMaxCycles": false
+    "reachedMaxCycles": false,
+    "githubReplayAttemptedCount": 4,
+    "githubReplayUpdatedCount": 4,
+    "githubReplayFailedCount": 0,
+    "githubReplaySummary": "Replayed 4 pending GitHub updates: 4 updated, 0 still failing."
   },
   "latestGithubSync": null,
   "latestGithubReplay": {

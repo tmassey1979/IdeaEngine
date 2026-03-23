@@ -1197,6 +1197,33 @@ public sealed class PlannerTests
         Assert.Equal(2, summary.ConsumedCycles);
         Assert.True(summary.ReachedIdle);
         Assert.False(summary.ReachedMaxCycles);
+        Assert.Equal(0, summary.GithubReplayAttemptedCount);
+        Assert.Null(summary.GithubReplaySummary);
+    }
+
+    [Fact]
+    public void BuildLatestPassSummary_CapturesGithubReplayCounts()
+    {
+        var pass = new RunUntilIdleResult(
+            [
+                new CycleResult("consume", null, null, [])
+            ],
+            false,
+            false);
+
+        var replay = new LatestGithubReplaySnapshot(
+            4,
+            3,
+            1,
+            "Replayed 4 pending GitHub updates: 3 updated, 1 still failing.",
+            DateTimeOffset.UtcNow);
+
+        var summary = SelfBuildLoop.BuildLatestPassSummary(2, pass, replay);
+
+        Assert.Equal(4, summary.GithubReplayAttemptedCount);
+        Assert.Equal(3, summary.GithubReplayUpdatedCount);
+        Assert.Equal(1, summary.GithubReplayFailedCount);
+        Assert.Equal("Replayed 4 pending GitHub updates: 3 updated, 1 still failing.", summary.GithubReplaySummary);
     }
 
     [Fact]

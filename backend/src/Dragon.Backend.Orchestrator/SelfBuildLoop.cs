@@ -356,7 +356,7 @@ public sealed class SelfBuildLoop
         int maxPasses = 10,
         int idlePassesBeforeStop = 2,
         int maxCyclesPerPass = 100,
-        Action<int, RunUntilIdleResult>? passCompleted = null)
+        Action<int, RunUntilIdleResult, LatestGithubReplaySnapshot?>? passCompleted = null)
     {
         var passes = new List<RunUntilIdleResult>();
         var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
@@ -364,9 +364,11 @@ public sealed class SelfBuildLoop
 
         for (var index = 0; index < maxPasses; index += 1)
         {
+            LatestGithubReplaySnapshot? latestReplay = null;
             if (syncValidatedWorkflows)
             {
                 ReplayPendingGithubSyncs(owner, repo);
+                latestReplay = ReadLatestGithubReplay();
             }
 
             var pass = RunUntilIdleFromGithub(
@@ -377,7 +379,7 @@ public sealed class SelfBuildLoop
                 maxCyclesPerPass);
 
             passes.Add(pass);
-            passCompleted?.Invoke(index + 1, pass);
+            passCompleted?.Invoke(index + 1, pass, latestReplay);
 
             consecutiveIdlePasses = pass.ReachedIdle
                 ? consecutiveIdlePasses + 1
@@ -402,7 +404,7 @@ public sealed class SelfBuildLoop
         int idlePassesBeforeStop = 2,
         int maxCyclesPerPass = 100,
         Action<TimeSpan>? delayAction = null,
-        Action<int, RunUntilIdleResult>? passCompleted = null)
+        Action<int, RunUntilIdleResult, LatestGithubReplaySnapshot?>? passCompleted = null)
     {
         var passes = new List<RunUntilIdleResult>();
         var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
@@ -411,9 +413,11 @@ public sealed class SelfBuildLoop
 
         for (var index = 0; index < maxPasses; index += 1)
         {
+            LatestGithubReplaySnapshot? latestReplay = null;
             if (syncValidatedWorkflows)
             {
                 ReplayPendingGithubSyncs(owner, repo);
+                latestReplay = ReadLatestGithubReplay();
             }
 
             var pass = RunUntilIdleFromGithub(
@@ -424,7 +428,7 @@ public sealed class SelfBuildLoop
                 maxCyclesPerPass);
 
             passes.Add(pass);
-            passCompleted?.Invoke(index + 1, pass);
+            passCompleted?.Invoke(index + 1, pass, latestReplay);
 
             consecutiveIdlePasses = pass.ReachedIdle
                 ? consecutiveIdlePasses + 1
@@ -1587,7 +1591,7 @@ public sealed class SelfBuildLoop
         return new RecentLoopSignalSnapshot("idle", $"Loop reached idle after issue #{latestActivity.IssueNumber}.");
     }
 
-    public static LatestPassSummary BuildLatestPassSummary(int passNumber, RunUntilIdleResult result)
+    public static LatestPassSummary BuildLatestPassSummary(int passNumber, RunUntilIdleResult result, LatestGithubReplaySnapshot? latestGithubReplay = null)
     {
         var seededCycles = result.Cycles.Count(cycle => string.Equals(cycle.Mode, "seed", StringComparison.OrdinalIgnoreCase));
         var consumedCycles = result.Cycles.Count(cycle => string.Equals(cycle.Mode, "consume", StringComparison.OrdinalIgnoreCase));
@@ -1598,7 +1602,11 @@ public sealed class SelfBuildLoop
             seededCycles,
             consumedCycles,
             result.ReachedIdle,
-            result.ReachedMaxCycles
+            result.ReachedMaxCycles,
+            latestGithubReplay?.AttemptedCount ?? 0,
+            latestGithubReplay?.UpdatedCount ?? 0,
+            latestGithubReplay?.FailedCount ?? 0,
+            latestGithubReplay?.Summary
         );
     }
 }
@@ -1669,7 +1677,11 @@ public sealed record LatestPassSummary(
     int SeededCycles,
     int ConsumedCycles,
     bool ReachedIdle,
-    bool ReachedMaxCycles
+    bool ReachedMaxCycles,
+    int GithubReplayAttemptedCount = 0,
+    int GithubReplayUpdatedCount = 0,
+    int GithubReplayFailedCount = 0,
+    string? GithubReplaySummary = null
 );
 
 public sealed record StatusRollup(
