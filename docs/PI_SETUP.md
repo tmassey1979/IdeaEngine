@@ -57,8 +57,8 @@ After the script finishes:
 2. Start the service:
 
 ```bash
-sudo systemctl start dragon-idea-engine
-sudo journalctl -u dragon-idea-engine -f
+dragon-start
+dragon-start --follow
 ```
 
 3. Verify the nightly backup timer:
@@ -85,6 +85,7 @@ Routine maintenance:
 dragon-report
 dragon-health
 dragon-preflight
+dragon-start
 dragon-update
 dragon-backup
 dragon-firstaid
@@ -110,7 +111,7 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-preflight`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -125,6 +126,7 @@ What those do:
 - `pi-service-doctor.sh` interprets the current Pi status and suggests the most likely next commands when service health, timers, or queue state need attention
 - `pi-share-status.sh` writes a lightweight support bundle with the report JSON, dashboard, doctor output, alert-check output, git status, and recent service logs
 - `pi-preflight.sh` checks whether the Pi is ready to start: Docker, Compose, core repo files, credentials, disk space, and installed systemd units
+- `pi-start.sh` runs preflight by default and then starts the main systemd service, with optional `--follow`, `--skip-preflight`, or `--compose` modes
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update/alert timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -210,6 +212,7 @@ dragon-watch-status --interval 30
 dragon-doctor
 dragon-share-status
 dragon-preflight
+dragon-start --follow
 ```
 
 Notes:
