@@ -87,6 +87,7 @@ dragon-health
 dragon-preflight
 dragon-start
 dragon-stop
+dragon-restart
 dragon-update
 dragon-backup
 dragon-firstaid
@@ -112,7 +113,7 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-stop`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-stop`, `dragon-restart`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -129,6 +130,7 @@ What those do:
 - `pi-preflight.sh` checks whether the Pi is ready to start: Docker, Compose, core repo files, credentials, disk space, and installed systemd units
 - `pi-start.sh` runs preflight by default and then starts the main systemd service, with optional `--follow`, `--skip-preflight`, or `--compose` modes
 - `pi-stop.sh` stops the main systemd service or compose stack and can optionally print service status afterward
+- `pi-restart.sh` runs preflight by default and then restarts the main systemd service or compose stack, with optional log following
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update/alert timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -216,6 +218,7 @@ dragon-share-status
 dragon-preflight
 dragon-start --follow
 dragon-stop --status
+dragon-restart --follow
 ```
 
 Notes:

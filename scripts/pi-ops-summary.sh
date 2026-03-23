@@ -20,6 +20,7 @@ Core commands:
   dragon-preflight
   dragon-start
   dragon-stop
+  dragon-restart
   dragon-tail-logs
   dragon-update
   dragon-backup
@@ -37,6 +38,7 @@ Service control:
   sudo systemctl status ${SERVICE_NAME} --no-pager
   dragon-start --follow
   dragon-stop --status
+  dragon-restart --follow
   dragon-tail-logs
   dragon-tail-logs --all
 

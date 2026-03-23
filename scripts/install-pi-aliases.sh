@@ -45,6 +45,7 @@ main() {
   install_wrapper "dragon-preflight" "pi-preflight.sh"
   install_wrapper "dragon-start" "pi-start.sh"
   install_wrapper "dragon-stop" "pi-stop.sh"
+  install_wrapper "dragon-restart" "pi-restart.sh"
   install_wrapper "dragon-update" "update-pi.sh"
   install_wrapper "dragon-backup" "backup-pi.sh"
   install_wrapper "dragon-diagnostics" "collect-pi-diagnostics.sh"
