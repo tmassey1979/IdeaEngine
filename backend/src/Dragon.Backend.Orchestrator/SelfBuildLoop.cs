@@ -361,6 +361,11 @@ public sealed class SelfBuildLoop
 
         for (var index = 0; index < maxPasses; index += 1)
         {
+            if (syncValidatedWorkflows)
+            {
+                ReplayPendingGithubSyncs(owner, repo);
+            }
+
             var pass = RunUntilIdleFromGithub(
                 owner,
                 repo,
@@ -403,6 +408,11 @@ public sealed class SelfBuildLoop
 
         for (var index = 0; index < maxPasses; index += 1)
         {
+            if (syncValidatedWorkflows)
+            {
+                ReplayPendingGithubSyncs(owner, repo);
+            }
+
             var pass = RunUntilIdleFromGithub(
                 owner,
                 repo,
@@ -441,6 +451,26 @@ public sealed class SelfBuildLoop
 
         return TrySyncWorkflow(owner, repo, workflow, syncValidatedWorkflows: true) ??
             new GithubSyncResult(false, false, $"GitHub sync skipped for issue #{issueNumber}.");
+    }
+
+    public IReadOnlyList<GithubSyncResult> ReplayPendingGithubSyncs(string owner, string repo)
+    {
+        var pending = ReadPendingGithubSync()
+            .OrderBy(item => item.RecordedAt)
+            .ToArray();
+
+        if (pending.Length == 0)
+        {
+            return [];
+        }
+
+        var results = new List<GithubSyncResult>(pending.Length);
+        foreach (var item in pending)
+        {
+            results.Add(SyncValidatedWorkflow(owner, repo, item.IssueNumber));
+        }
+
+        return results;
     }
 
     private GithubSyncResult? TrySyncWorkflow(string? githubOwner, string repo, IssueWorkflowState workflow, bool syncValidatedWorkflows)
