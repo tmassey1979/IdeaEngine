@@ -363,6 +363,7 @@ public sealed class GithubIssueService
                 $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker next wake reason: {DescribeGlobalWorkerNextWakeReason(rootDirectory)}",
                 $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
+                $"- worker wait signal: {DescribeWaitSignal(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -620,6 +621,7 @@ public sealed class GithubIssueService
                 $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker next wake reason: {DescribeGlobalWorkerNextWakeReason(rootDirectory)}",
                 $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
+                $"- worker wait signal: {DescribeWaitSignal(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -2326,6 +2328,29 @@ public sealed class GithubIssueService
                 replayPrioritySummaryProperty.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrWhiteSpace(replayPrioritySummaryProperty.GetString())
                 ? replayPrioritySummaryProperty.GetString()!
+                : "none";
+        }
+        catch (JsonException)
+        {
+            return "none";
+        }
+    }
+
+    private static string DescribeWaitSignal(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "none";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("waitSignal", out var waitSignalProperty) &&
+                waitSignalProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(waitSignalProperty.GetString())
+                ? waitSignalProperty.GetString()!
                 : "none";
         }
         catch (JsonException)
