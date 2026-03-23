@@ -105,6 +105,9 @@ public sealed class SelfBuildLoop
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"));
         var interventionTarget = BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync);
+        var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
+            ? BuildDefaultWorkerActivity(workerState, interventionTarget)
+            : workerActivity;
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -139,7 +142,7 @@ public sealed class SelfBuildLoop
             latestGithubReplay,
             pendingGithubSync.Count,
             pendingGithubSync,
-            workerActivity,
+            effectiveWorkerActivity,
             pendingGithubSyncSummary,
             interventionTarget
         );
@@ -1795,6 +1798,53 @@ public sealed class SelfBuildLoop
         }
 
         return new InterventionTargetSnapshot("idle", "No immediate intervention target.");
+    }
+
+    private static string? BuildDefaultWorkerActivity(string workerState, InterventionTargetSnapshot? interventionTarget)
+    {
+        if (interventionTarget is null)
+        {
+            return null;
+        }
+
+        return interventionTarget.Kind switch
+        {
+            "github-replay-drift" => workerState switch
+            {
+                "running" => "Replaying pending GitHub updates before the next GitHub pass.",
+                "waiting" => "Waiting to replay pending GitHub updates on the next GitHub pass.",
+                "complete" => "Completed the current run with pending GitHub updates still queued for replay.",
+                _ => interventionTarget.Summary
+            },
+            "recovery-work" => workerState switch
+            {
+                "running" => "Draining queued recovery work before ordinary implementation.",
+                "waiting" => "Waiting to continue queued recovery work on the next pass.",
+                "complete" => "Completed the current run with recovery work still prioritized.",
+                _ => interventionTarget.Summary
+            },
+            "implementation" => workerState switch
+            {
+                "running" => "Advancing the lead implementation target.",
+                "waiting" => "Waiting to advance the lead implementation target on the next pass.",
+                "complete" => "Completed the current run with queued implementation still remaining.",
+                _ => interventionTarget.Summary
+            },
+            "queued-work" => workerState switch
+            {
+                "running" => "Advancing the next queued worker follow-up.",
+                "waiting" => "Waiting to advance the next queued worker follow-up.",
+                "complete" => "Completed the current run with queued follow-up work still remaining.",
+                _ => interventionTarget.Summary
+            },
+            "idle" => workerState switch
+            {
+                "complete" => "Completed the current run with no immediate intervention target.",
+                "waiting" => "No immediate intervention target is queued for the next pass.",
+                _ => null
+            },
+            _ => interventionTarget.Summary
+        };
     }
 
     private static string? FormatLeadQuarantineAge(LeadQuarantineSnapshot? leadQuarantine)

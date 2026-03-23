@@ -258,6 +258,7 @@ public sealed class PlannerTests
         Assert.Equal("docs/generated/provider-notes.md", status.InterventionTarget.TargetArtifact);
         Assert.Equal("refresh provider notes summary", status.InterventionTarget.TargetOutcome);
         Assert.Contains("refresh provider notes summary", status.InterventionTarget.Summary, StringComparison.Ordinal);
+        Assert.Equal("Waiting to advance the lead implementation target on the next pass.", status.WorkerActivity);
         var issue = Assert.Single(status.Issues);
         Assert.Equal(500, issue.IssueNumber);
         Assert.Equal(1, issue.QueuedJobCount);
@@ -276,7 +277,7 @@ public sealed class PlannerTests
         store.OverrideOverallStatus(500, "quarantined", "Quarantined after repeated failures.");
 
         var loop = new SelfBuildLoop(root);
-        var status = loop.ReadStatus();
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "running");
 
         Assert.Equal("attention", status.Health);
         Assert.Contains("quarantined issue", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
@@ -305,7 +306,7 @@ public sealed class PlannerTests
         store.OverrideOverallStatus(500, "quarantined", "Quarantined after repeated failures.");
 
         var loop = new SelfBuildLoop(root);
-        var status = loop.ReadStatus();
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "running");
 
         Assert.Equal("blocked", status.Health);
         Assert.Contains("queued recovery work", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
@@ -341,7 +342,7 @@ public sealed class PlannerTests
             sourceIssueNumber: 22);
 
         var loop = new SelfBuildLoop(root);
-        var status = loop.ReadStatus();
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "running");
 
         Assert.Equal("blocked", status.Health);
         Assert.Contains("Lead recovery: issue #22 via recovery #500", status.AttentionSummary, StringComparison.Ordinal);
@@ -359,6 +360,7 @@ public sealed class PlannerTests
         Assert.Equal(22, status.InterventionTarget.IssueNumber);
         Assert.Equal(500, status.InterventionTarget.RecoveryIssueNumber);
         Assert.Contains("Recovery issue #500", status.InterventionTarget.Summary, StringComparison.Ordinal);
+        Assert.Equal("Draining queued recovery work before ordinary implementation.", status.WorkerActivity);
         Assert.Equal("blocked", status.RecentLoopSignal.Mode);
         Assert.Contains("issue #22 via recovery #500", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
@@ -410,7 +412,7 @@ public sealed class PlannerTests
             """);
 
         var loop = new SelfBuildLoop(root);
-        var status = loop.ReadStatus(pollIntervalSeconds: 30);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "running", pollIntervalSeconds: 30);
 
         Assert.NotNull(status.LeadQuarantine);
         Assert.Equal("sync-drift", status.LeadQuarantine!.State);
@@ -421,6 +423,7 @@ public sealed class PlannerTests
         Assert.Equal(500, status.InterventionTarget.RecoveryIssueNumber);
         Assert.Equal(500, status.InterventionTarget.PendingGithubSyncIssueNumber);
         Assert.Contains("GitHub updates for recovery #500", status.InterventionTarget.Summary, StringComparison.Ordinal);
+        Assert.Equal("Replaying pending GitHub updates before the next GitHub pass.", status.WorkerActivity);
         Assert.Contains("old", status.AttentionSummary, StringComparison.Ordinal);
         Assert.Contains("oldest writeback drift", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
@@ -873,6 +876,7 @@ public sealed class PlannerTests
         Assert.Equal(610, rootElement.GetProperty("interventionTarget").GetProperty("issueNumber").GetInt32());
         Assert.Equal("ui/dragon-ui/sample-status.json", rootElement.GetProperty("interventionTarget").GetProperty("targetArtifact").GetString());
         Assert.Equal("refresh dashboard status snapshot", rootElement.GetProperty("interventionTarget").GetProperty("targetOutcome").GetString());
+        Assert.Equal("Advance issue #610: refresh dashboard status snapshot.", rootElement.GetProperty("workerActivity").GetString());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
         Assert.Equal(610, issueElement.GetProperty("issueNumber").GetInt32());

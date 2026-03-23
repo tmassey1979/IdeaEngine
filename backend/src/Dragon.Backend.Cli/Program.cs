@@ -356,7 +356,6 @@ static int RunGithubRunPolling(IReadOnlyDictionary<string, string> options)
         options,
         "github-run-polling",
         "running",
-        workerActivity: "Loading GitHub issues for the next polling pass.",
         currentPassNumber: 0,
         maxPasses: maxPasses,
         passBudgetRemaining: maxPasses);
@@ -393,7 +392,6 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
         options,
         "github-run-watch",
         "running",
-        workerActivity: "Loading GitHub issues for the next watch pass.",
         pollIntervalSeconds: (int)pollInterval.TotalSeconds,
         idleTarget: Math.Max(1, idlePassesBeforeStop),
         idlePassesRemaining: Math.Max(1, idlePassesBeforeStop),
