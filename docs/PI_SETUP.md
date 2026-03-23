@@ -79,6 +79,7 @@ dragon-report
 dragon-health
 dragon-update
 dragon-backup
+dragon-firstaid
 ~/dragon/IdeaEngine/scripts/pi-report.sh
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
 ~/dragon/IdeaEngine/scripts/update-pi.sh
@@ -90,9 +91,10 @@ dragon-backup
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, and `dragon-diagnostics`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, and `dragon-firstaid`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
+- `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
 - `pi-report.sh` prints a concise service, backup/update timer, worker, queue, activity, compose, and backup summary
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -121,6 +123,13 @@ Reset runtime state:
 ```bash
 ~/dragon/IdeaEngine/scripts/pi-reset-state.sh
 RESET_DIAGNOSTICS=true ~/dragon/IdeaEngine/scripts/pi-reset-state.sh
+```
+
+First aid recovery:
+
+```bash
+dragon-firstaid
+COLLECT_DIAGNOSTICS=false BACKUP_BEFORE_RESET=false dragon-firstaid
 ```
 
 Notes:

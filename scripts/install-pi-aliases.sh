@@ -45,6 +45,7 @@ main() {
   install_wrapper "dragon-update" "update-pi.sh"
   install_wrapper "dragon-backup" "backup-pi.sh"
   install_wrapper "dragon-diagnostics" "collect-pi-diagnostics.sh"
+  install_wrapper "dragon-firstaid" "pi-firstaid.sh"
 
   print_path_hint
 }
