@@ -35,6 +35,7 @@ Core commands:
   dragon-tail-logs
   dragon-update
   dragon-backup
+  dragon-backup-and-verify
   dragon-verify-backup
   dragon-firstaid
   dragon-alert-check
@@ -77,6 +78,7 @@ Recovery:
 
 Backup and restore:
   dragon-backup
+  dragon-backup-and-verify
   dragon-verify-backup
   dragon-evening-routine
   dragon-weekly-routine

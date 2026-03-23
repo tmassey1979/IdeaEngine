@@ -101,6 +101,7 @@ dragon-ensure-running
 dragon-wait-healthy
 dragon-update
 dragon-backup
+dragon-backup-and-verify
 dragon-verify-backup
 dragon-firstaid
 dragon-alert-check
@@ -131,7 +132,8 @@ What those do:
 - `pi-evening-routine.sh` captures a share-status bundle, runs backup and cleanup, and prints a final report in one end-of-day flow
 - `pi-weekly-routine.sh` refreshes tooling, runs the standard update flow, and finishes with the daily routine snapshot
 - `pi-verify-backup.sh` checks that a backup archive is readable and contains the expected snapshot files and volume dumps
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-self-test`, `dragon-refresh-tooling`, `dragon-daily-routine`, `dragon-evening-routine`, `dragon-weekly-routine`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-verify-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
+- `pi-backup-and-verify.sh` creates a backup archive and immediately verifies that the resulting archive is readable and complete
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-self-test`, `dragon-refresh-tooling`, `dragon-daily-routine`, `dragon-evening-routine`, `dragon-weekly-routine`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-backup-and-verify`, `dragon-verify-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -253,6 +255,7 @@ dragon-refresh-tooling
 dragon-daily-routine
 dragon-evening-routine
 dragon-weekly-routine
+dragon-backup-and-verify
 dragon-verify-backup
 dragon-wait-healthy --timeout 600
 ```
