@@ -5,6 +5,8 @@ namespace Dragon.Backend.Orchestrator;
 
 public sealed class SelfBuildLoop
 {
+    private const int MaxTransientProviderRequeuesPerJob = 2;
+
     private static readonly JsonSerializerOptions StatusSerializerOptions = new()
     {
         WriteIndented = true,
@@ -466,6 +468,12 @@ public sealed class SelfBuildLoop
         var execution = jobExecutor.Execute(RootDirectory, job);
         var workflow = workflowStateStore.Update(job, execution);
         var followUps = PublishFollowUps(job, execution, competingImplementationArtifacts);
+        if (TryRequeueTransientProviderFailure(job, execution, ref workflow))
+        {
+            var githubRetrySync = TrySyncWorkflow(githubOwner, repo, workflow, syncValidatedWorkflows);
+            return new CycleResult("retry", job, execution, followUps, workflow, githubRetrySync);
+        }
+
         var executionRecord = executionRecordStore.Append(job, execution, followUps);
         var failureDisposition = ApplyFailurePolicy(job.Issue, workflow);
         if (failureDisposition?.Quarantined == true)
@@ -964,6 +972,41 @@ public sealed class SelfBuildLoop
         workflowStateStore.OverrideOverallStatus(issueNumber, "quarantined", disposition.Reason!);
         queueStore.RemoveAll(job => job.Issue == issueNumber);
         return disposition;
+    }
+
+    private bool TryRequeueTransientProviderFailure(SelfBuildJob job, JobExecutionResult execution, ref IssueWorkflowState workflow)
+    {
+        if (!string.Equals(execution.Status, "failed", StringComparison.OrdinalIgnoreCase) ||
+            !execution.Summary.StartsWith("Transient model provider failure", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var currentRetryCount = ReadTransientProviderRetryCount(job);
+        if (currentRetryCount >= MaxTransientProviderRequeuesPerJob)
+        {
+            return false;
+        }
+
+        var metadata = job.Metadata.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
+        metadata["transientProviderRetryCount"] = (currentRetryCount + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        metadata["transientProviderRetryReason"] = execution.Summary;
+        queueStore.Enqueue(job with { Metadata = metadata });
+
+        workflow = workflowStateStore.ResetStageForRetry(
+            job.Issue,
+            job.Agent,
+            $"Transient model provider pressure detected for {job.Agent}; requeued for retry ({currentRetryCount + 1}/{MaxTransientProviderRequeuesPerJob}).");
+
+        return true;
+    }
+
+    private static int ReadTransientProviderRetryCount(SelfBuildJob job)
+    {
+        return job.Metadata.TryGetValue("transientProviderRetryCount", out var rawValue) &&
+            int.TryParse(rawValue, out var parsedValue)
+                ? Math.Max(0, parsedValue)
+                : 0;
     }
 
     private CycleResult? SweepStalledWorkflow(string repo, string? githubOwner, bool syncValidatedWorkflows)

@@ -6127,6 +6127,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_RequeuesTransientProviderFailures_WithoutCountingThemAsOrdinaryFailures()
+    {
+        var root = CreateTempRoot();
+        var stories = new[]
+        {
+            new GithubIssue(22, "[Story] Dragon Idea Engine Master Codex: Architect Agent", "OPEN", ["story"], "", "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+        var provider = new SequencedPlannerAgentModelProvider(
+            new AgentModelProviderException(
+                "openai-responses",
+                "OpenAI Responses request failed with HTTP 429 (Too Many Requests).",
+                true,
+                HttpStatusCode.TooManyRequests,
+                TimeSpan.FromSeconds(7)),
+            new AgentModelResponse("fake", "gpt-5", "resp_ok", "Recovered after queue retry.", "completed"));
+        var executor = new LocalJobExecutor(
+            (_, _, _) => new CommandResult(0, "ok", string.Empty),
+            provider,
+            new ModelExecutionRetryOptions(MaxAttempts: 1, BaseDelayMilliseconds: 0),
+            _ => { });
+        var loop = new SelfBuildLoop(root, jobExecutor: executor);
+
+        var seeded = loop.CycleOnce(stories);
+        var retried = loop.CycleOnce(stories);
+
+        Assert.Equal("seed", seeded.Mode);
+        Assert.Equal("retry", retried.Mode);
+        Assert.Equal("failed", retried.Execution!.Status);
+        Assert.Equal("in_progress", retried.Workflow!.OverallStatus);
+        Assert.Contains("requeued for retry (1/2)", retried.Workflow.Note, StringComparison.Ordinal);
+        Assert.Null(retried.ExecutionRecord);
+        Assert.Null(retried.FailureDisposition);
+
+        var queuedAfterRetry = loop.ReadQueue();
+        var queuedRetryJob = Assert.Single(queuedAfterRetry);
+        Assert.Equal("architect", queuedRetryJob.Agent);
+        Assert.Equal("1", queuedRetryJob.Metadata["transientProviderRetryCount"]);
+
+        var recovered = loop.CycleOnce(stories);
+
+        Assert.Equal("consume", recovered.Mode);
+        Assert.Equal("success", recovered.Execution!.Status);
+        Assert.Equal("in_progress", recovered.Workflow!.OverallStatus);
+        Assert.Contains(loop.ReadQueue(), job => job.Agent == "review");
+        Assert.Contains(loop.ReadQueue(), job => job.Agent == "test");
+    }
+
+    [Fact]
     public void CycleOnce_QuarantinesLongStalledWorkflowBeforeSeedingNewWork()
     {
         var root = CreateTempRoot();
@@ -6325,5 +6373,32 @@ public sealed class PlannerTests
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         return $"http://127.0.0.1:{port}/";
+    }
+
+    private sealed class SequencedPlannerAgentModelProvider : IAgentModelProvider
+    {
+        private readonly Queue<object> outcomes;
+
+        public SequencedPlannerAgentModelProvider(params object[] outcomes)
+        {
+            this.outcomes = new Queue<object>(outcomes);
+        }
+
+        public AgentModelProviderDescriptor Describe() =>
+            new("fake", "memory", "gpt-5", "OPENAI_API_KEY", "planner test provider");
+
+        public Task<AgentModelResponse> GenerateAsync(AgentModelRequest request, CancellationToken cancellationToken = default)
+        {
+            var next = outcomes.Count > 0
+                ? outcomes.Dequeue()
+                : new AgentModelResponse("fake", request.Model, "resp_default", "No output configured.", "completed");
+
+            return next switch
+            {
+                AgentModelResponse response => Task.FromResult(response),
+                Exception exception => Task.FromException<AgentModelResponse>(exception),
+                _ => Task.FromException<AgentModelResponse>(new InvalidOperationException("Unsupported planner test provider outcome."))
+            };
+        }
     }
 }

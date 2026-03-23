@@ -101,7 +101,7 @@ public sealed class WorkflowStateStore
             Note = note
         };
 
-        snapshots[issueNumber] = updated;
+        snapshots[existing.IssueNumber] = updated;
         ReconcileRecoveryLinkage(snapshots, issueNumber);
         Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
         File.WriteAllText(
@@ -126,7 +126,7 @@ public sealed class WorkflowStateStore
             Note = note
         };
 
-        snapshots[issueNumber] = updated;
+        snapshots[existing.IssueNumber] = updated;
         Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
         File.WriteAllText(
             StatePath,
@@ -150,6 +150,26 @@ public sealed class WorkflowStateStore
         }
 
         var retryStage = FailurePolicy.InferCurrentStage(existing);
+        return ResetStageForRetryInternal(snapshots, existing, retryStage, note);
+    }
+
+    public IssueWorkflowState ResetStageForRetry(int issueNumber, string stage, string note)
+    {
+        var snapshots = ReadAll().ToDictionary(entry => entry.Key, entry => entry.Value);
+        if (!snapshots.TryGetValue(issueNumber, out var existing))
+        {
+            throw new InvalidOperationException($"Cannot reset workflow stage for unknown issue #{issueNumber}.");
+        }
+
+        return ResetStageForRetryInternal(snapshots, existing, stage, note);
+    }
+
+    private IssueWorkflowState ResetStageForRetryInternal(
+        IDictionary<int, IssueWorkflowState> snapshots,
+        IssueWorkflowState existing,
+        string? retryStage,
+        string note)
+    {
         var stages = existing.Stages.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(retryStage) &&
             stages.TryGetValue(retryStage, out var retryStageState) &&
@@ -166,7 +186,7 @@ public sealed class WorkflowStateStore
             Note = note
         };
 
-        snapshots[issueNumber] = updated;
+        snapshots[existing.IssueNumber] = updated;
         Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
         File.WriteAllText(
             StatePath,
