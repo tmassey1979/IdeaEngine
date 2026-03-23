@@ -113,6 +113,9 @@ globalThis.__DRAGON_STATUS__ = {
     }
   ],
   "pendingGithubSyncSummary": "2 GitHub updates are waiting for retry. Oldest: issue #147 (42m 44s old).",
+  "pendingGithubSyncNextRetryAt": "2026-03-23T16:02:14.0000000+00:00",
+  "pendingGithubSyncRetryState": "ready now",
+  "pendingGithubSyncRetryOverdueMinutes": 25,
   "interventionEscalationNote": "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
   "interventionEscalationStreak": 3,
   "queuedJobs": 1,

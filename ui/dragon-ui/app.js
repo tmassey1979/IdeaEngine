@@ -218,6 +218,23 @@ function nextWakeReasonLabel(snapshot) {
   }
 }
 
+function pendingGithubRetrySignal(snapshot) {
+  const retryState = typeof snapshot.pendingGithubSyncRetryState === "string"
+    ? snapshot.pendingGithubSyncRetryState
+    : "";
+  const overdueMinutes = Number(snapshot.pendingGithubSyncRetryOverdueMinutes ?? 0);
+
+  if (overdueMinutes >= 15) {
+    return { label: "writeback retry overdue", state: "alert" };
+  }
+
+  if (retryState === "ready now") {
+    return { label: "writeback retry ready", state: "caution" };
+  }
+
+  return { label: null, state: "normal" };
+}
+
 function formatDelta(value) {
   if (value > 0) {
     return `+${value}`;
@@ -386,7 +403,11 @@ function githubSyncInfo(snapshot) {
 function pendingGithubSyncInfo(snapshot) {
   const count = snapshot.pendingGithubSyncCount ?? 0;
   if (count > 0) {
-    return { label: String(count), state: "waiting" };
+    const retrySignal = pendingGithubRetrySignal(snapshot);
+    return {
+      label: String(count),
+      state: retrySignal.state === "normal" ? "waiting" : retrySignal.state,
+    };
   }
 
   return { label: "0", state: "complete" };
@@ -430,6 +451,10 @@ function workerNote(snapshot) {
   const pendingGithubSyncLabel = snapshot.pendingGithubSyncSummary
     ? ` ${snapshot.pendingGithubSyncSummary}`
     : "";
+  const pendingGithubRetrySignalInfo = pendingGithubRetrySignal(snapshot);
+  const pendingGithubRetryLabel = pendingGithubRetrySignalInfo.label
+    ? ` Pending GitHub writeback state: ${pendingGithubRetrySignalInfo.label}.`
+    : "";
   const interventionTargetLabel = snapshot.interventionTarget && snapshot.interventionTarget.kind !== "idle"
     ? ` Lead intervention target: ${snapshot.interventionTarget.summary}`
     : "";
@@ -454,8 +479,8 @@ function workerNote(snapshot) {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused ${waitingReasonLabel}, polling ${cadenceLabel}, and is scheduled to wake again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
-        : `Worker is paused ${waitingReasonLabel} and is scheduled to wake again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is paused ${waitingReasonLabel}, polling ${cadenceLabel}, and is scheduled to wake again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${pendingGithubRetryLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
+        : `Worker is paused ${waitingReasonLabel} and is scheduled to wake again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${pendingGithubRetryLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -464,8 +489,8 @@ function workerNote(snapshot) {
       label: "Running",
       state: "running",
       text: cadenceLabel
-        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
-        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${pendingGithubRetryLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${pendingGithubRetryLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 
@@ -473,7 +498,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}${pendingGithubRetryLabel}${interventionTargetLabel}${interventionAcknowledgedLabel}${interventionEscalationLabel}${leadQuarantineAgeLabel}`,
     };
   }
 

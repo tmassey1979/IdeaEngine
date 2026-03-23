@@ -5488,6 +5488,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("pending GitHub sync oldest age: 1m 45s", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync last attempt: 2026-03-23T12:01:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync next retry: 2026-03-23T12:02:00.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync retry state: ready now", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync retry overdue: 29m", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: 1 pending GitHub update remains queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 cycles, 0 seed, 0 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));

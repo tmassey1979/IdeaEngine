@@ -378,6 +378,8 @@ public sealed class GithubIssueService
                 $"- pending GitHub sync oldest age: {DescribePendingGithubSyncOldestAge(rootDirectory)}",
                 $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
+                $"- pending GitHub sync retry state: {DescribePendingGithubSyncRetryState(rootDirectory)}",
+                $"- pending GitHub sync retry overdue: {DescribePendingGithubSyncRetryOverdue(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -631,6 +633,8 @@ public sealed class GithubIssueService
                 $"- pending GitHub sync oldest age: {DescribePendingGithubSyncOldestAge(rootDirectory)}",
                 $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
+                $"- pending GitHub sync retry state: {DescribePendingGithubSyncRetryState(rootDirectory)}",
+                $"- pending GitHub sync retry overdue: {DescribePendingGithubSyncRetryOverdue(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -2197,6 +2201,13 @@ public sealed class GithubIssueService
         try
         {
             using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("pendingGithubSyncNextRetryAt", out var nextRetryProperty) &&
+                nextRetryProperty.ValueKind == JsonValueKind.String &&
+                nextRetryProperty.TryGetDateTimeOffset(out var topLevelNextRetry))
+            {
+                return topLevelNextRetry.ToString("O");
+            }
+
             if (!document.RootElement.TryGetProperty("pendingGithubSync", out var pendingGithubSync) ||
                 pendingGithubSync.ValueKind != JsonValueKind.Array)
             {
@@ -2223,6 +2234,53 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not scheduled";
+        }
+    }
+
+    private static string DescribePendingGithubSyncRetryState(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("pendingGithubSyncRetryState", out var retryStateProperty) &&
+                retryStateProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(retryStateProperty.GetString())
+                ? retryStateProperty.GetString()!
+                : "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribePendingGithubSyncRetryOverdue(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not overdue";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("pendingGithubSyncRetryOverdueMinutes", out var overdueProperty) &&
+                overdueProperty.ValueKind == JsonValueKind.Number &&
+                overdueProperty.TryGetInt32(out var overdueMinutes) &&
+                overdueMinutes > 0
+                ? $"{overdueMinutes}m"
+                : "not overdue";
+        }
+        catch (JsonException)
+        {
+            return "not overdue";
         }
     }
 
