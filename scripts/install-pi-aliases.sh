@@ -46,6 +46,7 @@ main() {
   install_wrapper "dragon-start" "pi-start.sh"
   install_wrapper "dragon-start-and-wait" "pi-start-and-wait.sh"
   install_wrapper "dragon-stop" "pi-stop.sh"
+  install_wrapper "dragon-stop-and-wait" "pi-stop-and-wait.sh"
   install_wrapper "dragon-wait-stopped" "pi-wait-until-stopped.sh"
   install_wrapper "dragon-restart" "pi-restart.sh"
   install_wrapper "dragon-restart-and-wait" "pi-restart-and-wait.sh"

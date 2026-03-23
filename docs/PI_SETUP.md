@@ -88,6 +88,7 @@ dragon-preflight
 dragon-start
 dragon-start-and-wait
 dragon-stop
+dragon-stop-and-wait
 dragon-wait-stopped
 dragon-restart
 dragon-restart-and-wait
@@ -118,7 +119,7 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -136,6 +137,7 @@ What those do:
 - `pi-start.sh` runs preflight by default and then starts the main systemd service, with optional `--follow`, `--skip-preflight`, or `--compose` modes
 - `pi-start-and-wait.sh` starts the Pi service and then waits until it becomes healthy or times out
 - `pi-stop.sh` stops the main systemd service or compose stack and can optionally print service status afterward
+- `pi-stop-and-wait.sh` stops the Pi service and then waits until it becomes inactive and the status endpoint is down
 - `pi-wait-until-stopped.sh` stops the Pi service and then waits until the service is inactive and the status endpoint is down
 - `pi-restart.sh` runs preflight by default and then restarts the main systemd service or compose stack, with optional log following
 - `pi-restart-and-wait.sh` restarts the Pi service and then waits until it becomes healthy or times out
@@ -229,6 +231,7 @@ dragon-preflight
 dragon-start --follow
 dragon-start-and-wait --timeout 600
 dragon-stop --status
+dragon-stop-and-wait --timeout 120
 dragon-wait-stopped --timeout 120
 dragon-restart --follow
 dragon-restart-and-wait --timeout 600
