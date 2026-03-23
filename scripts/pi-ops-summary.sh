@@ -37,6 +37,7 @@ Core commands:
   dragon-backup
   dragon-backup-and-verify
   dragon-verify-backup
+  dragon-restore-and-verify
   dragon-firstaid
   dragon-alert-check
   dragon-configure-alerts
@@ -80,6 +81,7 @@ Backup and restore:
   dragon-backup
   dragon-backup-and-verify
   dragon-verify-backup
+  dragon-restore-and-verify
   dragon-evening-routine
   dragon-weekly-routine
   ~/dragon/IdeaEngine/scripts/restore-pi.sh

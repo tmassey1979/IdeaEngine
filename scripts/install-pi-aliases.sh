@@ -61,6 +61,7 @@ main() {
   install_wrapper "dragon-backup" "backup-pi.sh"
   install_wrapper "dragon-backup-and-verify" "pi-backup-and-verify.sh"
   install_wrapper "dragon-verify-backup" "pi-verify-backup.sh"
+  install_wrapper "dragon-restore-and-verify" "pi-restore-and-verify.sh"
   install_wrapper "dragon-diagnostics" "collect-pi-diagnostics.sh"
   install_wrapper "dragon-firstaid" "pi-firstaid.sh"
   install_wrapper "dragon-alert-check" "pi-alert-check.sh"
