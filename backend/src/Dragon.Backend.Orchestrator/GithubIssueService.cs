@@ -338,6 +338,7 @@ public sealed class GithubIssueService
                 $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
+                $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
@@ -528,6 +529,7 @@ public sealed class GithubIssueService
                 $"- worker source: {DescribeGlobalWorkerSource(rootDirectory)}",
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
+                $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
@@ -858,6 +860,32 @@ public sealed class GithubIssueService
                 !string.IsNullOrWhiteSpace(stateProperty.GetString()))
             {
                 return stateProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerActivity(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("workerActivity", out var activityProperty) &&
+                activityProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(activityProperty.GetString()))
+            {
+                return activityProperty.GetString()!;
             }
 
             return "not recorded";
