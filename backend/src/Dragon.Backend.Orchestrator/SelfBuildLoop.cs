@@ -184,6 +184,15 @@ public sealed class SelfBuildLoop
         string repo = "IdeaEngine",
         string project = "DragonIdeaEngine")
     {
+        var signature = snapshot.InterventionTarget is null
+            ? null
+            : BuildInterventionTargetSignature(snapshot.InterventionTarget);
+        PruneStaleInterventionEscalationFollowUps(
+            snapshot.InterventionTarget,
+            snapshot.InterventionEscalationStreak,
+            minimumCriticalStreak,
+            signature);
+
         if (snapshot.InterventionTarget is null ||
             !string.Equals(snapshot.InterventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
             snapshot.InterventionEscalationStreak < minimumCriticalStreak)
@@ -199,7 +208,6 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        var signature = BuildInterventionTargetSignature(snapshot.InterventionTarget);
         if (queueStore.ReadAll().Any(job =>
                 string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase) &&
@@ -223,7 +231,7 @@ public sealed class SelfBuildLoop
             ["requestedPriority"] = "high",
             ["requestedReason"] = "Persistent critical intervention target needs explicit operator summary.",
             ["interventionEscalation"] = "true",
-            ["interventionSignature"] = signature,
+            ["interventionSignature"] = signature!,
             ["interventionKind"] = snapshot.InterventionTarget.Kind,
             ["interventionEscalationLevel"] = snapshot.InterventionTarget.Escalation ?? "critical",
             ["interventionEscalationStreak"] = snapshot.InterventionEscalationStreak.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -261,6 +269,34 @@ public sealed class SelfBuildLoop
 
         queueStore.Enqueue(job);
         return job;
+    }
+
+    private void PruneStaleInterventionEscalationFollowUps(
+        InterventionTargetSnapshot? interventionTarget,
+        int interventionEscalationStreak,
+        int minimumCriticalStreak,
+        string? currentSignature)
+    {
+        var keepCurrentCriticalTarget = interventionTarget is not null &&
+            string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) &&
+            interventionEscalationStreak >= minimumCriticalStreak &&
+            !string.IsNullOrWhiteSpace(currentSignature);
+
+        queueStore.RemoveAll(job =>
+        {
+            if (!string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!keepCurrentCriticalTarget)
+            {
+                return true;
+            }
+
+            return !string.Equals(job.Metadata.GetValueOrDefault("interventionSignature"), currentSignature, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private static void WriteTextAtomically(string outputPath, string contents)

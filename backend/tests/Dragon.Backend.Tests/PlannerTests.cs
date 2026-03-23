@@ -2095,6 +2095,158 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void EnqueuePersistentInterventionEscalationFollowUp_RemovesStaleEscalationSummaryWhenTargetClears()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var staleJob = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("Core", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["interventionEscalation"] = "true",
+                ["interventionSignature"] = "github-replay-drift|22|500|500|||",
+                ["workType"] = "operator-escalation"
+            });
+        new QueueStore(root).Enqueue(staleJob);
+
+        var snapshot = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "github-run-watch",
+            "github-run-watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            3,
+            10,
+            "healthy",
+            "implementation work",
+            new StatusRollup(0, 0, 0, 0, 1, 0),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("draining", "implementation work"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "implementation",
+                "Advance issue #22: refresh architecture docs.",
+                22,
+                null,
+                null,
+                "docs/ARCHITECTURE.md",
+                "refresh architecture docs.",
+                null,
+                null,
+                "fresh"),
+            null,
+            0);
+
+        var result = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+
+        Assert.Null(result);
+        Assert.Empty(loop.ReadQueue());
+    }
+
+    [Fact]
+    public void EnqueuePersistentInterventionEscalationFollowUp_ReplacesStaleEscalationSummaryWhenSignatureChanges()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var staleJob = new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("Core", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["interventionEscalation"] = "true",
+                ["interventionSignature"] = "github-replay-drift|22|500|500|||",
+                ["workType"] = "operator-escalation"
+            });
+        new QueueStore(root).Enqueue(staleJob);
+
+        var snapshot = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "github-run-watch",
+            "github-run-watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            4,
+            10,
+            "healthy",
+            "repairing drift",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("repairing", "repairing drift"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Recovery for issue #23 is active, but GitHub updates for recovery #501 are still queued for retry.",
+                23,
+                501,
+                501,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "Summarize the persistent critical intervention target and the next operator action.",
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Recovery for issue #23 is active, but GitHub updates for recovery #501 are still queued for retry.",
+            4);
+
+        var result = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+
+        Assert.NotNull(result);
+        var queued = Assert.Single(loop.ReadQueue());
+        Assert.Equal(23, queued.Issue);
+        Assert.Equal("github-replay-drift|23|501|501|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.", queued.Metadata["interventionSignature"]);
+    }
+
+    [Fact]
     public void WriteStatus_IncludesLatestPassSummaryWhenProvided()
     {
         var root = CreateTempRoot();
