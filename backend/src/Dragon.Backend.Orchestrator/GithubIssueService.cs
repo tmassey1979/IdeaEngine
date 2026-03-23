@@ -357,6 +357,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
                 $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
@@ -564,6 +565,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
+                $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
                 $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
@@ -1883,6 +1885,54 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return "not attempted";
+        }
+    }
+
+    private static string DescribePendingGithubSyncAttempts(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+
+            if (document.RootElement.TryGetProperty("pendingGithubSync", out var pendingGithubSync) &&
+                pendingGithubSync.ValueKind == JsonValueKind.Array)
+            {
+                var attemptCounts = pendingGithubSync
+                    .EnumerateArray()
+                    .Select(item =>
+                        item.TryGetProperty("attemptCount", out var attemptCountProperty) &&
+                        attemptCountProperty.ValueKind == JsonValueKind.Number &&
+                        attemptCountProperty.TryGetInt32(out var parsedAttemptCount)
+                            ? parsedAttemptCount
+                            : 0)
+                    .Where(value => value > 0)
+                    .ToArray();
+
+                if (attemptCounts.Length > 0)
+                {
+                    return $"max {attemptCounts.Max()}";
+                }
+            }
+
+            if (document.RootElement.TryGetProperty("pendingGithubSyncCount", out var countProperty) &&
+                countProperty.ValueKind == JsonValueKind.Number &&
+                countProperty.TryGetInt32(out var count) &&
+                count == 0)
+            {
+                return "none";
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
         }
     }
 
