@@ -358,6 +358,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
                 $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
+                $"- pending GitHub sync oldest queued at: {DescribePendingGithubSyncOldestQueuedAt(rootDirectory)}",
                 $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
@@ -566,6 +567,7 @@ public sealed class GithubIssueService
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
                 $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
                 $"- pending GitHub sync attempts: {DescribePendingGithubSyncAttempts(rootDirectory)}",
+                $"- pending GitHub sync oldest queued at: {DescribePendingGithubSyncOldestQueuedAt(rootDirectory)}",
                 $"- pending GitHub sync last attempt: {DescribePendingGithubSyncLastAttempt(rootDirectory)}",
                 $"- pending GitHub sync next retry: {DescribePendingGithubSyncNextRetry(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
@@ -1929,6 +1931,46 @@ public sealed class GithubIssueService
             }
 
             return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribePendingGithubSyncOldestQueuedAt(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("pendingGithubSync", out var pendingGithubSync) ||
+                pendingGithubSync.ValueKind != JsonValueKind.Array)
+            {
+                return "not recorded";
+            }
+
+            var oldestQueuedAt = pendingGithubSync
+                .EnumerateArray()
+                .Select(item =>
+                    item.TryGetProperty("recordedAt", out var recordedAtProperty) &&
+                    recordedAtProperty.ValueKind == JsonValueKind.String &&
+                    recordedAtProperty.TryGetDateTimeOffset(out var parsedRecordedAt)
+                        ? parsedRecordedAt
+                        : (DateTimeOffset?)null)
+                .Where(value => value is not null)
+                .Select(value => value!.Value)
+                .OrderBy(value => value)
+                .FirstOrDefault();
+
+            return oldestQueuedAt == default
+                ? "not recorded"
+                : oldestQueuedAt.ToString("O");
         }
         catch (JsonException)
         {
