@@ -103,7 +103,7 @@ public sealed class SelfBuildLoop
                 leadJob.Metadata.GetValueOrDefault("requestedPriority"),
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"));
-        var interventionTarget = BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync);
+        var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
@@ -314,6 +314,23 @@ public sealed class SelfBuildLoop
             string.Equals(record.JobAction, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
             string.Equals(record.Status, "success", StringComparison.OrdinalIgnoreCase) &&
             record.Notes.Contains($"Intervention escalation acknowledged: {signature}.", StringComparison.Ordinal));
+
+    private InterventionTargetSnapshot AnnotateInterventionTarget(InterventionTargetSnapshot interventionTarget)
+    {
+        var signature = BuildInterventionTargetSignature(interventionTarget);
+        var issueNumber = interventionTarget.IssueNumber ??
+            interventionTarget.RecoveryIssueNumber ??
+            interventionTarget.PendingGithubSyncIssueNumber;
+        if (issueNumber is null || string.IsNullOrWhiteSpace(signature))
+        {
+            return interventionTarget;
+        }
+
+        return interventionTarget with
+        {
+            Acknowledged = HasAcknowledgedInterventionEscalation(issueNumber.Value, signature)
+        };
+    }
 
     private static void WriteTextAtomically(string outputPath, string contents)
     {
@@ -2430,7 +2447,8 @@ public sealed record InterventionTargetSnapshot(
     string? TargetOutcome = null,
     DateTimeOffset? ObservedAt = null,
     string? AgeSummary = null,
-    string? Escalation = null
+    string? Escalation = null,
+    bool Acknowledged = false
 );
 
 public static class StatusSnapshotTrend

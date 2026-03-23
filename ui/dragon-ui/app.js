@@ -779,6 +779,7 @@ function renderStatusSnapshot(snapshot) {
   const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
   const interventionTargetAge = document.getElementById("status-intervention-target-age");
   const interventionTargetEscalation = document.getElementById("status-intervention-target-escalation");
+  const interventionTargetAcknowledged = document.getElementById("status-intervention-target-acknowledged");
   const interventionTargetStreak = document.getElementById("status-intervention-target-streak");
   const interventionTargetNote = document.getElementById("status-intervention-target-note");
   const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
@@ -892,6 +893,7 @@ function renderStatusSnapshot(snapshot) {
   interventionTargetArtifact.textContent = snapshot.interventionTarget?.targetArtifact ?? "none";
   interventionTargetAge.textContent = snapshot.interventionTarget?.ageSummary ?? "n/a";
   interventionTargetEscalation.textContent = snapshot.interventionTarget?.escalation ?? "normal";
+  interventionTargetAcknowledged.textContent = snapshot.interventionTarget?.acknowledged ? "yes" : "no";
   interventionTargetStreak.textContent = String(snapshot.interventionEscalationStreak ?? 0);
   interventionTargetNote.textContent = snapshot.interventionEscalationNote ?? "No escalation";
   interventionTargetSummary.textContent = snapshot.interventionTarget?.summary ?? "No immediate intervention target.";
@@ -1057,6 +1059,7 @@ async function bootStatusMock() {
     const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
     const interventionTargetAge = document.getElementById("status-intervention-target-age");
     const interventionTargetEscalation = document.getElementById("status-intervention-target-escalation");
+    const interventionTargetAcknowledged = document.getElementById("status-intervention-target-acknowledged");
     const interventionTargetStreak = document.getElementById("status-intervention-target-streak");
     const interventionTargetNote = document.getElementById("status-intervention-target-note");
     const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
@@ -1148,6 +1151,7 @@ async function bootStatusMock() {
     interventionTargetArtifact.textContent = "unavailable";
     interventionTargetAge.textContent = "unavailable";
     interventionTargetEscalation.textContent = "unavailable";
+    interventionTargetAcknowledged.textContent = "unavailable";
     interventionTargetStreak.textContent = "unavailable";
     interventionTargetNote.textContent = "Intervention escalation unavailable";
     interventionTargetSummary.textContent = "Intervention target unavailable";

@@ -367,9 +367,57 @@ public sealed class PlannerTests
         Assert.Equal("operator-escalation", status.InterventionTarget!.Kind);
         Assert.Equal(22, status.InterventionTarget.IssueNumber);
         Assert.Contains("Escalate issue #22", status.InterventionTarget.Summary, StringComparison.Ordinal);
+        Assert.False(status.InterventionTarget.Acknowledged);
         Assert.Equal("Waiting to prepare an operator-facing escalation summary on the next pass.", status.WorkerActivity);
         Assert.Equal("escalating", status.RecentLoopSignal.Mode);
         Assert.Contains("actively escalating operator follow-up", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReadStatus_MarksInterventionTargetAsAcknowledgedWhenMatchingSummarySucceeded()
+    {
+        var root = CreateTempRoot();
+        var signature = "operator-escalation|22|||backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the persistent critical intervention target and the next operator action.";
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "feedback",
+                "summarize_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["interventionEscalation"] = "true",
+                    ["interventionSignature"] = signature,
+                    ["workType"] = "operator-escalation"
+                }),
+            new JobExecutionResult("job-1", "feedback", "success", "summarized", DateTimeOffset.UtcNow),
+            []);
+
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("Core", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["requestedPriority"] = "high",
+                ["workType"] = "operator-escalation",
+                ["interventionEscalation"] = "true",
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                ["targetOutcome"] = "Summarize the persistent critical intervention target and the next operator action."
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.NotNull(status.InterventionTarget);
+        Assert.True(status.InterventionTarget!.Acknowledged);
     }
 
     [Fact]
