@@ -839,6 +839,16 @@ public sealed class SelfBuildLoop
 
     private void WriteLatestGithubSync(int issueNumber, GithubSyncResult result)
     {
+        var existing = ReadLatestGithubSync();
+        if (existing is not null &&
+            existing.IssueNumber == issueNumber &&
+            existing.Attempted == result.Attempted &&
+            existing.Updated == result.Updated &&
+            string.Equals(existing.Summary, result.Summary, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         var directory = Path.GetDirectoryName(GithubSyncStatusPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {

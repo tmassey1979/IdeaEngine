@@ -1265,6 +1265,36 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncValidatedWorkflow_DoesNotRewriteLatestGithubSyncForRepeatedDeferredHeartbeat()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "nextWakeReason": "delayed-provider-retry",
+              "delayedRetryUrgency": "alert",
+              "nextDelayedRetryAt": "2026-03-23T16:15:00Z"
+            }
+            """);
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+        var firstRecordedAt = loop.ReadStatus().LatestGithubSync!.RecordedAt;
+
+        Thread.Sleep(20);
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+        var secondRecordedAt = loop.ReadStatus().LatestGithubSync!.RecordedAt;
+
+        Assert.Equal(firstRecordedAt, secondRecordedAt);
+    }
+
+    [Fact]
     public void ReadStatus_TreatsRecentGithubReplayRepairAsActiveHealthyWork()
     {
         var root = CreateTempRoot();
