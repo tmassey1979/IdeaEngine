@@ -58,6 +58,9 @@ worker_health = status.get("health", "unknown")
 queued_jobs = status.get("queuedJobs", 0)
 failed_issues = rollup.get("failedIssues", 0)
 quarantined_issues = rollup.get("quarantinedIssues", 0)
+next_wake_reason = status.get("nextWakeReason")
+next_delayed_retry_at = status.get("nextDelayedRetryAt")
+delayed_retry_urgency = status.get("delayedRetryUrgency")
 
 if service_active not in {"active", "inactive"}:
     issues.append(f"service state is {service_active}")
@@ -72,6 +75,18 @@ if isinstance(restart_count, int) and restart_count > 0:
 
 if worker_health not in {"healthy", "idle"}:
     issues.append(f"worker health is {worker_health}")
+
+if next_wake_reason == "delayed-provider-retry":
+    delayed_retry_issue = "worker is waiting on delayed provider retry"
+    if delayed_retry_urgency == "alert":
+        issues.append(f"{delayed_retry_issue} (long backoff)")
+        actions.append("dragon-status-dashboard")
+        actions.append("dragon-tail-logs --all")
+    else:
+        issues.append(delayed_retry_issue)
+        actions.append("dragon-report")
+elif next_wake_reason == "poll-interval" and worker_health in {"healthy", "idle"} and service_active == "active":
+    actions.append("dragon-report")
 
 if failed_issues > 0:
     issues.append(f"{failed_issues} failed issue(s) need review")
@@ -110,6 +125,10 @@ print(f"Status: {severity}")
 print(f"Service: {service_active} ({service_result})")
 print(f"Worker: {worker_health}")
 print(f"Alert check: {alert_status}")
+if next_wake_reason:
+    print(f"Next wake reason: {next_wake_reason}")
+if next_delayed_retry_at:
+    print(f"Next delayed retry: {next_delayed_retry_at}")
 print()
 print("Findings")
 if issues:
