@@ -377,6 +377,7 @@ public sealed class GithubIssueService
                 $"- worker loop summary: {DescribeGlobalWorkerLoopSummary(rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- global intervention age: {DescribeGlobalInterventionAge(rootDirectory)}",
+                $"- global intervention escalation level: {DescribeGlobalInterventionEscalationLevel(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
                 $"- current stage: {currentStage}",
@@ -594,6 +595,7 @@ public sealed class GithubIssueService
                 $"- worker loop summary: {DescribeGlobalWorkerLoopSummary(rootDirectory)}",
                 $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- global intervention age: {DescribeGlobalInterventionAge(rootDirectory)}",
+                $"- global intervention escalation level: {DescribeGlobalInterventionEscalationLevel(rootDirectory)}",
                 $"- intervention escalation: {DescribeGlobalInterventionEscalation(rootDirectory)}",
                 $"- intervention escalation streak: {DescribeGlobalInterventionEscalationStreak(rootDirectory)}",
                 $"- blocked stage: {currentStage}",
@@ -2599,6 +2601,34 @@ public sealed class GithubIssueService
                 !string.IsNullOrWhiteSpace(ageSummaryProperty.GetString()))
             {
                 return ageSummaryProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalInterventionEscalationLevel(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("interventionTarget", out var interventionTarget) &&
+                interventionTarget.ValueKind == JsonValueKind.Object &&
+                interventionTarget.TryGetProperty("escalation", out var escalationProperty) &&
+                escalationProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(escalationProperty.GetString()))
+            {
+                return escalationProperty.GetString()!;
             }
 
             return "not recorded";
