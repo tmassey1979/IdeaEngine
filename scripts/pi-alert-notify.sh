@@ -35,6 +35,9 @@ import sys
 report_file, alert_source, alert_message = sys.argv[1:4]
 
 def describe_wait_signal(status: dict) -> str | None:
+    wait_signal = status.get("waitSignal")
+    if wait_signal:
+        return wait_signal
     replay_priority_summary = status.get("replayPrioritySummary")
     if replay_priority_summary:
         return replay_priority_summary
@@ -84,6 +87,7 @@ payload = {
     "endpoints": report.get("endpoints"),
     "workerHealth": status.get("health"),
     "attentionSummary": status.get("attentionSummary"),
+    "waitSignalBackend": status.get("waitSignal"),
     "nextWakeReason": status.get("nextWakeReason"),
     "waitSignal": wait_signal,
     "nextDelayedRetryAt": status.get("nextDelayedRetryAt"),

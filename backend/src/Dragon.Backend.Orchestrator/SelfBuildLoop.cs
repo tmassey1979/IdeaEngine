@@ -115,6 +115,7 @@ public sealed class SelfBuildLoop
         var delayedRetrySummary = nextDelayedRetryAt is null
             ? null
             : $"Next delayed provider retry unlocks at {nextDelayedRetryAt.Value:O}.";
+        var waitSignal = BuildWaitSignal(replayPrioritySummary, nextWakeReason);
         var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
         var leadJobSnapshot = leadJob is null
             ? null
@@ -181,6 +182,7 @@ public sealed class SelfBuildLoop
             nextDelayedRetryAt,
             delayedRetryUrgency,
             delayedRetrySummary,
+            waitSignal,
             pendingGithubSyncNextRetryAt,
             pendingGithubSyncRetryState,
             pendingGithubSyncRetryOverdueMinutes,
@@ -2424,6 +2426,20 @@ public sealed class SelfBuildLoop
             _ => null
         };
 
+    private static string? BuildWaitSignal(string? replayPrioritySummary, string? nextWakeReason)
+    {
+        if (!string.IsNullOrWhiteSpace(replayPrioritySummary))
+        {
+            return replayPrioritySummary;
+        }
+
+        return nextWakeReason switch
+        {
+            "poll-interval" => "Routine poll wait.",
+            _ => null
+        };
+    }
+
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
@@ -2921,6 +2937,7 @@ public sealed record StatusSnapshot(
     DateTimeOffset? NextDelayedRetryAt = null,
     string? DelayedRetryUrgency = null,
     string? DelayedRetrySummary = null,
+    string? WaitSignal = null,
     DateTimeOffset? PendingGithubSyncNextRetryAt = null,
     string? PendingGithubSyncRetryState = null,
     int PendingGithubSyncRetryOverdueMinutes = 0,

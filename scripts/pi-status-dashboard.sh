@@ -59,20 +59,20 @@ pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or "
 pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
 replay_priority_reason = status.get("replayPriorityReason")
 replay_priority_summary = status.get("replayPrioritySummary")
+wait_signal = status.get("waitSignal")
 if pending_github_sync:
     pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt", "")
-wait_signal = None
-if replay_priority_summary:
+if not wait_signal and replay_priority_summary:
     wait_signal = replay_priority_summary
-elif replay_priority_reason == "overdue-github-writeback-retry" or pending_github_sync_retry_overdue_minutes >= 15:
+elif not wait_signal and (replay_priority_reason == "overdue-github-writeback-retry" or pending_github_sync_retry_overdue_minutes >= 15):
     wait_signal = "prioritizing overdue writeback replay"
-elif replay_priority_reason == "ready-github-writeback-retry" or pending_github_sync_retry_state == "ready now":
+elif not wait_signal and (replay_priority_reason == "ready-github-writeback-retry" or pending_github_sync_retry_state == "ready now"):
     wait_signal = "writeback replay ready"
-elif replay_priority_reason == "provider-backoff" or next_wake_reason == "waiting for delayed provider retry":
+elif not wait_signal and (replay_priority_reason == "provider-backoff" or next_wake_reason == "waiting for delayed provider retry"):
     wait_signal = "provider backoff"
     if delayed_retry_urgency == "alert":
         wait_signal = "provider backoff (long)"
-elif next_wake_reason == "scheduled poll interval":
+elif not wait_signal and next_wake_reason == "scheduled poll interval":
     wait_signal = "routine poll wait"
 
 print("Dragon Pi Status Dashboard")

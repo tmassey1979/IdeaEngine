@@ -141,8 +141,8 @@ pending_github_sync_retry_state = payload.get("pendingGithubSyncRetryState") or 
 pending_github_sync_retry_overdue_minutes = int(payload.get("pendingGithubSyncRetryOverdueMinutes") or 0)
 replay_priority_reason = payload.get("replayPriorityReason") or ""
 replay_priority_summary = payload.get("replayPrioritySummary") or ""
-wait_signal = ""
-if replay_priority_summary:
+wait_signal = payload.get("waitSignal") or ""
+if not wait_signal and replay_priority_summary:
     wait_signal = replay_priority_summary
 elif replay_priority_reason == "provider-backoff" or payload.get("nextWakeReason") == "delayed-provider-retry":
     wait_signal = "provider backoff (long)" if payload.get("delayedRetryUrgency") == "alert" else "provider backoff"
@@ -165,6 +165,7 @@ fields = {
     "NEXT_DELAYED_RETRY_AT": payload.get("nextDelayedRetryAt", ""),
     "DELAYED_RETRY_URGENCY": payload.get("delayedRetryUrgency", ""),
     "DELAYED_RETRY_SUMMARY": payload.get("delayedRetrySummary", ""),
+    "WAIT_SIGNAL_BACKEND": payload.get("waitSignal", ""),
     "REPLAY_PRIORITY_REASON": replay_priority_reason,
     "REPLAY_PRIORITY_SUMMARY": replay_priority_summary,
     "PENDING_GITHUB_SYNC_NEXT_RETRY": pending_github_sync_next_retry,
@@ -655,6 +656,9 @@ main() {
     if [[ -n "${WAIT_SIGNAL:-}" && "${WAIT_SIGNAL}" != "None" ]]; then
       echo "wait_signal: ${WAIT_SIGNAL}"
     fi
+    if [[ -n "${WAIT_SIGNAL_BACKEND:-}" && "${WAIT_SIGNAL_BACKEND}" != "None" ]]; then
+      echo "wait_signal_backend: ${WAIT_SIGNAL_BACKEND}"
+    fi
     if [[ -n "${REPLAY_PRIORITY_REASON:-}" && "${REPLAY_PRIORITY_REASON}" != "None" ]]; then
       echo "replay_priority_reason: ${REPLAY_PRIORITY_REASON}"
     fi
@@ -696,7 +700,9 @@ main() {
     echo "worker_activity: $(json_query workerActivity unknown)"
     echo "health: $(json_query health unknown)"
     echo "next_wake_reason: $(json_query nextWakeReason '')"
-    if [[ -n "$(json_query replayPrioritySummary '')" ]]; then
+    if [[ -n "$(json_query waitSignal '')" ]]; then
+      echo "wait_signal: $(json_query waitSignal '')"
+    elif [[ -n "$(json_query replayPrioritySummary '')" ]]; then
       echo "wait_signal: $(json_query replayPrioritySummary '')"
     elif [[ "$(json_query replayPriorityReason '')" == "overdue-github-writeback-retry" ]] || { [[ "$(json_query pendingGithubSyncRetryOverdueMinutes 0)" != "0" ]] && [[ "$(json_query pendingGithubSyncRetryOverdueMinutes 0)" -ge 15 ]]; }; then
       echo "wait_signal: prioritizing overdue writeback replay"
@@ -712,6 +718,7 @@ main() {
       echo "wait_signal: routine poll wait"
     fi
     echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
+    echo "wait_signal_backend: $(json_query waitSignal '')"
     echo "replay_priority_reason: $(json_query replayPriorityReason '')"
     echo "replay_priority_summary: $(json_query replayPrioritySummary '')"
     echo "pending_github_sync_next_retry_at: $(json_query pendingGithubSyncNextRetryAt '')"
