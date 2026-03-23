@@ -2455,7 +2455,8 @@ public sealed record InterventionTargetSnapshot(
     DateTimeOffset? ObservedAt = null,
     string? AgeSummary = null,
     string? Escalation = null,
-    bool Acknowledged = false
+    bool Acknowledged = false,
+    int AcknowledgedStreak = 0
 );
 
 public static class StatusSnapshotTrend
@@ -2463,7 +2464,11 @@ public static class StatusSnapshotTrend
     public static StatusSnapshot Apply(StatusSnapshot current, StatusSnapshot? previous)
     {
         var interventionEscalationStreak = ComputeInterventionEscalationStreak(current, previous);
+        var interventionAcknowledgedStreak = ComputeInterventionAcknowledgedStreak(current, previous);
         var interventionEscalationNote = BuildPersistedInterventionEscalationNote(current.InterventionEscalationNote, current.InterventionTarget, interventionEscalationStreak);
+        var interventionTarget = current.InterventionTarget is null
+            ? null
+            : current.InterventionTarget with { AcknowledgedStreak = interventionAcknowledgedStreak };
 
         if (previous is null)
         {
@@ -2473,6 +2478,7 @@ public static class StatusSnapshotTrend
                 QueueDelta = 0,
                 QueueComparedAt = null,
                 RollupDelta = new StatusRollupDelta(0, 0, 0, 0),
+                InterventionTarget = interventionTarget,
                 InterventionEscalationStreak = interventionEscalationStreak,
                 InterventionEscalationNote = interventionEscalationNote
             };
@@ -2497,6 +2503,7 @@ public static class StatusSnapshotTrend
                 current.Rollup.InProgressIssues - previous.Rollup.InProgressIssues,
                 current.Rollup.ValidatedIssues - previous.Rollup.ValidatedIssues
             ),
+            InterventionTarget = interventionTarget,
             InterventionEscalationStreak = interventionEscalationStreak,
             InterventionEscalationNote = interventionEscalationNote
         };
@@ -2523,6 +2530,31 @@ public static class StatusSnapshotTrend
         if (sameKind && sameIssue && sameRecovery && samePendingSync)
         {
             return Math.Max(1, previous.InterventionEscalationStreak) + 1;
+        }
+
+        return 1;
+    }
+
+    private static int ComputeInterventionAcknowledgedStreak(StatusSnapshot current, StatusSnapshot? previous)
+    {
+        if (current.InterventionTarget is null || !current.InterventionTarget.Acknowledged)
+        {
+            return 0;
+        }
+
+        if (previous?.InterventionTarget is null || !previous.InterventionTarget.Acknowledged)
+        {
+            return 1;
+        }
+
+        var sameKind = string.Equals(current.InterventionTarget.Kind, previous.InterventionTarget.Kind, StringComparison.OrdinalIgnoreCase);
+        var sameIssue = current.InterventionTarget.IssueNumber == previous.InterventionTarget.IssueNumber;
+        var sameRecovery = current.InterventionTarget.RecoveryIssueNumber == previous.InterventionTarget.RecoveryIssueNumber;
+        var samePendingSync = current.InterventionTarget.PendingGithubSyncIssueNumber == previous.InterventionTarget.PendingGithubSyncIssueNumber;
+
+        if (sameKind && sameIssue && sameRecovery && samePendingSync)
+        {
+            return Math.Max(1, previous.InterventionTarget.AcknowledgedStreak) + 1;
         }
 
         return 1;

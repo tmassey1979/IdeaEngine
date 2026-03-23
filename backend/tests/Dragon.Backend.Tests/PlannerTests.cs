@@ -418,6 +418,7 @@ public sealed class PlannerTests
 
         Assert.NotNull(status.InterventionTarget);
         Assert.True(status.InterventionTarget!.Acknowledged);
+        Assert.Equal(0, status.InterventionTarget.AcknowledgedStreak);
         Assert.Equal("Waiting to continue tracking an already-acknowledged operator escalation on the next pass.", status.WorkerActivity);
         Assert.Equal("escalating", status.RecentLoopSignal.Mode);
         Assert.Contains("tracking acknowledged operator escalation", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
@@ -2043,6 +2044,115 @@ public sealed class PlannerTests
 
         Assert.Equal(3, annotated.InterventionEscalationStreak);
         Assert.Contains("Persisting across 3 consecutive status snapshots", annotated.InterventionEscalationNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StatusSnapshotTrend_IncrementsAcknowledgedInterventionTargetStreakForSameTarget()
+    {
+        var previous = new StatusSnapshot(
+            DateTimeOffset.UtcNow.AddMinutes(-5),
+            "status",
+            "run-watch",
+            "watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            8,
+            1,
+            8,
+            "healthy",
+            "previous",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("escalating", "previous"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "operator-escalation",
+                "Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
+                22,
+                null,
+                null,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "Summarize the persistent critical intervention target and the next operator action.",
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical",
+                true,
+                2),
+            "Escalation: global intervention target is critical. Summarize the persistent critical intervention target and the next operator action.",
+            3);
+
+        var current = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "run-watch",
+            "watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            2,
+            8,
+            "healthy",
+            "current",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("escalating", "current"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "operator-escalation",
+                "Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
+                22,
+                null,
+                null,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "Summarize the persistent critical intervention target and the next operator action.",
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical",
+                true),
+            "Escalation: global intervention target is critical. Summarize the persistent critical intervention target and the next operator action.");
+
+        var annotated = StatusSnapshotTrend.Apply(current, previous);
+
+        Assert.NotNull(annotated.InterventionTarget);
+        Assert.Equal(3, annotated.InterventionTarget!.AcknowledgedStreak);
     }
 
     [Fact]
