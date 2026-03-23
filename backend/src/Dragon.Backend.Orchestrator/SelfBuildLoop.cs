@@ -867,12 +867,6 @@ public sealed class SelfBuildLoop
 
     private void WriteLatestGithubReplay(int attemptedCount, int updatedCount, int failedCount, int deferredCount = 0)
     {
-        var directory = Path.GetDirectoryName(GithubReplayStatusPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
         var summary = attemptedCount == 0
             ? deferredCount > 0
                 ? $"Deferred replay for {deferredCount} pending GitHub update{(deferredCount == 1 ? string.Empty : "s")} while waiting for delayed provider retry."
@@ -880,6 +874,22 @@ public sealed class SelfBuildLoop
             : deferredCount > 0
                 ? $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing, {deferredCount} deferred."
                 : $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing.";
+
+        var existing = ReadLatestGithubReplay();
+        if (existing is not null &&
+            existing.AttemptedCount == attemptedCount &&
+            existing.UpdatedCount == updatedCount &&
+            existing.FailedCount == failedCount &&
+            string.Equals(existing.Summary, summary, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(GithubReplayStatusPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
 
         var snapshot = new LatestGithubReplaySnapshot(
             attemptedCount,

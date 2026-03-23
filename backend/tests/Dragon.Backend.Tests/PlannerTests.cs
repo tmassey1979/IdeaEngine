@@ -1295,6 +1295,37 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReplayPendingGithubSyncs_DoesNotRewriteLatestGithubReplayForRepeatedDeferredReplay()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "nextWakeReason": "delayed-provider-retry",
+              "delayedRetryUrgency": "alert",
+              "nextDelayedRetryAt": "2026-03-23T16:15:00Z"
+            }
+            """);
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+
+        var github = new GithubIssueService((_, _) => string.Empty);
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        loop.RecordPendingGithubSyncForTests(22, "GitHub sync failed for issue #22.");
+
+        loop.ReplayPendingGithubSyncs("tmassey1979", "IdeaEngine");
+        var firstRecordedAt = loop.ReadStatus().LatestGithubReplay!.RecordedAt;
+
+        Thread.Sleep(20);
+        loop.ReplayPendingGithubSyncs("tmassey1979", "IdeaEngine");
+        var secondRecordedAt = loop.ReadStatus().LatestGithubReplay!.RecordedAt;
+
+        Assert.Equal(firstRecordedAt, secondRecordedAt);
+    }
+
+    [Fact]
     public void ReadStatus_TreatsRecentGithubReplayRepairAsActiveHealthyWork()
     {
         var root = CreateTempRoot();
