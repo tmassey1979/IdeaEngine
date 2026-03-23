@@ -17,6 +17,7 @@ Core commands:
   dragon-report
   dragon-report --json
   dragon-self-test
+  dragon-refresh-tooling
   dragon-health
   dragon-preflight
   dragon-start
@@ -63,6 +64,7 @@ Timers:
 Recovery:
   dragon-firstaid
   dragon-self-test
+  dragon-refresh-tooling
   dragon-doctor
   dragon-share-status
   ~/dragon/IdeaEngine/scripts/pi-reset-state.sh

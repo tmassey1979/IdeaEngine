@@ -84,6 +84,7 @@ Routine maintenance:
 ```bash
 dragon-report
 dragon-self-test
+dragon-refresh-tooling
 dragon-health
 dragon-preflight
 dragon-start
@@ -121,7 +122,8 @@ What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
 - `pi-self-test.sh` validates Pi script syntax and installed shortcut wrappers without touching the running workload
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-self-test`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
+- `pi-refresh-tooling.sh` reinstalls the Pi shortcut commands and then runs the self-test so the local operator toolkit stays current after pulls
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-self-test`, `dragon-refresh-tooling`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -239,6 +241,7 @@ dragon-restart --follow
 dragon-restart-and-wait --timeout 600
 dragon-ensure-running
 dragon-self-test
+dragon-refresh-tooling
 dragon-wait-healthy --timeout 600
 ```
 
