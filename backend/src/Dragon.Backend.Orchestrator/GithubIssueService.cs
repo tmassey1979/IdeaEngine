@@ -332,6 +332,7 @@ public sealed class GithubIssueService
                 $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
+                $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -503,6 +504,7 @@ public sealed class GithubIssueService
                 $"- recovery chain: {DescribeRecoveryChain(workflow)}",
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
+                $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -639,6 +641,30 @@ public sealed class GithubIssueService
         }
 
         return "clear";
+    }
+
+    private static string DescribeWorkerFocus(IssueWorkflowState workflow, string rootDirectory)
+    {
+        var writebackState = DescribeRecoveryWritebackState(workflow, rootDirectory);
+        if (!string.Equals(writebackState, "clear", StringComparison.OrdinalIgnoreCase))
+        {
+            return "repairing GitHub writeback drift";
+        }
+
+        if ((workflow.ActiveRecoveryIssueNumbers?.Any() ?? false) ||
+            workflow.SourceIssueNumber is not null ||
+            string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+        {
+            return "draining recovery work";
+        }
+
+        if (string.Equals(workflow.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
+        {
+            return "shipping implementation work";
+        }
+
+        return "maintaining workflow state";
     }
 
     private static string FormatPendingGithubSyncAge(PendingGithubSyncSnapshot pending, DateTimeOffset referenceTime)

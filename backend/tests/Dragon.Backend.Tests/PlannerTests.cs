@@ -3605,6 +3605,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("recovery chain: current #23 -> children #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery state: active recovery children #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: clear", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker focus: draining recovery work", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("active recovery children: #500", StringComparison.Ordinal));
     }
 
@@ -3799,6 +3800,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery state: awaiting recovery path", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: clear", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker focus: draining recovery work", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: #999", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("Recovery checklist", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
@@ -3897,6 +3899,7 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500 (queued", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 
@@ -4236,6 +4239,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("stalled: no", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled reason: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker focus: shipping implementation work", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));
