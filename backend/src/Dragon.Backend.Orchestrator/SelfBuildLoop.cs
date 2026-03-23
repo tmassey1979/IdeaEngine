@@ -633,6 +633,9 @@ public sealed class SelfBuildLoop
         return new PollingRunResult(passes, consecutiveIdlePasses, false, true);
     }
 
+    public TimeSpan GetWatchDelay(TimeSpan pollInterval, bool capToPollInterval = false) =>
+        DetermineWatchDelay(pollInterval, capToPollInterval);
+
     public PollingRunResult RunPollingFromGithub(
         string owner,
         string repo,

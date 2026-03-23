@@ -2006,6 +2006,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void GetWatchDelay_ReturnsDelayedRetryWindowForLocalWatch()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Delayed retry", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = now.AddMinutes(5).ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            }));
+        var loop = new SelfBuildLoop(root, nowProvider: () => now);
+
+        var delay = loop.GetWatchDelay(TimeSpan.FromSeconds(15));
+
+        Assert.Equal(TimeSpan.FromMinutes(5), delay);
+    }
+
+    [Fact]
+    public void GetWatchDelay_CapsDelayedRetryWindowForGithubWatch()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 0, 0, TimeSpan.Zero);
+        var queue = new QueueStore(root, nowProvider: () => now);
+        queue.Enqueue(new SelfBuildJob(
+            "architect",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            22,
+            new SelfBuildJobPayload("[Story] Delayed retry", ["story"], "Architect Agent", "codex/sections/01-dragon-idea-engine-master-codex.md", null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["retryNotBeforeUtc"] = now.AddMinutes(5).ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            }));
+        var loop = new SelfBuildLoop(root, nowProvider: () => now);
+
+        var delay = loop.GetWatchDelay(TimeSpan.FromSeconds(15), capToPollInterval: true);
+
+        Assert.Equal(TimeSpan.FromSeconds(15), delay);
+    }
+
+    [Fact]
     public void BuildLatestPassSummary_CapturesPassOutcomeCounts()
     {
         var escalationFollowUp = new SelfBuildJob(

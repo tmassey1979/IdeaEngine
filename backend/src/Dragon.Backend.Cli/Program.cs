@@ -278,9 +278,10 @@ static int RunWatch(IReadOnlyDictionary<string, string> options)
             var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
             var willContinue = passNumber < maxPasses && consecutiveIdlePasses < requiredIdlePasses;
+            var nextDelay = willContinue ? loop.GetWatchDelay(pollInterval, capToPollInterval: false) : (TimeSpan?)null;
             return (
                 willContinue ? "waiting" : "complete",
-                willContinue ? DateTimeOffset.UtcNow.Add(pollInterval) : null,
+                nextDelay is not null ? DateTimeOffset.UtcNow.Add(nextDelay.Value) : null,
                 willContinue ? null : (consecutiveIdlePasses >= requiredIdlePasses ? "idle_target_reached" : "max_passes_reached")
             );
         });
@@ -446,9 +447,10 @@ static int RunGithubRunWatch(IReadOnlyDictionary<string, string> options)
             var requiredIdlePasses = Math.Max(1, idlePassesBeforeStop);
             consecutiveIdlePasses = result.ReachedIdle ? consecutiveIdlePasses + 1 : 0;
             var willContinue = passNumber < maxPasses && consecutiveIdlePasses < requiredIdlePasses;
+            var nextDelay = willContinue ? loop.GetWatchDelay(pollInterval, capToPollInterval: true) : (TimeSpan?)null;
             return (
                 willContinue ? "waiting" : "complete",
-                willContinue ? DateTimeOffset.UtcNow.Add(pollInterval) : null,
+                nextDelay is not null ? DateTimeOffset.UtcNow.Add(nextDelay.Value) : null,
                 willContinue ? null : (consecutiveIdlePasses >= requiredIdlePasses ? "idle_target_reached" : "max_passes_reached")
             );
         });
