@@ -61,6 +61,7 @@ Routine maintenance:
 ~/dragon/IdeaEngine/scripts/update-pi.sh
 ~/dragon/IdeaEngine/scripts/collect-pi-diagnostics.sh
 ~/dragon/IdeaEngine/scripts/backup-pi.sh
+~/dragon/IdeaEngine/scripts/cleanup-pi.sh
 ```
 
 What those do:
@@ -71,6 +72,7 @@ What those do:
 - `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, and backend snapshots
 - `backup-pi.sh` creates a timestamped backup of `.env`, `.dragon`, and Docker volumes
 - `restore-pi.sh` restores `.env`, `.dragon`, and Docker volumes from a chosen backup
+- `cleanup-pi.sh` prunes old diagnostics folders and unpacked backup directories under `.tmp`
 
 Backup and restore:
 
@@ -88,3 +90,4 @@ Notes:
 - Backup and restore stop the service by default to reduce the chance of inconsistent volume snapshots.
 - The setup script installs a nightly `dragon-backup.timer` by default.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
+- `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

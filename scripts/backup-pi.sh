@@ -10,6 +10,7 @@ STOP_SERVICE="${STOP_SERVICE:-true}"
 RESTART_SERVICE="${RESTART_SERVICE:-true}"
 ARCHIVE_NAME="${ARCHIVE_NAME:-dragon-pi-backup-$TIMESTAMP.tar.gz}"
 BACKUP_RETENTION_COUNT="${BACKUP_RETENTION_COUNT:-7}"
+RUN_CLEANUP="${RUN_CLEANUP:-true}"
 
 VOLUMES=(
   "dragon-postgres"
@@ -91,6 +92,10 @@ main() {
         rm -f "${archive_path}"
       done
     fi
+  fi
+
+  if [[ "${RUN_CLEANUP}" == "true" ]] && [[ -x "${REPO_DIR}/scripts/cleanup-pi.sh" ]]; then
+    "${REPO_DIR}/scripts/cleanup-pi.sh"
   fi
 }
 
