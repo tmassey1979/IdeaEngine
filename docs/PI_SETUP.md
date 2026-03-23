@@ -91,6 +91,7 @@ What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
 - `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, and `dragon-diagnostics`
+- `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-report.sh` prints a concise service, backup/update timer, worker, queue, activity, compose, and backup summary
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -105,6 +106,13 @@ Backup and restore:
 ~/dragon/IdeaEngine/scripts/backup-pi.sh
 BACKUP_SOURCE=~/dragon/IdeaEngine/.tmp/pi-backups/dragon-pi-backup-YYYYMMDD-HHMMSS.tar.gz \
   ~/dragon/IdeaEngine/scripts/restore-pi.sh
+```
+
+Uninstall:
+
+```bash
+~/dragon/IdeaEngine/scripts/pi-uninstall.sh
+REMOVE_REPO_DIR=true ~/dragon/IdeaEngine/scripts/pi-uninstall.sh
 ```
 
 Notes:
