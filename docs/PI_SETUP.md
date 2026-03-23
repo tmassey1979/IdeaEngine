@@ -15,6 +15,7 @@ What it does:
 - adds your user to the `docker` group
 - clones or updates this repo
 - creates `.env` from `.env.docker.example` if it does not exist
+- installs and enables a `systemd` service for the Docker Compose stack by default
 
 Defaults:
 
@@ -28,20 +29,22 @@ Useful overrides:
 REPO_BRANCH=main ./setup-pi.sh
 INSTALL_ROOT=/srv/dragon ./setup-pi.sh
 AUTO_START=true ./setup-pi.sh
+INSTALL_SYSTEMD_SERVICE=false AUTO_START=true ./setup-pi.sh
 ```
 
 After the script finishes:
 
 1. Edit `.env` and set `OPENAI_API_KEY`.
 2. Set either `GITHUB_TOKEN` or `GH_TOKEN`.
-3. Start the stack:
+3. Start the service:
 
 ```bash
-cd "$HOME/dragon/IdeaEngine"
-docker compose up --build
+sudo systemctl start dragon-idea-engine
+sudo journalctl -u dragon-idea-engine -f
 ```
 
 Notes:
 
 - If the script adds your user to the `docker` group, log out and back in before running Docker without `sudo`.
 - `AUTO_START=true` only works once the required credentials are present in `.env`.
+- The installed service runs `docker compose up --build` from the repo checkout and restarts automatically on boot.

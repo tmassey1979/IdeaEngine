@@ -7,6 +7,10 @@ INSTALL_ROOT="${INSTALL_ROOT:-$HOME/dragon}"
 REPO_DIR="${REPO_DIR:-$INSTALL_ROOT/IdeaEngine}"
 ENV_FILE="${ENV_FILE:-$REPO_DIR/.env}"
 AUTO_START="${AUTO_START:-false}"
+INSTALL_SYSTEMD_SERVICE="${INSTALL_SYSTEMD_SERVICE:-true}"
+SERVICE_NAME="${SERVICE_NAME:-dragon-idea-engine}"
+SERVICE_TEMPLATE="${SERVICE_TEMPLATE:-$REPO_DIR/docker/dragon-compose.service}"
+SERVICE_PATH="${SERVICE_PATH:-/etc/systemd/system/${SERVICE_NAME}.service}"
 
 require_command() {
   local command_name="$1"
@@ -120,6 +124,27 @@ ensure_env_file() {
   echo "Edit ${ENV_FILE} to set OPENAI_API_KEY and GITHUB_TOKEN or GH_TOKEN before starting the stack."
 }
 
+install_systemd_service() {
+  if [[ "${INSTALL_SYSTEMD_SERVICE}" != "true" ]]; then
+    return
+  fi
+
+  if [[ ! -f "${SERVICE_TEMPLATE}" ]]; then
+    echo "Missing service template: ${SERVICE_TEMPLATE}" >&2
+    exit 1
+  fi
+
+  local rendered
+  rendered="$(mktemp)"
+  sed "s|__REPO_DIR__|${REPO_DIR}|g" "${SERVICE_TEMPLATE}" > "${rendered}"
+  sudo install -m 0644 "${rendered}" "${SERVICE_PATH}"
+  rm -f "${rendered}"
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable "${SERVICE_NAME}.service"
+  echo "Installed and enabled systemd service ${SERVICE_NAME}.service"
+}
+
 print_next_steps() {
   cat <<EOF
 
@@ -127,13 +152,15 @@ Pi bootstrap complete.
 
 Repo: ${REPO_DIR}
 Env:  ${ENV_FILE}
+Service: ${SERVICE_NAME}.service
 
 Next steps:
 1. Edit ${ENV_FILE} and set OPENAI_API_KEY plus GITHUB_TOKEN or GH_TOKEN.
 2. Authenticate GitHub CLI if you want local gh access: gh auth login
 3. Start the stack:
-   cd "${REPO_DIR}"
-   docker compose up --build
+   sudo systemctl start ${SERVICE_NAME}
+4. Follow logs:
+   sudo journalctl -u ${SERVICE_NAME} -f
 EOF
 }
 
@@ -148,7 +175,11 @@ start_stack_if_requested() {
   fi
 
   cd "${REPO_DIR}"
-  docker compose up --build -d
+  if [[ "${INSTALL_SYSTEMD_SERVICE}" == "true" ]]; then
+    sudo systemctl start "${SERVICE_NAME}.service"
+  else
+    docker compose up --build -d
+  fi
 }
 
 main() {
@@ -161,6 +192,7 @@ main() {
   require_command git
   clone_or_update_repo
   ensure_env_file
+  install_systemd_service
 
   if docker compose version >/dev/null 2>&1; then
     echo "Docker Compose plugin is available."
