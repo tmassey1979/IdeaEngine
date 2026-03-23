@@ -339,6 +339,7 @@ public sealed class GithubIssueService
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
+                $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -523,6 +524,7 @@ public sealed class GithubIssueService
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
+                $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker health: {DescribeGlobalWorkerHealth(rootDirectory)}",
                 $"- worker attention: {DescribeGlobalWorkerAttention(rootDirectory)}",
                 $"- worker loop mode: {DescribeGlobalWorkerLoopMode(rootDirectory)}",
@@ -895,6 +897,69 @@ public sealed class GithubIssueService
             }
 
             return $"next poll {nextPollAt!.Value:O}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerProgress(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+
+            var currentPassNumber = root.TryGetProperty("currentPassNumber", out var currentPassProperty) &&
+                currentPassProperty.ValueKind == JsonValueKind.Number &&
+                currentPassProperty.TryGetInt32(out var currentPass)
+                ? currentPass
+                : 0;
+            var maxPasses = root.TryGetProperty("maxPasses", out var maxPassesProperty) &&
+                maxPassesProperty.ValueKind == JsonValueKind.Number &&
+                maxPassesProperty.TryGetInt32(out var parsedMaxPasses)
+                ? parsedMaxPasses
+                : (int?)null;
+            var idleStreak = root.TryGetProperty("idleStreak", out var idleStreakProperty) &&
+                idleStreakProperty.ValueKind == JsonValueKind.Number &&
+                idleStreakProperty.TryGetInt32(out var parsedIdleStreak)
+                ? parsedIdleStreak
+                : 0;
+            var idleTarget = root.TryGetProperty("idleTarget", out var idleTargetProperty) &&
+                idleTargetProperty.ValueKind == JsonValueKind.Number &&
+                idleTargetProperty.TryGetInt32(out var parsedIdleTarget)
+                ? parsedIdleTarget
+                : 0;
+            var idlePassesRemaining = root.TryGetProperty("idlePassesRemaining", out var idleRemainingProperty) &&
+                idleRemainingProperty.ValueKind == JsonValueKind.Number &&
+                idleRemainingProperty.TryGetInt32(out var parsedIdleRemaining)
+                ? parsedIdleRemaining
+                : (int?)null;
+            var passBudgetRemaining = root.TryGetProperty("passBudgetRemaining", out var budgetProperty) &&
+                budgetProperty.ValueKind == JsonValueKind.Number &&
+                budgetProperty.TryGetInt32(out var parsedBudget)
+                ? parsedBudget
+                : (int?)null;
+
+            var passLabel = maxPasses is > 0
+                ? $"{currentPassNumber} / {maxPasses.Value}"
+                : currentPassNumber > 0
+                    ? currentPassNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    : "n/a";
+            var idleLabel = idleTarget > 0
+                ? $"{idleStreak} / {idleTarget}"
+                : idleStreak.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var remainingLabel = idlePassesRemaining?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "n/a";
+            var budgetLabel = passBudgetRemaining?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "n/a";
+
+            return $"pass {passLabel} · idle {idleLabel} · remaining {remainingLabel} · budget {budgetLabel}";
         }
         catch (JsonException)
         {
