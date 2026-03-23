@@ -693,6 +693,12 @@ public sealed class GithubIssueService
             var summary = interventionTarget.TryGetProperty("summary", out var summaryProperty) && summaryProperty.ValueKind == JsonValueKind.String
                 ? summaryProperty.GetString()
                 : null;
+            var ageSummary = interventionTarget.TryGetProperty("ageSummary", out var ageSummaryProperty) && ageSummaryProperty.ValueKind == JsonValueKind.String
+                ? ageSummaryProperty.GetString()
+                : null;
+            var escalation = interventionTarget.TryGetProperty("escalation", out var escalationProperty) && escalationProperty.ValueKind == JsonValueKind.String
+                ? escalationProperty.GetString()
+                : null;
 
             if (string.IsNullOrWhiteSpace(kind) && string.IsNullOrWhiteSpace(summary))
             {
@@ -706,15 +712,35 @@ public sealed class GithubIssueService
 
             if (string.IsNullOrWhiteSpace(summary))
             {
-                return kind;
+                return AppendInterventionTargetAge(kind, ageSummary, escalation);
             }
 
-            return $"{kind}: {summary}";
+            return AppendInterventionTargetAge($"{kind}: {summary}", ageSummary, escalation);
         }
         catch (JsonException)
         {
             return "not recorded";
         }
+    }
+
+    private static string AppendInterventionTargetAge(string value, string? ageSummary, string? escalation)
+    {
+        if (string.IsNullOrWhiteSpace(ageSummary) && string.IsNullOrWhiteSpace(escalation))
+        {
+            return value;
+        }
+
+        if (string.IsNullOrWhiteSpace(ageSummary))
+        {
+            return $"{value} ({escalation})";
+        }
+
+        if (string.IsNullOrWhiteSpace(escalation))
+        {
+            return $"{value} ({ageSummary})";
+        }
+
+        return $"{value} ({ageSummary}, {escalation})";
     }
 
     private static string FormatPendingGithubSyncAge(PendingGithubSyncSnapshot pending, DateTimeOffset referenceTime)

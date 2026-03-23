@@ -423,6 +423,9 @@ public sealed class PlannerTests
         Assert.Equal(500, status.InterventionTarget.RecoveryIssueNumber);
         Assert.Equal(500, status.InterventionTarget.PendingGithubSyncIssueNumber);
         Assert.Contains("GitHub updates for recovery #500", status.InterventionTarget.Summary, StringComparison.Ordinal);
+        Assert.Equal(DateTimeOffset.Parse("2026-03-23T12:00:00Z"), status.InterventionTarget.ObservedAt);
+        Assert.Contains("old", status.InterventionTarget.AgeSummary, StringComparison.Ordinal);
+        Assert.Equal("critical", status.InterventionTarget.Escalation);
         Assert.Equal("Replaying pending GitHub updates before the next GitHub pass.", status.WorkerActivity);
         Assert.Contains("old", status.AttentionSummary, StringComparison.Ordinal);
         Assert.Contains("oldest writeback drift", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
@@ -997,6 +1000,7 @@ public sealed class PlannerTests
         Assert.Equal(610, rootElement.GetProperty("interventionTarget").GetProperty("issueNumber").GetInt32());
         Assert.Equal("ui/dragon-ui/sample-status.json", rootElement.GetProperty("interventionTarget").GetProperty("targetArtifact").GetString());
         Assert.Equal("refresh dashboard status snapshot", rootElement.GetProperty("interventionTarget").GetProperty("targetOutcome").GetString());
+        Assert.Equal("fresh", rootElement.GetProperty("interventionTarget").GetProperty("escalation").GetString());
         Assert.Equal("Advance issue #610: refresh dashboard status snapshot.", rootElement.GetProperty("workerActivity").GetString());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
@@ -3875,7 +3879,9 @@ public sealed class PlannerTests
             {
               "interventionTarget": {
                 "kind": "github-replay-drift",
-                "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry."
+                "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+                "ageSummary": "4h 30m old",
+                "escalation": "critical"
               }
             }
             """);
@@ -3910,7 +3916,7 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500 (queued", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 
@@ -4217,7 +4223,8 @@ public sealed class PlannerTests
             {
               "interventionTarget": {
                 "kind": "implementation",
-                "summary": "Advance issue #22: refresh architecture docs."
+                "summary": "Advance issue #22: refresh architecture docs.",
+                "escalation": "fresh"
               }
             }
             """);
@@ -4262,7 +4269,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("stalled reason: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: shipping implementation work", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("global intervention target: implementation: Advance issue #22: refresh architecture docs.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: implementation: Advance issue #22: refresh architecture docs. (fresh)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));

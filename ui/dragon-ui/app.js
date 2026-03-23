@@ -155,6 +155,15 @@ function leadQuarantineUrgency(snapshot) {
 }
 
 function interventionTargetUrgency(snapshot) {
+  const escalation = snapshot.interventionTarget?.escalation;
+  if (escalation === "critical") {
+    return "alert";
+  }
+
+  if (escalation === "warning") {
+    return "caution";
+  }
+
   const kind = snapshot.interventionTarget?.kind;
   if (kind === "github-replay-drift") {
     return "alert";
@@ -754,6 +763,8 @@ function renderStatusSnapshot(snapshot) {
   const interventionTargetKind = document.getElementById("status-intervention-target-kind");
   const interventionTargetRecovery = document.getElementById("status-intervention-target-recovery");
   const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
+  const interventionTargetAge = document.getElementById("status-intervention-target-age");
+  const interventionTargetEscalation = document.getElementById("status-intervention-target-escalation");
   const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
   const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
   const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
@@ -863,6 +874,8 @@ function renderStatusSnapshot(snapshot) {
     ? `#${snapshot.interventionTarget.recoveryIssueNumber}`
     : "none";
   interventionTargetArtifact.textContent = snapshot.interventionTarget?.targetArtifact ?? "none";
+  interventionTargetAge.textContent = snapshot.interventionTarget?.ageSummary ?? "n/a";
+  interventionTargetEscalation.textContent = snapshot.interventionTarget?.escalation ?? "normal";
   interventionTargetSummary.textContent = snapshot.interventionTarget?.summary ?? "No immediate intervention target.";
   interventionTargetGroup.className = snapshot.interventionTarget && snapshot.interventionTarget.kind !== "idle"
     ? `status-activity ${interventionTargetUrgencyState === "alert" ? "alert" : interventionTargetUrgencyState === "caution" ? "caution" : ""}`.trim()
@@ -1022,6 +1035,8 @@ async function bootStatusMock() {
     const interventionTargetKind = document.getElementById("status-intervention-target-kind");
     const interventionTargetRecovery = document.getElementById("status-intervention-target-recovery");
     const interventionTargetArtifact = document.getElementById("status-intervention-target-artifact");
+    const interventionTargetAge = document.getElementById("status-intervention-target-age");
+    const interventionTargetEscalation = document.getElementById("status-intervention-target-escalation");
     const interventionTargetSummary = document.getElementById("status-intervention-target-summary");
     const leadQuarantineGroup = document.getElementById("status-lead-quarantine-group");
     const leadQuarantineIssue = document.getElementById("status-lead-quarantine-issue");
@@ -1109,6 +1124,8 @@ async function bootStatusMock() {
     interventionTargetKind.textContent = "unavailable";
     interventionTargetRecovery.textContent = "unavailable";
     interventionTargetArtifact.textContent = "unavailable";
+    interventionTargetAge.textContent = "unavailable";
+    interventionTargetEscalation.textContent = "unavailable";
     interventionTargetSummary.textContent = "Intervention target unavailable";
     interventionTargetGroup.className = "status-activity";
     leadQuarantineIssue.textContent = "Unavailable";

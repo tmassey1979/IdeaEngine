@@ -42,7 +42,10 @@ globalThis.__DRAGON_STATUS__ = {
     "recoveryIssueNumber": 500,
     "pendingGithubSyncIssueNumber": 500,
     "targetArtifact": null,
-    "targetOutcome": null
+    "targetOutcome": null,
+    "observedAt": "2026-03-23T12:00:00Z",
+    "ageSummary": "4h 6m old",
+    "escalation": "critical"
   },
   "latestActivity": {
     "issueNumber": 23,

@@ -1770,7 +1770,12 @@ public sealed class SelfBuildLoop
                 leadQuarantine.Summary ?? $"Replay queued GitHub updates for issue #{pendingIssueNumber}.",
                 leadQuarantine.IssueNumber,
                 leadQuarantine.RecoveryIssueNumber,
-                pendingIssueNumber);
+                pendingIssueNumber,
+                null,
+                null,
+                leadQuarantine.OldestPendingGithubSyncAt,
+                BuildInterventionTargetAgeSummary(leadQuarantine.OldestPendingGithubSyncAt),
+                BuildInterventionTargetEscalation(leadQuarantine.OldestPendingGithubSyncAt));
         }
 
         if (leadQuarantine is not null)
@@ -1779,7 +1784,13 @@ public sealed class SelfBuildLoop
                 "recovery-work",
                 leadQuarantine.Summary ?? $"Continue recovery work for issue #{leadQuarantine.IssueNumber}.",
                 leadQuarantine.IssueNumber,
-                leadQuarantine.RecoveryIssueNumber);
+                leadQuarantine.RecoveryIssueNumber,
+                null,
+                null,
+                null,
+                leadQuarantine.OldestPendingGithubSyncAt,
+                BuildInterventionTargetAgeSummary(leadQuarantine.OldestPendingGithubSyncAt),
+                BuildInterventionTargetEscalation(leadQuarantine.OldestPendingGithubSyncAt));
         }
 
         if (pendingGithubSync.Count > 0)
@@ -1793,7 +1804,12 @@ public sealed class SelfBuildLoop
                 $"Replay queued GitHub update for issue #{oldest.IssueNumber}.",
                 oldest.IssueNumber,
                 null,
-                oldest.IssueNumber);
+                oldest.IssueNumber,
+                null,
+                null,
+                oldest.RecordedAt,
+                BuildInterventionTargetAgeSummary(oldest.RecordedAt),
+                BuildInterventionTargetEscalation(oldest.RecordedAt));
         }
 
         if (leadJob is not null)
@@ -1812,10 +1828,51 @@ public sealed class SelfBuildLoop
                 null,
                 null,
                 leadJob.TargetArtifact,
-                leadJob.TargetOutcome);
+                leadJob.TargetOutcome,
+                null,
+                null,
+                "fresh");
         }
 
         return new InterventionTargetSnapshot("idle", "No immediate intervention target.");
+    }
+
+    private static string? BuildInterventionTargetAgeSummary(DateTimeOffset? observedAt)
+    {
+        if (observedAt is null)
+        {
+            return null;
+        }
+
+        var elapsed = DateTimeOffset.UtcNow >= observedAt.Value
+            ? DateTimeOffset.UtcNow - observedAt.Value
+            : TimeSpan.Zero;
+
+        return $"{FormatElapsed(elapsed)} old";
+    }
+
+    private static string? BuildInterventionTargetEscalation(DateTimeOffset? observedAt)
+    {
+        if (observedAt is null)
+        {
+            return null;
+        }
+
+        var elapsed = DateTimeOffset.UtcNow >= observedAt.Value
+            ? DateTimeOffset.UtcNow - observedAt.Value
+            : TimeSpan.Zero;
+
+        if (elapsed >= TimeSpan.FromHours(1))
+        {
+            return "critical";
+        }
+
+        if (elapsed >= TimeSpan.FromMinutes(15))
+        {
+            return "warning";
+        }
+
+        return "fresh";
     }
 
     private static string? BuildDefaultWorkerActivity(string workerState, InterventionTargetSnapshot? interventionTarget)
@@ -2163,7 +2220,10 @@ public sealed record InterventionTargetSnapshot(
     int? RecoveryIssueNumber = null,
     int? PendingGithubSyncIssueNumber = null,
     string? TargetArtifact = null,
-    string? TargetOutcome = null
+    string? TargetOutcome = null,
+    DateTimeOffset? ObservedAt = null,
+    string? AgeSummary = null,
+    string? Escalation = null
 );
 
 public static class StatusSnapshotTrend
