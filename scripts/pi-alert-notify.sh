@@ -28,17 +28,27 @@ main() {
   trap 'rm -f "${report_file}"' EXIT
   "${REPO_DIR}/scripts/pi-report.sh" --json > "${report_file}"
 
-  payload="$(python3 - "${report_file}" "${ALERT_SOURCE}" "${ALERT_MESSAGE}" <<'PY'
+payload="$(python3 - "${report_file}" "${ALERT_SOURCE}" "${ALERT_MESSAGE}" <<'PY'
 import json
 import sys
 
 report_file, alert_source, alert_message = sys.argv[1:4]
+
+def describe_wait_signal(status: dict) -> str | None:
+    next_wake_reason = status.get("nextWakeReason")
+    delayed_retry_urgency = status.get("delayedRetryUrgency")
+    if next_wake_reason == "delayed-provider-retry":
+        return "provider backoff (long)" if delayed_retry_urgency == "alert" else "provider backoff"
+    if next_wake_reason == "poll-interval":
+        return "routine poll wait"
+    return None
 
 with open(report_file, "r", encoding="utf-8") as handle:
     report = json.load(handle)
 
 status = report.get("status") or {}
 latest = status.get("latestActivity") or {}
+wait_signal = describe_wait_signal(status)
 
 payload = {
     "source": alert_source,
@@ -49,6 +59,9 @@ payload = {
     "endpoints": report.get("endpoints"),
     "workerHealth": status.get("health"),
     "attentionSummary": status.get("attentionSummary"),
+    "nextWakeReason": status.get("nextWakeReason"),
+    "waitSignal": wait_signal,
+    "nextDelayedRetryAt": status.get("nextDelayedRetryAt"),
     "latestActivity": {
         "issueNumber": latest.get("issueNumber"),
         "issueTitle": latest.get("issueTitle"),
