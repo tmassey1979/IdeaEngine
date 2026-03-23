@@ -605,6 +605,7 @@ public sealed class PlannerTests
         Assert.Equal("attention", status.Health);
         Assert.Contains("Provider retry remains delayed", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
+        Assert.Equal("alert", status.DelayedRetryUrgency);
         Assert.Equal($"Next delayed provider retry unlocks at {retryNotBefore:O}.", status.DelayedRetrySummary);
         Assert.Equal($"Waiting for provider retry window on issue #22 until {retryNotBefore:O}.", status.WorkerActivity);
     }
@@ -634,6 +635,7 @@ public sealed class PlannerTests
         Assert.Equal("healthy", status.Health);
         Assert.Contains("Waiting for the next provider retry window", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(retryNotBefore, status.NextDelayedRetryAt);
+        Assert.Equal("normal", status.DelayedRetryUrgency);
     }
 
     [Fact]

@@ -177,6 +177,10 @@ function interventionTargetUrgency(snapshot) {
 }
 
 function delayedRetryUrgency(snapshot) {
+  if (typeof snapshot.delayedRetryUrgency === "string" && snapshot.delayedRetryUrgency.length > 0) {
+    return snapshot.delayedRetryUrgency;
+  }
+
   if (!snapshot.nextDelayedRetryAt) {
     return "normal";
   }

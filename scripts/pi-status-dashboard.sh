@@ -53,6 +53,8 @@ print(f"  alert_check: {alert_status}")
 print(f"  attention: {status.get('attentionSummary', 'none')}")
 if status.get("nextDelayedRetryAt"):
     print(f"  next_delayed_retry: {status.get('nextDelayedRetryAt')}")
+if status.get("delayedRetryUrgency"):
+    print(f"  delayed_retry_urgency: {status.get('delayedRetryUrgency')}")
 if status.get("delayedRetrySummary"):
     print(f"  delayed_retry: {status.get('delayedRetrySummary')}")
 print()

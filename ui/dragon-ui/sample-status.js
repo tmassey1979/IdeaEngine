@@ -8,6 +8,7 @@ globalThis.__DRAGON_STATUS__ = {
   "workerActivity": "Waiting for provider retry window on issue #23 until 2026-03-23T16:15:00.0000000+00:00.",
   "nextPollAt": null,
   "nextDelayedRetryAt": "2026-03-23T16:15:00.0000000+00:00",
+  "delayedRetryUrgency": "alert",
   "delayedRetrySummary": "Next delayed provider retry unlocks at 2026-03-23T16:15:00.0000000+00:00.",
   "pollIntervalSeconds": 30,
   "idleStreak": 0,
