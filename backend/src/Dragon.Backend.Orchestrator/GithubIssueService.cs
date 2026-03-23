@@ -652,6 +652,11 @@ public sealed class GithubIssueService
 
     private static string DescribeWorkerFocus(IssueWorkflowState workflow, string rootDirectory)
     {
+        if (string.Equals(DescribeGlobalInterventionTargetKind(rootDirectory), "operator-escalation", StringComparison.OrdinalIgnoreCase))
+        {
+            return "preparing operator escalation summary";
+        }
+
         var writebackState = DescribeRecoveryWritebackState(workflow, rootDirectory);
         if (!string.Equals(writebackState, "clear", StringComparison.OrdinalIgnoreCase))
         {
@@ -672,6 +677,33 @@ public sealed class GithubIssueService
         }
 
         return "maintaining workflow state";
+    }
+
+    private static string? DescribeGlobalInterventionTargetKind(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("interventionTarget", out var interventionTarget) ||
+                interventionTarget.ValueKind != JsonValueKind.Object ||
+                !interventionTarget.TryGetProperty("kind", out var kindProperty) ||
+                kindProperty.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            return kindProperty.GetString();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string DescribeGlobalInterventionTarget(string rootDirectory)

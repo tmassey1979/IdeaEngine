@@ -339,6 +339,8 @@ public sealed class PlannerTests
         Assert.Equal(22, status.InterventionTarget.IssueNumber);
         Assert.Contains("Escalate issue #22", status.InterventionTarget.Summary, StringComparison.Ordinal);
         Assert.Equal("Waiting to prepare an operator-facing escalation summary on the next pass.", status.WorkerActivity);
+        Assert.Equal("escalating", status.RecentLoopSignal.Mode);
+        Assert.Contains("actively escalating operator follow-up", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -4590,6 +4592,54 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SyncInProgressWorkflow_UsesOperatorEscalationWorkerFocusWhenRuntimeStatusShowsIt()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "interventionEscalationNote": "Escalation: global intervention target is critical. Summarize the persistent critical intervention target and the next operator action.",
+              "interventionEscalationStreak": 3,
+              "interventionTarget": {
+                "kind": "operator-escalation",
+                "summary": "Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
+                "escalation": "critical"
+              }
+            }
+            """);
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", now.AddMinutes(-5), "done")
+            },
+            now
+        );
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, [], root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("worker focus: preparing operator escalation summary", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical)", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("intervention escalation streak: 3", StringComparison.Ordinal));
     }
 
     [Fact]

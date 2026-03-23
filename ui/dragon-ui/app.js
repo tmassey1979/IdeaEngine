@@ -508,7 +508,7 @@ function workerProgressLabel(snapshot) {
 function workerProgressState(snapshot) {
   const state = snapshot.workerState ?? "snapshot";
 
-  if (snapshot.recentLoopSignal?.mode === "repairing") {
+  if (snapshot.recentLoopSignal?.mode === "repairing" || snapshot.recentLoopSignal?.mode === "escalating") {
     return "waiting";
   }
 
@@ -955,7 +955,7 @@ function renderStatusSnapshot(snapshot) {
       pendingGithubGroup.classList.add("alert");
     }
     feed.classList.add("deemphasized");
-  } else if (snapshot.recentLoopSignal?.mode === "draining" || snapshot.recentLoopSignal?.mode === "repairing") {
+  } else if (snapshot.recentLoopSignal?.mode === "draining" || snapshot.recentLoopSignal?.mode === "repairing" || snapshot.recentLoopSignal?.mode === "escalating") {
     latestActivityGroup.classList.add("caution");
     latestPassGroup.classList.add("caution");
     if (pendingGithubItems.length) {

@@ -89,7 +89,6 @@ public sealed class SelfBuildLoop
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
-        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
         var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
         var leadJobSnapshot = leadJob is null
@@ -105,6 +104,7 @@ public sealed class SelfBuildLoop
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"));
         var interventionTarget = BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget)
@@ -2129,7 +2129,8 @@ public sealed class SelfBuildLoop
         string health,
         LatestActivitySnapshot? latestActivity,
         LeadQuarantineSnapshot? leadQuarantine,
-        LatestGithubReplaySnapshot? latestGithubReplay)
+        LatestGithubReplaySnapshot? latestGithubReplay,
+        InterventionTargetSnapshot? interventionTarget)
     {
         if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase) && leadQuarantine is not null)
         {
@@ -2143,12 +2144,7 @@ public sealed class SelfBuildLoop
                 $"{(leadRecoveryAge is not null ? $" with oldest writeback drift {leadRecoveryAge}" : string.Empty)}.");
         }
 
-        if (latestActivity is null)
-        {
-            return new RecentLoopSignalSnapshot("idle", "No recorded executions yet.");
-        }
-
-        if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase) && latestActivity is not null)
         {
             return new RecentLoopSignalSnapshot("failing", $"Recent activity needs review after issue #{latestActivity.IssueNumber}.");
         }
@@ -2160,9 +2156,29 @@ public sealed class SelfBuildLoop
                 latestGithubReplay!.Summary);
         }
 
+        if (queuedJobs > 0 &&
+            string.Equals(interventionTarget?.Kind, "operator-escalation", StringComparison.OrdinalIgnoreCase) &&
+            latestActivity is not null)
+        {
+            return new RecentLoopSignalSnapshot("escalating", $"Loop is actively escalating operator follow-up after issue #{latestActivity.IssueNumber}.");
+        }
+
+        if (queuedJobs > 0 &&
+            string.Equals(interventionTarget?.Kind, "operator-escalation", StringComparison.OrdinalIgnoreCase))
+        {
+            return new RecentLoopSignalSnapshot("escalating", "Loop is actively escalating operator follow-up.");
+        }
+
         if (queuedJobs > 0)
         {
-            return new RecentLoopSignalSnapshot("draining", $"Loop is actively draining queued work after issue #{latestActivity.IssueNumber}.");
+            return latestActivity is not null
+                ? new RecentLoopSignalSnapshot("draining", $"Loop is actively draining queued work after issue #{latestActivity.IssueNumber}.")
+                : new RecentLoopSignalSnapshot("draining", "Loop is actively draining queued work.");
+        }
+
+        if (latestActivity is null)
+        {
+            return new RecentLoopSignalSnapshot("idle", "No recorded executions yet.");
         }
 
         return new RecentLoopSignalSnapshot("idle", $"Loop reached idle after issue #{latestActivity.IssueNumber}.");
