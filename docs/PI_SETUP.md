@@ -87,6 +87,7 @@ dragon-self-test
 dragon-refresh-tooling
 dragon-daily-routine
 dragon-evening-routine
+dragon-weekly-routine
 dragon-health
 dragon-preflight
 dragon-start
@@ -127,7 +128,8 @@ What those do:
 - `pi-refresh-tooling.sh` reinstalls the Pi shortcut commands and then runs the self-test so the local operator toolkit stays current after pulls
 - `pi-daily-routine.sh` runs tooling refresh, preflight, and the status dashboard in one read-only operator check
 - `pi-evening-routine.sh` captures a share-status bundle, runs backup and cleanup, and prints a final report in one end-of-day flow
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-self-test`, `dragon-refresh-tooling`, `dragon-daily-routine`, `dragon-evening-routine`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
+- `pi-weekly-routine.sh` refreshes tooling, runs the standard update flow, and finishes with the daily routine snapshot
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-self-test`, `dragon-refresh-tooling`, `dragon-daily-routine`, `dragon-evening-routine`, `dragon-weekly-routine`, `dragon-health`, `dragon-preflight`, `dragon-start`, `dragon-start-and-wait`, `dragon-stop`, `dragon-stop-and-wait`, `dragon-wait-stopped`, `dragon-restart`, `dragon-restart-and-wait`, `dragon-ensure-running`, `dragon-wait-healthy`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, `dragon-alert-check`, `dragon-alert-notify`, `dragon-configure-alerts`, `dragon-ops-summary`, `dragon-reinstall-service`, `dragon-tail-logs`, `dragon-status-dashboard`, `dragon-watch-status`, `dragon-doctor`, and `dragon-share-status`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
@@ -248,6 +250,7 @@ dragon-self-test
 dragon-refresh-tooling
 dragon-daily-routine
 dragon-evening-routine
+dragon-weekly-routine
 dragon-wait-healthy --timeout 600
 ```
 

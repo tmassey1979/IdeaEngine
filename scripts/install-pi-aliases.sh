@@ -45,6 +45,7 @@ main() {
   install_wrapper "dragon-refresh-tooling" "pi-refresh-tooling.sh"
   install_wrapper "dragon-daily-routine" "pi-daily-routine.sh"
   install_wrapper "dragon-evening-routine" "pi-evening-routine.sh"
+  install_wrapper "dragon-weekly-routine" "pi-weekly-routine.sh"
   install_wrapper "dragon-health" "healthcheck-pi.sh"
   install_wrapper "dragon-preflight" "pi-preflight.sh"
   install_wrapper "dragon-start" "pi-start.sh"

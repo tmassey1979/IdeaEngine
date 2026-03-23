@@ -20,6 +20,7 @@ Core commands:
   dragon-refresh-tooling
   dragon-daily-routine
   dragon-evening-routine
+  dragon-weekly-routine
   dragon-health
   dragon-preflight
   dragon-start
@@ -76,6 +77,7 @@ Recovery:
 Backup and restore:
   dragon-backup
   dragon-evening-routine
+  dragon-weekly-routine
   ~/dragon/IdeaEngine/scripts/restore-pi.sh
 
 Alerting:
