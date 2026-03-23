@@ -35,15 +35,16 @@ import sys
 report_file, alert_source, alert_message = sys.argv[1:4]
 
 def describe_wait_signal(status: dict) -> str | None:
+    replay_priority_reason = status.get("replayPriorityReason")
     pending_github_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
     pending_github_retry_state = status.get("pendingGithubSyncRetryState")
     next_wake_reason = status.get("nextWakeReason")
     delayed_retry_urgency = status.get("delayedRetryUrgency")
-    if pending_github_retry_overdue_minutes >= 15:
+    if replay_priority_reason == "overdue-github-writeback-retry" or pending_github_retry_overdue_minutes >= 15:
         return "prioritizing overdue writeback replay"
-    if pending_github_retry_state == "ready now":
+    if replay_priority_reason == "ready-github-writeback-retry" or pending_github_retry_state == "ready now":
         return "writeback replay ready"
-    if next_wake_reason == "delayed-provider-retry":
+    if replay_priority_reason == "provider-backoff" or next_wake_reason == "delayed-provider-retry":
         return "provider backoff (long)" if delayed_retry_urgency == "alert" else "provider backoff"
     if next_wake_reason == "poll-interval":
         return "routine poll wait"
@@ -60,13 +61,14 @@ pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt")
 pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt") if pending_github_sync else None
 pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState")
 pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
-alert_cause = None
-if pending_github_sync_retry_overdue_minutes >= 15:
-    alert_cause = "overdue-github-writeback-retry"
-elif pending_github_sync_retry_state == "ready now":
-    alert_cause = "ready-github-writeback-retry"
-elif status.get("nextWakeReason") == "delayed-provider-retry":
-    alert_cause = "provider-backoff"
+alert_cause = status.get("replayPriorityReason")
+if not alert_cause:
+    if pending_github_sync_retry_overdue_minutes >= 15:
+        alert_cause = "overdue-github-writeback-retry"
+    elif pending_github_sync_retry_state == "ready now":
+        alert_cause = "ready-github-writeback-retry"
+    elif status.get("nextWakeReason") == "delayed-provider-retry":
+        alert_cause = "provider-backoff"
 
 payload = {
     "source": alert_source,

@@ -108,6 +108,7 @@ public sealed class SelfBuildLoop
             .Select(ReadRetryNotBeforeUtc)
             .Where(value => value is not null)
             .Min();
+        var replayPriorityReason = BuildReplayPriorityReason(nextDelayedRetryAt, pendingGithubSyncRetryState, pendingGithubSyncRetryOverdueMinutes);
         var nextWakeReason = DeriveNextWakeReason(nextPollAt, nextDelayedRetryAt);
         var delayedRetryUrgency = DeriveDelayedRetryUrgency(nextDelayedRetryAt, now);
         var delayedRetrySummary = nextDelayedRetryAt is null
@@ -181,7 +182,8 @@ public sealed class SelfBuildLoop
             delayedRetrySummary,
             pendingGithubSyncNextRetryAt,
             pendingGithubSyncRetryState,
-            pendingGithubSyncRetryOverdueMinutes
+            pendingGithubSyncRetryOverdueMinutes,
+            replayPriorityReason
         );
     }
 
@@ -2388,6 +2390,29 @@ public sealed class SelfBuildLoop
         return $"next retry in {FormatElapsed(remaining)}";
     }
 
+    private static string? BuildReplayPriorityReason(
+        DateTimeOffset? nextDelayedRetryAt,
+        string? pendingGithubSyncRetryState,
+        int pendingGithubSyncRetryOverdueMinutes)
+    {
+        if (nextDelayedRetryAt is not null)
+        {
+            return "provider-backoff";
+        }
+
+        if (pendingGithubSyncRetryOverdueMinutes >= (int)LongDelayedRetryAttentionThreshold.TotalMinutes)
+        {
+            return "overdue-github-writeback-retry";
+        }
+
+        if (string.Equals(pendingGithubSyncRetryState, "ready now", StringComparison.OrdinalIgnoreCase))
+        {
+            return "ready-github-writeback-retry";
+        }
+
+        return null;
+    }
+
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
@@ -2887,7 +2912,8 @@ public sealed record StatusSnapshot(
     string? DelayedRetrySummary = null,
     DateTimeOffset? PendingGithubSyncNextRetryAt = null,
     string? PendingGithubSyncRetryState = null,
-    int PendingGithubSyncRetryOverdueMinutes = 0
+    int PendingGithubSyncRetryOverdueMinutes = 0,
+    string? ReplayPriorityReason = null
 );
 
 public sealed record LatestPassSummary(

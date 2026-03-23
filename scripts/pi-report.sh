@@ -139,12 +139,13 @@ pending_github_sync = payload.get("pendingGithubSync") or []
 pending_github_sync_next_retry = payload.get("pendingGithubSyncNextRetryAt") or next((item.get("nextRetryAt", "") for item in pending_github_sync if item.get("nextRetryAt")), "")
 pending_github_sync_retry_state = payload.get("pendingGithubSyncRetryState") or ""
 pending_github_sync_retry_overdue_minutes = int(payload.get("pendingGithubSyncRetryOverdueMinutes") or 0)
+replay_priority_reason = payload.get("replayPriorityReason") or ""
 wait_signal = ""
-if payload.get("nextWakeReason") == "delayed-provider-retry":
+if replay_priority_reason == "provider-backoff" or payload.get("nextWakeReason") == "delayed-provider-retry":
     wait_signal = "provider backoff (long)" if payload.get("delayedRetryUrgency") == "alert" else "provider backoff"
-elif pending_github_sync_retry_overdue_minutes >= 15:
+elif replay_priority_reason == "overdue-github-writeback-retry" or pending_github_sync_retry_overdue_minutes >= 15:
     wait_signal = "prioritizing overdue writeback replay"
-elif pending_github_sync_retry_state == "ready now":
+elif replay_priority_reason == "ready-github-writeback-retry" or pending_github_sync_retry_state == "ready now":
     wait_signal = "writeback replay ready"
 elif payload.get("nextWakeReason") == "poll-interval":
     wait_signal = "routine poll wait"
@@ -161,6 +162,7 @@ fields = {
     "NEXT_DELAYED_RETRY_AT": payload.get("nextDelayedRetryAt", ""),
     "DELAYED_RETRY_URGENCY": payload.get("delayedRetryUrgency", ""),
     "DELAYED_RETRY_SUMMARY": payload.get("delayedRetrySummary", ""),
+    "REPLAY_PRIORITY_REASON": replay_priority_reason,
     "PENDING_GITHUB_SYNC_NEXT_RETRY": pending_github_sync_next_retry,
     "PENDING_GITHUB_SYNC_LAST_ATTEMPT": next((item.get("lastAttemptedAt", "") for item in pending_github_sync if item.get("lastAttemptedAt")), ""),
     "PENDING_GITHUB_SYNC_RETRY_STATE": pending_github_sync_retry_state,
@@ -649,6 +651,9 @@ main() {
     if [[ -n "${WAIT_SIGNAL:-}" && "${WAIT_SIGNAL}" != "None" ]]; then
       echo "wait_signal: ${WAIT_SIGNAL}"
     fi
+    if [[ -n "${REPLAY_PRIORITY_REASON:-}" && "${REPLAY_PRIORITY_REASON}" != "None" ]]; then
+      echo "replay_priority_reason: ${REPLAY_PRIORITY_REASON}"
+    fi
     if [[ -n "${NEXT_DELAYED_RETRY_AT:-}" && "${NEXT_DELAYED_RETRY_AT}" != "None" ]]; then
       echo "next_delayed_retry_at: ${NEXT_DELAYED_RETRY_AT}"
     fi
@@ -684,11 +689,11 @@ main() {
     echo "worker_activity: $(json_query workerActivity unknown)"
     echo "health: $(json_query health unknown)"
     echo "next_wake_reason: $(json_query nextWakeReason '')"
-    if [[ "$(json_query pendingGithubSyncRetryOverdueMinutes 0)" != "0" ]] && [[ "$(json_query pendingGithubSyncRetryOverdueMinutes 0)" -ge 15 ]]; then
+    if [[ "$(json_query replayPriorityReason '')" == "overdue-github-writeback-retry" ]] || { [[ "$(json_query pendingGithubSyncRetryOverdueMinutes 0)" != "0" ]] && [[ "$(json_query pendingGithubSyncRetryOverdueMinutes 0)" -ge 15 ]]; }; then
       echo "wait_signal: prioritizing overdue writeback replay"
-    elif [[ "$(json_query pendingGithubSyncRetryState '')" == "ready now" ]]; then
+    elif [[ "$(json_query replayPriorityReason '')" == "ready-github-writeback-retry" ]] || [[ "$(json_query pendingGithubSyncRetryState '')" == "ready now" ]]; then
       echo "wait_signal: writeback replay ready"
-    elif [[ "$(json_query nextWakeReason '')" == "delayed-provider-retry" ]]; then
+    elif [[ "$(json_query replayPriorityReason '')" == "provider-backoff" ]] || [[ "$(json_query nextWakeReason '')" == "delayed-provider-retry" ]]; then
       if [[ "$(json_query delayedRetryUrgency '')" == "alert" ]]; then
         echo "wait_signal: provider backoff (long)"
       else
@@ -698,6 +703,7 @@ main() {
       echo "wait_signal: routine poll wait"
     fi
     echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
+    echo "replay_priority_reason: $(json_query replayPriorityReason '')"
     echo "pending_github_sync_next_retry_at: $(json_query pendingGithubSyncNextRetryAt '')"
     echo "pending_github_sync_retry_state: $(json_query pendingGithubSyncRetryState '')"
     echo "pending_github_sync_retry_overdue_minutes: $(json_query pendingGithubSyncRetryOverdueMinutes 0)"

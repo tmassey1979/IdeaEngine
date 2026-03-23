@@ -57,14 +57,15 @@ pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt") or "
 pending_github_sync_last_attempt = ""
 pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or ""
 pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
+replay_priority_reason = status.get("replayPriorityReason")
 if pending_github_sync:
     pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt", "")
 wait_signal = None
-if pending_github_sync_retry_overdue_minutes >= 15:
+if replay_priority_reason == "overdue-github-writeback-retry" or pending_github_sync_retry_overdue_minutes >= 15:
     wait_signal = "prioritizing overdue writeback replay"
-elif pending_github_sync_retry_state == "ready now":
+elif replay_priority_reason == "ready-github-writeback-retry" or pending_github_sync_retry_state == "ready now":
     wait_signal = "writeback replay ready"
-elif next_wake_reason == "waiting for delayed provider retry":
+elif replay_priority_reason == "provider-backoff" or next_wake_reason == "waiting for delayed provider retry":
     wait_signal = "provider backoff"
     if delayed_retry_urgency == "alert":
         wait_signal = "provider backoff (long)"
@@ -80,6 +81,8 @@ print(f"  alert_check: {alert_status}")
 print(f"  attention: {status.get('attentionSummary', 'none')}")
 if wait_signal:
     print(f"  wait_signal: {wait_signal}")
+if replay_priority_reason:
+    print(f"  replay_priority_reason: {replay_priority_reason}")
 if next_wake_reason:
     print(f"  next_wake_reason: {next_wake_reason}")
 if status.get("nextDelayedRetryAt"):

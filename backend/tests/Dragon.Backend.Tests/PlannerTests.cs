@@ -1626,6 +1626,7 @@ public sealed class PlannerTests
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncNextRetryAt").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncRetryState").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSyncRetryOverdueMinutes").GetInt32());
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPriorityReason").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("latestGithubReplay").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSync").GetArrayLength());
         Assert.Equal("implementation", rootElement.GetProperty("interventionTarget").GetProperty("kind").GetString());
@@ -5367,6 +5368,7 @@ public sealed class PlannerTests
               "pendingGithubSyncNextRetryAt": "2026-03-23T12:02:00Z",
               "pendingGithubSyncRetryState": "ready now",
               "pendingGithubSyncRetryOverdueMinutes": 29,
+              "replayPriorityReason": "overdue-github-writeback-retry",
               "latestActivity": {
                 "issueNumber": 500,
                 "issueTitle": "[Recovery] Core",
@@ -5853,6 +5855,7 @@ public sealed class PlannerTests
               "pendingGithubSyncNextRetryAt": null,
               "pendingGithubSyncRetryState": null,
               "pendingGithubSyncRetryOverdueMinutes": 0,
+              "replayPriorityReason": null,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
@@ -6065,6 +6068,7 @@ public sealed class PlannerTests
               "pendingGithubSyncNextRetryAt": null,
               "pendingGithubSyncRetryState": null,
               "pendingGithubSyncRetryOverdueMinutes": 0,
+              "replayPriorityReason": null,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
@@ -6240,6 +6244,7 @@ public sealed class PlannerTests
               "pendingGithubSyncNextRetryAt": null,
               "pendingGithubSyncRetryState": null,
               "pendingGithubSyncRetryOverdueMinutes": 0,
+              "replayPriorityReason": null,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",

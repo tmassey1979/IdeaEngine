@@ -219,6 +219,17 @@ function nextWakeReasonLabel(snapshot) {
 }
 
 function pendingGithubRetrySignal(snapshot) {
+  switch (snapshot.replayPriorityReason) {
+    case "overdue-github-writeback-retry":
+      return { label: "writeback retry overdue", state: "alert" };
+    case "ready-github-writeback-retry":
+      return { label: "writeback retry ready", state: "caution" };
+    case "provider-backoff":
+      return { label: null, state: "normal" };
+    default:
+      break;
+  }
+
   const retryState = typeof snapshot.pendingGithubSyncRetryState === "string"
     ? snapshot.pendingGithubSyncRetryState
     : "";
