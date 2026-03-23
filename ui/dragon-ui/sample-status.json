@@ -170,6 +170,8 @@
     "note": "Parent is quarantined.",
     "queuedRecoveryJobs": 1,
     "recoveryIssueNumber": 500,
-    "recoveryIssueTitle": "[Recovery] Provider Notes"
+    "recoveryIssueTitle": "[Recovery] Provider Notes",
+    "state": "sync-drift",
+    "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry."
   }
 }

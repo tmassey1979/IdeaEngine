@@ -346,8 +346,64 @@ public sealed class PlannerTests
         Assert.Equal(1, status.LeadQuarantine.QueuedRecoveryJobs);
         Assert.Equal(500, status.LeadQuarantine.RecoveryIssueNumber);
         Assert.Equal("[Recovery] Provider Notes", status.LeadQuarantine.RecoveryIssueTitle);
+        Assert.Equal("recovery-active", status.LeadQuarantine.State);
+        Assert.Contains("Recovery issue #500", status.LeadQuarantine.Summary, StringComparison.Ordinal);
         Assert.Equal("blocked", status.RecentLoopSignal.Mode);
         Assert.Contains("issue #22 via recovery #500", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReadStatus_AnnotatesLeadQuarantineWhenGithubSyncRetryIsPending()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Provider Notes", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["sourceIssueNumber"] = "22",
+                ["workType"] = "recovery",
+                ["requestedBlocking"] = "true"
+            }));
+
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Provider Notes", "documentation", new JobExecutionResult("job-parent", "documentation", "failed", "blocked", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(22, "quarantined", "Parent is quarantined.");
+        store.Update(
+            500,
+            "[Recovery] Provider Notes",
+            "developer",
+            new JobExecutionResult("job-recovery", "developer", "success", "started", DateTimeOffset.UtcNow),
+            sourceIssueNumber: 22);
+
+        var statusDirectory = Path.Combine(root, ".dragon", "status");
+        Directory.CreateDirectory(statusDirectory);
+        File.WriteAllText(
+            Path.Combine(statusDirectory, "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 500,
+                "summary": "GitHub sync failed for recovery issue #500.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 2,
+                "lastAttemptedAt": "2026-03-23T12:01:00Z",
+                "nextRetryAt": "2026-03-23T12:01:30Z"
+              }
+            ]
+            """);
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(pollIntervalSeconds: 30);
+
+        Assert.NotNull(status.LeadQuarantine);
+        Assert.Equal("sync-drift", status.LeadQuarantine!.State);
+        Assert.Contains("GitHub updates for recovery #500", status.LeadQuarantine.Summary, StringComparison.Ordinal);
     }
 
     [Fact]

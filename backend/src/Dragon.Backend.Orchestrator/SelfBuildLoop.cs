@@ -81,16 +81,17 @@ public sealed class SelfBuildLoop
             })
             .ToArray();
 
-        var leadQuarantine = BuildLeadQuarantine(workflows, queuedJobs);
-        var health = DeriveStatusHealth(issues, leadQuarantine);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, leadQuarantine);
+        var baseLeadQuarantine = BuildLeadQuarantine(workflows, queuedJobs);
+        var health = DeriveStatusHealth(issues, baseLeadQuarantine);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
-        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, leadQuarantine);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine);
         var latestGithubSync = ReadLatestGithubSync();
         var latestGithubReplay = ReadLatestGithubReplay();
         var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
+        var leadQuarantine = AnnotateLeadQuarantine(baseLeadQuarantine, pendingGithubSync);
 
         return new StatusSnapshot(
             DateTimeOffset.UtcNow,
@@ -1700,6 +1701,46 @@ public sealed class SelfBuildLoop
             : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Latest: issue #{latest.IssueNumber}.";
     }
 
+    private static LeadQuarantineSnapshot? AnnotateLeadQuarantine(
+        LeadQuarantineSnapshot? leadQuarantine,
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+    {
+        if (leadQuarantine is null)
+        {
+            return null;
+        }
+
+        var hasPendingGithubSync = pendingGithubSync.Any(item =>
+            item.IssueNumber == leadQuarantine.IssueNumber ||
+            (leadQuarantine.RecoveryIssueNumber is not null && item.IssueNumber == leadQuarantine.RecoveryIssueNumber.Value));
+
+        if (hasPendingGithubSync)
+        {
+            return leadQuarantine with
+            {
+                State = "sync-drift",
+                Summary = leadQuarantine.RecoveryIssueNumber is not null
+                    ? $"Recovery for issue #{leadQuarantine.IssueNumber} is active, but GitHub updates for recovery #{leadQuarantine.RecoveryIssueNumber.Value} are still queued for retry."
+                    : $"Recovery for issue #{leadQuarantine.IssueNumber} is active, but GitHub updates are still queued for retry."
+            };
+        }
+
+        if (leadQuarantine.RecoveryIssueNumber is not null)
+        {
+            return leadQuarantine with
+            {
+                State = "recovery-active",
+                Summary = $"Recovery issue #{leadQuarantine.RecoveryIssueNumber.Value} is actively draining work for parent issue #{leadQuarantine.IssueNumber}."
+            };
+        }
+
+        return leadQuarantine with
+        {
+            State = "parent-active",
+            Summary = $"Parent issue #{leadQuarantine.IssueNumber} still has queued recovery work."
+        };
+    }
+
     private static RecentLoopSignalSnapshot BuildRecentLoopSignal(
         int queuedJobs,
         string health,
@@ -1860,7 +1901,9 @@ public sealed record LeadQuarantineSnapshot(
     string? Note,
     int QueuedRecoveryJobs,
     int? RecoveryIssueNumber,
-    string? RecoveryIssueTitle
+    string? RecoveryIssueTitle,
+    string? State = null,
+    string? Summary = null
 );
 
 public sealed record LatestActivitySnapshot(
