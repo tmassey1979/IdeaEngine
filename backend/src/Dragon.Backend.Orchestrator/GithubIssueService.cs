@@ -744,10 +744,16 @@ public sealed class GithubIssueService
                 nextDelayedRetryProperty.TryGetDateTimeOffset(out var parsedNextDelayedRetryAt)
                 ? parsedNextDelayedRetryAt
                 : (DateTimeOffset?)null;
+            var waitSignal = root.TryGetProperty("waitSignal", out var waitSignalProperty) &&
+                waitSignalProperty.ValueKind == JsonValueKind.String
+                ? waitSignalProperty.GetString()
+                : null;
 
-            var reason = nextDelayedRetryAt is null
-                ? "provider backoff is delaying GitHub replay for queued recovery writeback drift"
-                : $"provider backoff is delaying GitHub replay until {nextDelayedRetryAt.Value:O}";
+            var reason = !string.IsNullOrWhiteSpace(waitSignal)
+                ? waitSignal!
+                : nextDelayedRetryAt is null
+                    ? "provider backoff is delaying GitHub replay for queued recovery writeback drift"
+                    : $"provider backoff is delaying GitHub replay until {nextDelayedRetryAt.Value:O}";
             return new QuarantinedProviderBackoffState(true, reason, nextDelayedRetryAt);
         }
         catch (JsonException)
