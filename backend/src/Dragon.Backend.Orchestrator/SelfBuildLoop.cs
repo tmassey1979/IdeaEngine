@@ -406,7 +406,7 @@ public sealed class SelfBuildLoop
             passes.Add(pass);
             passCompleted?.Invoke(index + 1, pass, latestReplay);
 
-            consecutiveIdlePasses = pass.ReachedIdle
+            consecutiveIdlePasses = pass.ReachedIdle && !ReplayCountsAsWork(latestReplay)
                 ? consecutiveIdlePasses + 1
                 : 0;
 
@@ -455,7 +455,7 @@ public sealed class SelfBuildLoop
             passes.Add(pass);
             passCompleted?.Invoke(index + 1, pass, latestReplay);
 
-            consecutiveIdlePasses = pass.ReachedIdle
+            consecutiveIdlePasses = pass.ReachedIdle && !ReplayCountsAsWork(latestReplay)
                 ? consecutiveIdlePasses + 1
                 : 0;
 
@@ -600,6 +600,9 @@ public sealed class SelfBuildLoop
 
         File.WriteAllText(GithubReplayStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
     }
+
+    private static bool ReplayCountsAsWork(LatestGithubReplaySnapshot? latestReplay) =>
+        latestReplay is not null && latestReplay.AttemptedCount > 0;
 
     private IReadOnlyList<PendingGithubSyncSnapshot> ReadPendingGithubSync()
     {

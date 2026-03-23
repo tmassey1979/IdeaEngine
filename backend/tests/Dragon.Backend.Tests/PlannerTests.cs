@@ -721,20 +721,92 @@ public sealed class PlannerTests
             "tmassey1979",
             "IdeaEngine",
             syncValidatedWorkflows: true,
-            maxPasses: 1,
+            maxPasses: 2,
             idlePassesBeforeStop: 1,
             maxCyclesPerPass: 1);
 
         Assert.True(result.ReachedIdleThreshold);
+        Assert.False(result.ReachedMaxPasses);
+        Assert.Equal(2, result.Passes.Count);
+        Assert.False(result.Passes[0].ReachedMaxCycles);
+        Assert.True(result.Passes[0].ReachedIdle);
+        Assert.True(result.Passes[1].ReachedIdle);
         var recoveredStatus = loop.ReadStatus();
         Assert.Equal(0, recoveredStatus.PendingGithubSyncCount);
         Assert.Empty(recoveredStatus.PendingGithubSync ?? []);
         Assert.NotNull(recoveredStatus.LatestGithubSync);
         Assert.True(recoveredStatus.LatestGithubSync!.Updated);
-        Assert.NotNull(recoveredStatus.LatestGithubReplay);
-        Assert.Equal(1, recoveredStatus.LatestGithubReplay!.AttemptedCount);
-        Assert.Equal(1, recoveredStatus.LatestGithubReplay.UpdatedCount);
-        Assert.Equal(0, recoveredStatus.LatestGithubReplay.FailedCount);
+    }
+
+    [Fact]
+    public void RunWatchingFromGithub_DoesNotTreatReplayOnlyPassAsIdleForShutdown()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "planning"));
+        File.WriteAllText(
+            Path.Combine(root, "planning", "backlog.json"),
+            """
+            {
+              "stories": []
+            }
+            """);
+        var store = new WorkflowStateStore(root);
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(22, "Core", "test", new JobExecutionResult("job-test", "test", "success", "done", DateTimeOffset.UtcNow));
+
+        var records = new ExecutionRecordStore(root);
+        records.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                22,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "docs/ARCHITECTURE.md"
+                }),
+            new JobExecutionResult("job-dev", "developer", "success", "done", DateTimeOffset.UtcNow),
+            []);
+
+        var failOnce = true;
+        var github = new GithubIssueService((arguments, _) =>
+        {
+            if (arguments.Contains("issue list --repo", StringComparison.Ordinal))
+            {
+                return "[]";
+            }
+
+            if (arguments.Contains("issue comment 22", StringComparison.Ordinal) && failOnce)
+            {
+                failOnce = false;
+                throw new InvalidOperationException("gh command failed: gh: Resource not accessible by personal access token (HTTP 403)");
+            }
+
+            return string.Empty;
+        });
+
+        var loop = new SelfBuildLoop(root, githubIssueService: github);
+        loop.SyncValidatedWorkflow("tmassey1979", "IdeaEngine", 22);
+        Assert.Equal(1, loop.ReadStatus().PendingGithubSyncCount);
+
+        var pauses = new List<TimeSpan>();
+        var result = loop.RunWatchingFromGithub(
+            "tmassey1979",
+            "IdeaEngine",
+            TimeSpan.FromSeconds(15),
+            syncValidatedWorkflows: true,
+            maxPasses: 2,
+            idlePassesBeforeStop: 1,
+            maxCyclesPerPass: 1,
+            delayAction: pauses.Add);
+
+        Assert.True(result.ReachedIdleThreshold);
+        Assert.False(result.ReachedMaxPasses);
+        Assert.Equal(2, result.Passes.Count);
+        Assert.Single(pauses);
     }
 
     [Fact]
