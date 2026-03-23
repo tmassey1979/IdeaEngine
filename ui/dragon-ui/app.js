@@ -391,7 +391,9 @@ function workerNote(snapshot) {
     ? ` Lead intervention target: ${snapshot.interventionTarget.summary}`
     : "";
   const interventionAcknowledgedLabel = snapshot.interventionTarget?.acknowledged
-    ? " Intervention target already acknowledged."
+    ? snapshot.interventionTarget?.acknowledgedStreak > 0
+      ? ` Intervention target already acknowledged for ${snapshot.interventionTarget.acknowledgedStreak} snapshot${snapshot.interventionTarget.acknowledgedStreak === 1 ? "" : "s"}.`
+      : " Intervention target already acknowledged."
     : "";
   const interventionEscalationLabel = snapshot.interventionEscalationNote
     ? ` ${snapshot.interventionEscalationNote}`

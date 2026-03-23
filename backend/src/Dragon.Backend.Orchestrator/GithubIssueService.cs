@@ -764,6 +764,11 @@ public sealed class GithubIssueService
                 acknowledgedProperty.ValueKind is JsonValueKind.True or JsonValueKind.False
                 ? acknowledgedProperty.GetBoolean()
                 : (bool?)null;
+            var acknowledgedStreak = interventionTarget.TryGetProperty("acknowledgedStreak", out var acknowledgedStreakProperty) &&
+                acknowledgedStreakProperty.ValueKind == JsonValueKind.Number &&
+                acknowledgedStreakProperty.TryGetInt32(out var streak)
+                ? streak
+                : (int?)null;
 
             if (string.IsNullOrWhiteSpace(kind) && string.IsNullOrWhiteSpace(summary))
             {
@@ -777,10 +782,10 @@ public sealed class GithubIssueService
 
             if (string.IsNullOrWhiteSpace(summary))
             {
-                return AppendInterventionTargetAge(kind, ageSummary, escalation, acknowledged);
+                return AppendInterventionTargetAge(kind, ageSummary, escalation, acknowledged, acknowledgedStreak);
             }
 
-            return AppendInterventionTargetAge($"{kind}: {summary}", ageSummary, escalation, acknowledged);
+            return AppendInterventionTargetAge($"{kind}: {summary}", ageSummary, escalation, acknowledged, acknowledgedStreak);
         }
         catch (JsonException)
         {
@@ -840,7 +845,7 @@ public sealed class GithubIssueService
         }
     }
 
-    private static string AppendInterventionTargetAge(string value, string? ageSummary, string? escalation, bool? acknowledged)
+    private static string AppendInterventionTargetAge(string value, string? ageSummary, string? escalation, bool? acknowledged, int? acknowledgedStreak)
     {
         var details = new List<string>();
         if (!string.IsNullOrWhiteSpace(ageSummary))
@@ -855,7 +860,9 @@ public sealed class GithubIssueService
 
         if (acknowledged is true)
         {
-            details.Add("acknowledged");
+            details.Add(acknowledgedStreak is > 0
+                ? $"acknowledged x{acknowledgedStreak.Value}"
+                : "acknowledged");
         }
 
         return details.Count == 0
