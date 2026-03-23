@@ -41,6 +41,7 @@ main() {
   mkdir -p "${BIN_DIR}"
 
   install_wrapper "dragon-report" "pi-report.sh"
+  install_wrapper "dragon-self-test" "pi-self-test.sh"
   install_wrapper "dragon-health" "healthcheck-pi.sh"
   install_wrapper "dragon-preflight" "pi-preflight.sh"
   install_wrapper "dragon-start" "pi-start.sh"
