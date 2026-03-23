@@ -418,6 +418,9 @@ public sealed class PlannerTests
 
         Assert.NotNull(status.InterventionTarget);
         Assert.True(status.InterventionTarget!.Acknowledged);
+        Assert.Equal("Waiting to continue tracking an already-acknowledged operator escalation on the next pass.", status.WorkerActivity);
+        Assert.Equal("escalating", status.RecentLoopSignal.Mode);
+        Assert.Contains("tracking acknowledged operator escalation", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -4961,7 +4964,7 @@ public sealed class PlannerTests
 
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
-        Assert.Contains(commands, command => command.Contains("worker focus: preparing operator escalation summary", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker focus: tracking acknowledged operator escalation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: operator-escalation: Escalate issue #22: Summarize the persistent critical intervention target and the next operator action. (critical, acknowledged)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 3", StringComparison.Ordinal));
     }

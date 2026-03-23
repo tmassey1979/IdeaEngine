@@ -2072,6 +2072,9 @@ public sealed class SelfBuildLoop
             },
             "operator-escalation" => workerState switch
             {
+                "running" when interventionTarget.Acknowledged => "Tracking an already-acknowledged operator escalation while the critical target remains unresolved.",
+                "waiting" when interventionTarget.Acknowledged => "Waiting to continue tracking an already-acknowledged operator escalation on the next pass.",
+                "complete" when interventionTarget.Acknowledged => "Completed the current run while continuing to track an acknowledged operator escalation.",
                 "running" => "Preparing an operator-facing escalation summary for a persistent critical target.",
                 "waiting" => "Waiting to prepare an operator-facing escalation summary on the next pass.",
                 "complete" => "Completed the current run with operator escalation follow-up still queued.",
@@ -2229,13 +2232,17 @@ public sealed class SelfBuildLoop
             string.Equals(interventionTarget?.Kind, "operator-escalation", StringComparison.OrdinalIgnoreCase) &&
             latestActivity is not null)
         {
-            return new RecentLoopSignalSnapshot("escalating", $"Loop is actively escalating operator follow-up after issue #{latestActivity.IssueNumber}.");
+            return interventionTarget!.Acknowledged
+                ? new RecentLoopSignalSnapshot("escalating", $"Loop is tracking acknowledged operator escalation after issue #{latestActivity.IssueNumber}.")
+                : new RecentLoopSignalSnapshot("escalating", $"Loop is actively escalating operator follow-up after issue #{latestActivity.IssueNumber}.");
         }
 
         if (queuedJobs > 0 &&
             string.Equals(interventionTarget?.Kind, "operator-escalation", StringComparison.OrdinalIgnoreCase))
         {
-            return new RecentLoopSignalSnapshot("escalating", "Loop is actively escalating operator follow-up.");
+            return interventionTarget!.Acknowledged
+                ? new RecentLoopSignalSnapshot("escalating", "Loop is tracking acknowledged operator escalation.")
+                : new RecentLoopSignalSnapshot("escalating", "Loop is actively escalating operator follow-up.");
         }
 
         if (queuedJobs > 0)

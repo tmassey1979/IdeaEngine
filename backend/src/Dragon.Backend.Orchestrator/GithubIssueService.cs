@@ -654,7 +654,9 @@ public sealed class GithubIssueService
     {
         if (string.Equals(DescribeGlobalInterventionTargetKind(rootDirectory), "operator-escalation", StringComparison.OrdinalIgnoreCase))
         {
-            return "preparing operator escalation summary";
+            return DescribeGlobalInterventionTargetAcknowledged(rootDirectory)
+                ? "tracking acknowledged operator escalation"
+                : "preparing operator escalation summary";
         }
 
         var writebackState = DescribeRecoveryWritebackState(workflow, rootDirectory);
@@ -703,6 +705,29 @@ public sealed class GithubIssueService
         catch (JsonException)
         {
             return null;
+        }
+    }
+
+    private static bool DescribeGlobalInterventionTargetAcknowledged(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("interventionTarget", out var interventionTarget) &&
+                interventionTarget.ValueKind == JsonValueKind.Object &&
+                interventionTarget.TryGetProperty("acknowledged", out var acknowledgedProperty) &&
+                acknowledgedProperty.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                acknowledgedProperty.GetBoolean();
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
