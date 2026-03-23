@@ -43,6 +43,18 @@ sudo systemctl start dragon-idea-engine
 sudo journalctl -u dragon-idea-engine -f
 ```
 
+Routine maintenance:
+
+```bash
+~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
+~/dragon/IdeaEngine/scripts/update-pi.sh
+```
+
+What those do:
+
+- `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
+- `update-pi.sh` pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
+
 Notes:
 
 - If the script adds your user to the `docker` group, log out and back in before running Docker without `sudo`.

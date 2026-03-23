@@ -75,4 +75,4 @@ That now boots:
 The backend status endpoint is exposed at `http://127.0.0.1:5078/status`, which
 matches the live-first dashboard path.
 
-For Raspberry Pi host bootstrap and reboot-safe service install, see [docs/PI_SETUP.md](/mnt/c/code/Playground/IdeaEngine/docs/PI_SETUP.md) and [scripts/setup-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/setup-pi.sh).
+For Raspberry Pi host bootstrap, reboot-safe service install, updates, and health checks, see [docs/PI_SETUP.md](/mnt/c/code/Playground/IdeaEngine/docs/PI_SETUP.md), [scripts/setup-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/setup-pi.sh), [scripts/update-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/update-pi.sh), and [scripts/healthcheck-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/healthcheck-pi.sh).
