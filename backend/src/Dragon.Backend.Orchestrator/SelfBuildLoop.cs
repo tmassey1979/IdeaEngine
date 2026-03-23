@@ -35,6 +35,7 @@ public sealed class SelfBuildLoop
     public string RootDirectory { get; }
 
     private string GithubSyncStatusPath => Path.Combine(RootDirectory, ".dragon", "status", "github-sync-status.json");
+    private string GithubReplayStatusPath => Path.Combine(RootDirectory, ".dragon", "status", "github-replay-status.json");
     private string PendingGithubSyncPath => Path.Combine(RootDirectory, ".dragon", "status", "pending-github-sync.json");
 
     public IReadOnlyList<SelfBuildJob> ReadQueue() => queueStore.ReadAll();
@@ -85,6 +86,7 @@ public sealed class SelfBuildLoop
         var latestActivity = BuildLatestActivity(issues);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity);
         var latestGithubSync = ReadLatestGithubSync();
+        var latestGithubReplay = ReadLatestGithubReplay();
         var pendingGithubSync = AnnotatePendingGithubSync(ReadPendingGithubSync(), pollIntervalSeconds);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
 
@@ -126,6 +128,7 @@ public sealed class SelfBuildLoop
             issues,
             latestPass,
             latestGithubSync,
+            latestGithubReplay,
             pendingGithubSync.Count,
             pendingGithubSync,
             workerActivity,
@@ -461,6 +464,7 @@ public sealed class SelfBuildLoop
 
         if (pending.Length == 0)
         {
+            WriteLatestGithubReplay(0, 0, 0);
             return [];
         }
 
@@ -469,6 +473,11 @@ public sealed class SelfBuildLoop
         {
             results.Add(SyncValidatedWorkflow(owner, repo, item.IssueNumber));
         }
+
+        WriteLatestGithubReplay(
+            pending.Length,
+            results.Count(result => result.Updated),
+            results.Count(result => result.Attempted && !result.Updated));
 
         return results;
     }
@@ -511,6 +520,18 @@ public sealed class SelfBuildLoop
             StatusSerializerOptions);
     }
 
+    private LatestGithubReplaySnapshot? ReadLatestGithubReplay()
+    {
+        if (!File.Exists(GithubReplayStatusPath))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<LatestGithubReplaySnapshot>(
+            File.ReadAllText(GithubReplayStatusPath),
+            StatusSerializerOptions);
+    }
+
     private void WriteLatestGithubSync(int issueNumber, GithubSyncResult result)
     {
         var directory = Path.GetDirectoryName(GithubSyncStatusPath);
@@ -527,6 +548,28 @@ public sealed class SelfBuildLoop
             DateTimeOffset.UtcNow);
 
         File.WriteAllText(GithubSyncStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
+    }
+
+    private void WriteLatestGithubReplay(int attemptedCount, int updatedCount, int failedCount)
+    {
+        var directory = Path.GetDirectoryName(GithubReplayStatusPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var summary = attemptedCount == 0
+            ? "No pending GitHub updates needed replay."
+            : $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing.";
+
+        var snapshot = new LatestGithubReplaySnapshot(
+            attemptedCount,
+            updatedCount,
+            failedCount,
+            summary,
+            DateTimeOffset.UtcNow);
+
+        File.WriteAllText(GithubReplayStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
     }
 
     private IReadOnlyList<PendingGithubSyncSnapshot> ReadPendingGithubSync()
@@ -1613,6 +1656,7 @@ public sealed record StatusSnapshot(
     IReadOnlyList<IssueStatusSnapshot> Issues,
     LatestPassSummary? LatestPass = null,
     LatestGithubSyncSnapshot? LatestGithubSync = null,
+    LatestGithubReplaySnapshot? LatestGithubReplay = null,
     int PendingGithubSyncCount = 0,
     IReadOnlyList<PendingGithubSyncSnapshot>? PendingGithubSync = null,
     string? WorkerActivity = null,
@@ -1671,6 +1715,14 @@ public sealed record LatestGithubSyncSnapshot(
     int IssueNumber,
     bool Attempted,
     bool Updated,
+    string Summary,
+    DateTimeOffset RecordedAt
+);
+
+public sealed record LatestGithubReplaySnapshot(
+    int AttemptedCount,
+    int UpdatedCount,
+    int FailedCount,
     string Summary,
     DateTimeOffset RecordedAt
 );

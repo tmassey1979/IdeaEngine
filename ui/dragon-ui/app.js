@@ -333,6 +333,9 @@ function workerNote(snapshot) {
   const githubSyncLabel = snapshot.latestGithubSync
     ? ` Latest GitHub sync for issue #${snapshot.latestGithubSync.issueNumber}: ${snapshot.latestGithubSync.summary}.`
     : "";
+  const githubReplayLabel = snapshot.latestGithubReplay
+    ? ` ${snapshot.latestGithubReplay.summary}`
+    : "";
   const pendingGithubSyncLabel = snapshot.pendingGithubSyncSummary
     ? ` ${snapshot.pendingGithubSyncSummary}`
     : "";
@@ -342,8 +345,8 @@ function workerNote(snapshot) {
       label: "Waiting",
       state: "waiting",
       text: cadenceLabel
-        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${pendingGithubSyncLabel}`
-        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${pendingGithubSyncLabel}`,
+        ? `Worker is paused between passes, polling ${cadenceLabel}, and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}`
+        : `Worker is paused between passes and is scheduled to poll again at ${nextPollLabel}.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}`,
     };
   }
 
@@ -352,8 +355,8 @@ function workerNote(snapshot) {
       label: "Running",
       state: "running",
       text: cadenceLabel
-        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${pendingGithubSyncLabel}`
-        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${pendingGithubSyncLabel}`,
+        ? `Worker is actively processing the current pass and will continue polling ${cadenceLabel} after this pass completes.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}`
+        : `Worker is actively processing the current pass.${passProgressLabelText}${idleProgressLabel}${idleRemainingLabelText}${passBudgetLabel}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}`,
     };
   }
 
@@ -361,7 +364,7 @@ function workerNote(snapshot) {
     return {
       label: "Complete",
       state: "complete",
-      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${pendingGithubSyncLabel}`,
+      text: `Worker finished its current run and is not waiting on another scheduled pass.${completion.label !== "complete" ? ` Stop reason: ${completion.label}.` : ""}${passProgressLabelText}${idleRemainingLabelText}${githubSyncLabel}${githubReplayLabel}${pendingGithubSyncLabel}`,
     };
   }
 
