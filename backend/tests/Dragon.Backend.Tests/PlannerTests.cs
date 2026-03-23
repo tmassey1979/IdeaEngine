@@ -815,8 +815,9 @@ public sealed class PlannerTests
         Assert.Contains("old", status.InterventionTarget.AgeSummary, StringComparison.Ordinal);
         Assert.Equal("critical", status.InterventionTarget.Escalation);
         Assert.Contains("critical", status.InterventionEscalationNote, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal("Replaying pending GitHub updates before the next GitHub pass.", status.WorkerActivity);
+        Assert.Equal("Prioritizing overdue GitHub writeback replay before ordinary implementation work.", status.WorkerActivity);
         Assert.Contains("old", status.AttentionSummary, StringComparison.Ordinal);
+        Assert.Equal("blocked", status.RecentLoopSignal.Mode);
         Assert.Contains("oldest writeback drift", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
 

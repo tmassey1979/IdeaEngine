@@ -131,10 +131,10 @@ public sealed class SelfBuildLoop
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
-        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
-            ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay)
+            ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay, pendingGithubSyncRetryOverdueMinutes)
             : workerActivity;
 
         return new StatusSnapshot(
@@ -2520,7 +2520,8 @@ public sealed class SelfBuildLoop
         string workerState,
         InterventionTargetSnapshot? interventionTarget,
         LeadJobSnapshot? leadJob,
-        LatestGithubReplaySnapshot? latestGithubReplay)
+        LatestGithubReplaySnapshot? latestGithubReplay,
+        int pendingGithubSyncRetryOverdueMinutes)
     {
         if (string.Equals(workerState, "waiting", StringComparison.OrdinalIgnoreCase) &&
             leadJob is not null &&
@@ -2542,6 +2543,9 @@ public sealed class SelfBuildLoop
                 "running" when ReplayWasDeferred(latestGithubReplay) => "Deferring pending GitHub replay while provider backoff remains in effect.",
                 "waiting" when ReplayWasDeferred(latestGithubReplay) => "Waiting to replay pending GitHub updates after provider backoff clears.",
                 "complete" when ReplayWasDeferred(latestGithubReplay) => "Completed the current run with GitHub replay intentionally deferred during provider backoff.",
+                "running" when pendingGithubSyncRetryOverdueMinutes > 0 => "Prioritizing overdue GitHub writeback replay before ordinary implementation work.",
+                "waiting" when pendingGithubSyncRetryOverdueMinutes > 0 => "Waiting to prioritize overdue GitHub writeback replay on the next GitHub pass.",
+                "complete" when pendingGithubSyncRetryOverdueMinutes > 0 => "Completed the current run with overdue GitHub writeback replay still pending.",
                 "running" => "Replaying pending GitHub updates before the next GitHub pass.",
                 "waiting" => "Waiting to replay pending GitHub updates on the next GitHub pass.",
                 "complete" => "Completed the current run with pending GitHub updates still queued for replay.",
@@ -2706,7 +2710,8 @@ public sealed class SelfBuildLoop
         LatestActivitySnapshot? latestActivity,
         LeadQuarantineSnapshot? leadQuarantine,
         LatestGithubReplaySnapshot? latestGithubReplay,
-        InterventionTargetSnapshot? interventionTarget)
+        InterventionTargetSnapshot? interventionTarget,
+        int pendingGithubSyncRetryOverdueMinutes)
     {
         if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase) && leadQuarantine is not null)
         {
@@ -2722,6 +2727,14 @@ public sealed class SelfBuildLoop
 
         if (string.Equals(health, "attention", StringComparison.OrdinalIgnoreCase) && latestActivity is not null)
         {
+            if (string.Equals(interventionTarget?.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase) &&
+                pendingGithubSyncRetryOverdueMinutes > 0)
+            {
+                return new RecentLoopSignalSnapshot(
+                    "repairing",
+                    $"Loop is prioritizing overdue GitHub writeback replay after issue #{latestActivity.IssueNumber}.");
+            }
+
             return new RecentLoopSignalSnapshot("failing", $"Recent activity needs review after issue #{latestActivity.IssueNumber}.");
         }
 
