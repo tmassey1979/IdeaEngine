@@ -3869,6 +3869,16 @@ public sealed class PlannerTests
               }
             ]
             """);
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "interventionTarget": {
+                "kind": "github-replay-drift",
+                "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry."
+              }
+            }
+            """);
 
         var workflow = new IssueWorkflowState(
             22,
@@ -3900,6 +3910,7 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery writeback: retry pending for recovery child #500 (queued", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: repairing GitHub writeback drift", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 
@@ -4199,6 +4210,17 @@ public sealed class PlannerTests
     {
         var root = CreateTempRoot();
         var now = new DateTimeOffset(2026, 3, 16, 15, 30, 0, TimeSpan.Zero);
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "interventionTarget": {
+                "kind": "implementation",
+                "summary": "Advance issue #22: refresh architecture docs."
+              }
+            }
+            """);
         var workflow = new IssueWorkflowState(
             22,
             "Core",
@@ -4240,6 +4262,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("stalled reason: none", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest outcome: developer success (done)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker focus: shipping implementation work", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("global intervention target: implementation: Advance issue #22: refresh architecture docs.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest execution recorded: 2026-03-16T15:25:00.0000000+00:00 (5m 0s ago)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("label create stalled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("remove-label stalled", StringComparison.Ordinal));

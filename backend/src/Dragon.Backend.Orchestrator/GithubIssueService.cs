@@ -11,6 +11,7 @@ public sealed class GithubIssueService
     private const string SupersededMarker = "<!-- dragon-backend-superseded -->";
     private const string RecoveryRetiredMarker = "<!-- dragon-backend-recovery-retired -->";
     private static readonly TimeSpan StalledThreshold = TimeSpan.FromMinutes(15);
+    private const string RuntimeStatusRelativePath = ".dragon/status/runtime-status.json";
     private readonly GithubCommandRunner commandRunner;
 
     public GithubIssueService(GithubCommandRunner? commandRunner = null)
@@ -333,6 +334,7 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -505,6 +507,7 @@ public sealed class GithubIssueService
                 $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- recovery writeback: {DescribeRecoveryWritebackState(workflow, rootDirectory)}",
                 $"- worker focus: {DescribeWorkerFocus(workflow, rootDirectory)}",
+                $"- global intervention target: {DescribeGlobalInterventionTarget(rootDirectory)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -665,6 +668,53 @@ public sealed class GithubIssueService
         }
 
         return "maintaining workflow state";
+    }
+
+    private static string DescribeGlobalInterventionTarget(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("interventionTarget", out var interventionTarget) ||
+                interventionTarget.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var kind = interventionTarget.TryGetProperty("kind", out var kindProperty) && kindProperty.ValueKind == JsonValueKind.String
+                ? kindProperty.GetString()
+                : null;
+            var summary = interventionTarget.TryGetProperty("summary", out var summaryProperty) && summaryProperty.ValueKind == JsonValueKind.String
+                ? summaryProperty.GetString()
+                : null;
+
+            if (string.IsNullOrWhiteSpace(kind) && string.IsNullOrWhiteSpace(summary))
+            {
+                return "not recorded";
+            }
+
+            if (string.IsNullOrWhiteSpace(kind))
+            {
+                return summary ?? "not recorded";
+            }
+
+            if (string.IsNullOrWhiteSpace(summary))
+            {
+                return kind;
+            }
+
+            return $"{kind}: {summary}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
     }
 
     private static string FormatPendingGithubSyncAge(PendingGithubSyncSnapshot pending, DateTimeOffset referenceTime)
