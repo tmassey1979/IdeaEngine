@@ -24,9 +24,13 @@ main() {
   fi
 
   if [[ "${AUTO_START_STACK}" == "true" ]]; then
-    echo
-    echo "==> Starting service"
-    sudo systemctl start dragon-idea-engine
+    if [[ -x "${REPO_DIR}/scripts/pi-start-and-wait.sh" ]]; then
+      run_step "Start and wait" "${REPO_DIR}/scripts/pi-start-and-wait.sh"
+    else
+      echo
+      echo "==> Starting service"
+      sudo systemctl start dragon-idea-engine
+    fi
   fi
 
   if [[ "${RUN_HEALTHCHECK_AT_END}" == "true" ]]; then

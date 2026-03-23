@@ -19,6 +19,7 @@ Core commands:
   dragon-health
   dragon-preflight
   dragon-start
+  dragon-start-and-wait
   dragon-stop
   dragon-restart
   dragon-ensure-running
@@ -39,6 +40,7 @@ Service control:
   sudo systemctl restart ${SERVICE_NAME}
   sudo systemctl status ${SERVICE_NAME} --no-pager
   dragon-start --follow
+  dragon-start-and-wait
   dragon-stop --status
   dragon-restart --follow
   dragon-ensure-running
