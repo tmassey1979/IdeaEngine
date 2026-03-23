@@ -136,30 +136,8 @@ actionable_quarantined = sum(1 for issue in quarantined_issues if int(issue.get(
 inactive_quarantined = len(quarantined_issues) - actionable_quarantined
 generated_at = payload.get("generatedAt", "")
 pending_github_sync = payload.get("pendingGithubSync") or []
-pending_github_sync_next_retry = next((item.get("nextRetryAt", "") for item in pending_github_sync if item.get("nextRetryAt")), "")
-pending_github_sync_retry_state = ""
-if pending_github_sync_next_retry:
-    try:
-        from datetime import datetime, timezone
-
-        retry_at = datetime.fromisoformat(pending_github_sync_next_retry.replace("Z", "+00:00"))
-        generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00")) if generated_at else datetime.now(timezone.utc)
-        remaining = int((retry_at - generated).total_seconds())
-        if remaining <= 0:
-            pending_github_sync_retry_state = "ready now"
-        else:
-            hours, remainder = divmod(remaining, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            parts = []
-            if hours:
-                parts.append(f"{hours}h")
-            if minutes:
-                parts.append(f"{minutes}m")
-            if seconds or not parts:
-                parts.append(f"{seconds}s")
-            pending_github_sync_retry_state = f"next retry in {' '.join(parts)}"
-    except Exception:
-        pending_github_sync_retry_state = "scheduled"
+pending_github_sync_next_retry = payload.get("pendingGithubSyncNextRetryAt") or next((item.get("nextRetryAt", "") for item in pending_github_sync if item.get("nextRetryAt")), "")
+pending_github_sync_retry_state = payload.get("pendingGithubSyncRetryState") or ""
 
 fields = {
     "GENERATED_AT": generated_at,
@@ -176,6 +154,7 @@ fields = {
     "PENDING_GITHUB_SYNC_NEXT_RETRY": pending_github_sync_next_retry,
     "PENDING_GITHUB_SYNC_LAST_ATTEMPT": next((item.get("lastAttemptedAt", "") for item in pending_github_sync if item.get("lastAttemptedAt")), ""),
     "PENDING_GITHUB_SYNC_RETRY_STATE": pending_github_sync_retry_state,
+    "PENDING_GITHUB_SYNC_RETRY_OVERDUE_MINUTES": payload.get("pendingGithubSyncRetryOverdueMinutes", 0),
     "QUEUED_JOBS": payload.get("queuedJobs", 0),
     "FAILED_ISSUES": ((payload.get("rollup") or {}).get("failedIssues", 0)),
     "IN_PROGRESS_ISSUES": ((payload.get("rollup") or {}).get("inProgressIssues", 0)),
@@ -665,6 +644,9 @@ main() {
     if [[ -n "${PENDING_GITHUB_SYNC_RETRY_STATE:-}" && "${PENDING_GITHUB_SYNC_RETRY_STATE}" != "None" ]]; then
       echo "pending_github_sync_retry_state: ${PENDING_GITHUB_SYNC_RETRY_STATE}"
     fi
+    if [[ "${PENDING_GITHUB_SYNC_RETRY_OVERDUE_MINUTES:-0}" != "0" ]]; then
+      echo "pending_github_sync_retry_overdue_minutes: ${PENDING_GITHUB_SYNC_RETRY_OVERDUE_MINUTES}"
+    fi
     if [[ -n "${PENDING_GITHUB_SYNC_LAST_ATTEMPT:-}" && "${PENDING_GITHUB_SYNC_LAST_ATTEMPT}" != "None" ]]; then
       echo "pending_github_sync_last_attempt_at: ${PENDING_GITHUB_SYNC_LAST_ATTEMPT}"
     fi
@@ -698,8 +680,9 @@ main() {
       echo "wait_signal: routine poll wait"
     fi
     echo "next_delayed_retry_at: $(json_query nextDelayedRetryAt '')"
-    echo "pending_github_sync_next_retry_at: $(json_query pendingGithubSync.0.nextRetryAt '')"
-    echo "pending_github_sync_retry_state: scheduled"
+    echo "pending_github_sync_next_retry_at: $(json_query pendingGithubSyncNextRetryAt '')"
+    echo "pending_github_sync_retry_state: $(json_query pendingGithubSyncRetryState '')"
+    echo "pending_github_sync_retry_overdue_minutes: $(json_query pendingGithubSyncRetryOverdueMinutes 0)"
     echo "pending_github_sync_last_attempt_at: $(json_query pendingGithubSync.0.lastAttemptedAt '')"
     echo "delayed_retry_urgency: $(json_query delayedRetryUrgency '')"
     echo "delayed_retry_summary: $(json_query delayedRetrySummary '')"

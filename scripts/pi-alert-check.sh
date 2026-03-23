@@ -111,25 +111,8 @@ if max_delayed_retry_minutes > 0 and delayed_retry_minutes > max_delayed_retry_m
         f"delayed retry wait {int(delayed_retry_minutes)}m exceeds {max_delayed_retry_minutes}m"
     )
 
-pending_github_sync = status.get("pendingGithubSync") or []
-pending_github_sync_next_retry = ""
-pending_github_sync_retry_state = "none"
-pending_github_sync_retry_overdue_minutes = 0
-if pending_github_sync:
-    pending_github_sync_next_retry = pending_github_sync[0].get("nextRetryAt") or ""
-    if pending_github_sync_next_retry:
-        try:
-            retry_at = datetime.fromisoformat(pending_github_sync_next_retry.replace("Z", "+00:00"))
-            generated_at = status.get("generatedAt") or report.get("timestamp") or ""
-            reference_time = datetime.fromisoformat(generated_at.replace("Z", "+00:00")) if generated_at else datetime.now(timezone.utc)
-            delta_minutes = (reference_time - retry_at).total_seconds() / 60
-            if delta_minutes >= 0:
-                pending_github_sync_retry_state = "ready now"
-                pending_github_sync_retry_overdue_minutes = int(delta_minutes)
-            else:
-                pending_github_sync_retry_state = f"next retry in {int(abs(delta_minutes))}m"
-        except ValueError:
-            pending_github_sync_retry_state = "scheduled"
+pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or "none"
+pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
 
 if max_pending_github_retry_overdue_minutes > 0 and pending_github_sync_retry_overdue_minutes > max_pending_github_retry_overdue_minutes:
     problems.append(

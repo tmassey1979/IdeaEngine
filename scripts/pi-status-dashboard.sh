@@ -53,35 +53,11 @@ latest = status.get("latestActivity") or {}
 next_wake_reason = describe_wake_reason(status.get("nextWakeReason"))
 delayed_retry_urgency = status.get("delayedRetryUrgency")
 pending_github_sync = status.get("pendingGithubSync") or []
-pending_github_sync_next_retry = ""
+pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt") or ""
 pending_github_sync_last_attempt = ""
-pending_github_sync_retry_state = ""
+pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or ""
 if pending_github_sync:
-    pending_github_sync_next_retry = pending_github_sync[0].get("nextRetryAt", "")
     pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt", "")
-    if pending_github_sync_next_retry:
-        try:
-            from datetime import datetime, timezone
-
-            retry_at = datetime.fromisoformat(pending_github_sync_next_retry.replace("Z", "+00:00"))
-            generated_at = status.get("generatedAt") or ""
-            generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00")) if generated_at else datetime.now(timezone.utc)
-            remaining = int((retry_at - generated).total_seconds())
-            if remaining <= 0:
-                pending_github_sync_retry_state = "ready now"
-            else:
-                hours, remainder = divmod(remaining, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                parts = []
-                if hours:
-                    parts.append(f"{hours}h")
-                if minutes:
-                    parts.append(f"{minutes}m")
-                if seconds or not parts:
-                    parts.append(f"{seconds}s")
-                pending_github_sync_retry_state = f"next retry in {' '.join(parts)}"
-        except Exception:
-            pending_github_sync_retry_state = "scheduled"
 wait_signal = None
 if next_wake_reason == "waiting for delayed provider retry":
     wait_signal = "provider backoff"

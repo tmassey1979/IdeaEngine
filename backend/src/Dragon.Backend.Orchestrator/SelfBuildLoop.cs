@@ -95,6 +95,14 @@ public sealed class SelfBuildLoop
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
         var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
+        var pendingGithubSyncNextRetryAt = pendingGithubSync
+            .Select(item => item.NextRetryAt)
+            .Where(value => value is not null)
+            .Min();
+        var pendingGithubSyncRetryState = BuildPendingGithubSyncRetryState(pendingGithubSyncNextRetryAt, DateTimeOffset.UtcNow);
+        var pendingGithubSyncRetryOverdueMinutes = pendingGithubSyncNextRetryAt is null
+            ? 0
+            : Math.Max(0, (int)Math.Floor((DateTimeOffset.UtcNow - pendingGithubSyncNextRetryAt.Value).TotalMinutes));
         var nextDelayedRetryAt = queuedJobs
             .Select(ReadRetryNotBeforeUtc)
             .Where(value => value is not null)
@@ -169,7 +177,10 @@ public sealed class SelfBuildLoop
             nextWakeReason,
             nextDelayedRetryAt,
             delayedRetryUrgency,
-            delayedRetrySummary
+            delayedRetrySummary,
+            pendingGithubSyncNextRetryAt,
+            pendingGithubSyncRetryState,
+            pendingGithubSyncRetryOverdueMinutes
         );
     }
 
@@ -2297,6 +2308,22 @@ public sealed class SelfBuildLoop
             : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Oldest: issue #{oldest.IssueNumber} ({FormatElapsed(DateTimeOffset.UtcNow - oldest.RecordedAt)} old).";
     }
 
+    private static string? BuildPendingGithubSyncRetryState(DateTimeOffset? nextRetryAt, DateTimeOffset now)
+    {
+        if (nextRetryAt is null)
+        {
+            return null;
+        }
+
+        var remaining = nextRetryAt.Value - now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return "ready now";
+        }
+
+        return $"next retry in {FormatElapsed(remaining)}";
+    }
+
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
@@ -2780,7 +2807,10 @@ public sealed record StatusSnapshot(
     string? NextWakeReason = null,
     DateTimeOffset? NextDelayedRetryAt = null,
     string? DelayedRetryUrgency = null,
-    string? DelayedRetrySummary = null
+    string? DelayedRetrySummary = null,
+    DateTimeOffset? PendingGithubSyncNextRetryAt = null,
+    string? PendingGithubSyncRetryState = null,
+    int PendingGithubSyncRetryOverdueMinutes = 0
 );
 
 public sealed record LatestPassSummary(

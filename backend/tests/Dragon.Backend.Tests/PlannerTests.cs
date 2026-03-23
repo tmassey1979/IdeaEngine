@@ -1562,6 +1562,9 @@ public sealed class PlannerTests
         Assert.Equal(0, rootElement.GetProperty("rollupDelta").GetProperty("inProgressIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("queuedJobs").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncSummary").ValueKind);
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncNextRetryAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("pendingGithubSyncRetryState").ValueKind);
+        Assert.Equal(0, rootElement.GetProperty("pendingGithubSyncRetryOverdueMinutes").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("latestGithubReplay").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSync").GetArrayLength());
         Assert.Equal("implementation", rootElement.GetProperty("interventionTarget").GetProperty("kind").GetString());
@@ -5300,6 +5303,9 @@ public sealed class PlannerTests
               ],
               "pendingGithubSyncCount": 1,
               "pendingGithubSyncSummary": "1 pending GitHub update remains queued for retry.",
+              "pendingGithubSyncNextRetryAt": "2026-03-23T12:02:00Z",
+              "pendingGithubSyncRetryState": "ready now",
+              "pendingGithubSyncRetryOverdueMinutes": 29,
               "latestActivity": {
                 "issueNumber": 500,
                 "issueTitle": "[Recovery] Core",
@@ -5781,6 +5787,9 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 0,
               "pendingGithubSyncSummary": null,
+              "pendingGithubSyncNextRetryAt": null,
+              "pendingGithubSyncRetryState": null,
+              "pendingGithubSyncRetryOverdueMinutes": 0,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
@@ -5990,6 +5999,9 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 0,
               "pendingGithubSyncSummary": null,
+              "pendingGithubSyncNextRetryAt": null,
+              "pendingGithubSyncRetryState": null,
+              "pendingGithubSyncRetryOverdueMinutes": 0,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
@@ -6162,6 +6174,9 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 0,
               "pendingGithubSyncSummary": null,
+              "pendingGithubSyncNextRetryAt": null,
+              "pendingGithubSyncRetryState": null,
+              "pendingGithubSyncRetryOverdueMinutes": 0,
               "latestActivity": {
                 "issueNumber": 22,
                 "issueTitle": "Core",
