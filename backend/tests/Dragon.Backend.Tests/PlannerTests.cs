@@ -4637,6 +4637,16 @@ public sealed class PlannerTests
               "workerMode": "watch",
               "workerState": "waiting",
               "workerActivity": "Replaying pending GitHub updates before the next watch pass.",
+              "leadJob": {
+                "issueNumber": 500,
+                "agent": "documentation",
+                "action": "review_issue",
+                "targetArtifact": "docs/generated/provider-notes.md",
+                "targetOutcome": "stabilize provider notes recovery summary",
+                "priority": "high",
+                "blocking": true,
+                "workType": "recovery"
+              },
               "pollIntervalSeconds": 30,
               "nextPollAt": "2026-03-23T12:31:00Z",
               "currentPassNumber": 4,
@@ -4726,6 +4736,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Replaying pending GitHub updates before the next watch pass.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker lead job: issue #500 · documentation:review_issue · docs/generated/provider-notes.md · stabilize provider notes recovery summary · priority high · blocking · recovery", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
@@ -5051,6 +5062,16 @@ public sealed class PlannerTests
               "workerMode": "polling",
               "workerState": "running",
               "workerActivity": "Advancing queued implementation work for issue #22.",
+              "leadJob": {
+                "issueNumber": 22,
+                "agent": "documentation",
+                "action": "implement_issue",
+                "targetArtifact": "docs/architecture.md",
+                "targetOutcome": "refresh architecture docs",
+                "priority": "medium",
+                "blocking": false,
+                "workType": "story"
+              },
               "currentPassNumber": 2,
               "maxPasses": 6,
               "idleStreak": 0,
@@ -5147,6 +5168,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker mode: polling", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: running", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Advancing queued implementation work for issue #22.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker lead job: issue #22 · documentation:implement_issue · docs/architecture.md · refresh architecture docs · priority medium · story", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 2 / 6 · idle 0 / 2 · remaining 2 · budget 4", StringComparison.Ordinal));
@@ -5183,6 +5205,16 @@ public sealed class PlannerTests
               "workerMode": "watch",
               "workerState": "waiting",
               "workerActivity": "Tracking acknowledged operator escalation before the next watch pass.",
+              "leadJob": {
+                "issueNumber": 22,
+                "agent": "developer",
+                "action": "summarize_issue",
+                "targetArtifact": "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                "targetOutcome": "Summarize the persistent critical intervention target and the next operator action.",
+                "priority": "high",
+                "blocking": true,
+                "workType": "operator-escalation"
+              },
               "pollIntervalSeconds": 30,
               "nextPollAt": "2026-03-16T15:31:00Z",
               "currentPassNumber": 7,
@@ -5268,6 +5300,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker mode: watch", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Tracking acknowledged operator escalation before the next watch pass.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker lead job: issue #22 · developer:summarize_issue · backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs · Summarize the persistent critical intervention target and the next operator action. · priority high · blocking · operator-escalation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 7 / 10 · idle 1 / 2 · remaining 1 · budget 3", StringComparison.Ordinal));
@@ -5301,6 +5334,7 @@ public sealed class PlannerTests
               "workerState": "complete",
               "workerCompletionReason": "idle_target_reached",
               "workerActivity": "Worker stopped after reaching the configured idle target.",
+              "leadJob": null,
               "currentPassNumber": 6,
               "maxPasses": 6,
               "idleStreak": 2,
@@ -5376,6 +5410,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker snapshot: 2026-03-16T15:30:01.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker state: complete", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Worker stopped after reaching the configured idle target.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker lead job: none queued", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: idle target reached", StringComparison.Ordinal));

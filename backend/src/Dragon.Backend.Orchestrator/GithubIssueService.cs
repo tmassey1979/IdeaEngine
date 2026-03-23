@@ -340,6 +340,7 @@ public sealed class GithubIssueService
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
+                $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -533,6 +534,7 @@ public sealed class GithubIssueService
                 $"- worker mode: {DescribeGlobalWorkerMode(rootDirectory)}",
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
+                $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -919,6 +921,103 @@ public sealed class GithubIssueService
             }
 
             return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalLeadJob(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("leadJob", out var leadJob) ||
+                leadJob.ValueKind != JsonValueKind.Object)
+            {
+                return "none queued";
+            }
+
+            var issueNumber = leadJob.TryGetProperty("issueNumber", out var issueNumberProperty) &&
+                issueNumberProperty.ValueKind == JsonValueKind.Number &&
+                issueNumberProperty.TryGetInt32(out var parsedIssueNumber)
+                ? parsedIssueNumber
+                : (int?)null;
+            var agent = leadJob.TryGetProperty("agent", out var agentProperty) &&
+                agentProperty.ValueKind == JsonValueKind.String
+                ? agentProperty.GetString()
+                : null;
+            var action = leadJob.TryGetProperty("action", out var actionProperty) &&
+                actionProperty.ValueKind == JsonValueKind.String
+                ? actionProperty.GetString()
+                : null;
+            var targetArtifact = leadJob.TryGetProperty("targetArtifact", out var targetArtifactProperty) &&
+                targetArtifactProperty.ValueKind == JsonValueKind.String
+                ? targetArtifactProperty.GetString()
+                : null;
+            var targetOutcome = leadJob.TryGetProperty("targetOutcome", out var targetOutcomeProperty) &&
+                targetOutcomeProperty.ValueKind == JsonValueKind.String
+                ? targetOutcomeProperty.GetString()
+                : null;
+            var priority = leadJob.TryGetProperty("priority", out var priorityProperty) &&
+                priorityProperty.ValueKind == JsonValueKind.String
+                ? priorityProperty.GetString()
+                : null;
+            var workType = leadJob.TryGetProperty("workType", out var workTypeProperty) &&
+                workTypeProperty.ValueKind == JsonValueKind.String
+                ? workTypeProperty.GetString()
+                : null;
+            var blocking = leadJob.TryGetProperty("blocking", out var blockingProperty) &&
+                blockingProperty.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? blockingProperty.GetBoolean()
+                : (bool?)null;
+
+            var parts = new List<string>();
+            if (issueNumber is > 0)
+            {
+                parts.Add($"issue #{issueNumber.Value}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(agent) || !string.IsNullOrWhiteSpace(action))
+            {
+                parts.Add(string.Join(":", new[] { agent, action }.Where(value => !string.IsNullOrWhiteSpace(value))));
+            }
+
+            if (!string.IsNullOrWhiteSpace(targetArtifact))
+            {
+                parts.Add(targetArtifact!);
+            }
+
+            if (!string.IsNullOrWhiteSpace(targetOutcome))
+            {
+                parts.Add(targetOutcome!);
+            }
+
+            if (!string.IsNullOrWhiteSpace(priority))
+            {
+                parts.Add($"priority {priority}");
+            }
+
+            if (blocking is true)
+            {
+                parts.Add("blocking");
+            }
+
+            if (!string.IsNullOrWhiteSpace(workType))
+            {
+                parts.Add(workType!);
+            }
+
+            return parts.Count == 0
+                ? "none queued"
+                : string.Join(" · ", parts);
         }
         catch (JsonException)
         {
