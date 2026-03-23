@@ -10,32 +10,26 @@ Idea -> Architecture -> Repo -> Issues -> Code -> Review -> Deploy -> Feedback
 
 ```
 docs/
-runner/
-agents/
-services/
-ui/
-sdk/
+backend/
+codex/
+planning/
 templates/
 ```
 
 ## Current Runtime
 
 - The long-term backend/runtime target is C#.
-- The current JavaScript runner/orchestrator remains in place as a working prototype for behavior and backlog flow.
-- A new C# backend foundation now lives under `backend/` and currently covers shared self-build contracts, backlog indexing, bounded developer-operation planning, local queue persistence, workflow-state tracking including active recovery children and automatic parent resume, per-issue execution records, GitHub backlog discovery with superseded recovery filtering, stronger review/test execution, repeated-failure quarantine, long-stall quarantine sweeps, quarantined-work remediation signaling and recovery-story creation on GitHub with overlap prevention, recovery-aware scheduling with source-issue linkage, latest-path preference, and released-parent de-prioritization, queue cleanup for superseded recovery jobs, bounded run-until-idle orchestration for multi-cycle execution, GitHub superseded-path visibility for older overlapping recovery issues with stale-label cleanup when paths reactivate, retirement of stale open recovery branches after parent resume with parent-heartbeat audit visibility, stage-aware in-progress heartbeat comments with timing, stalled-state, recovery-release, requeue, and recovery-chain data, automatic workflow-label transitions, and validated workflow sync with a guard that only updates GitHub after the workflow reaches `validated`.
-- `dragon-agent-runner` loads agent plugins from the workspace.
-- agents expose `name`, `description`, `version`, and `execute(context)` through the shared SDK.
-- CLI mode runs one agent directly.
-- service mode reads newline-delimited JSON jobs, validates them against the shared schema, and emits structured job results.
-- failed jobs follow the codex retry schedule and spill into a local dead-letter queue file when retries are exhausted.
-- agents receive workspace, git, credentials, job publishing, and logging utilities through the SDK context.
-- `dragon-orchestrator` can inspect the repo backlog, select the next open story, and publish a follow-up implementation job for the system to work on itself.
-- `dragon-orchestrator execute-once` can now run that selected job immediately, persist an execution record, and enqueue review/test follow-up jobs for the next loop iteration.
-- `dragon-orchestrator cycle-once` now prefers queued work first, which lets the system continue through developer -> review -> test stages across repeated invocations while maintaining per-issue workflow state under `.dragon/state/issues.json`.
+- The current runtime lives under `backend/`.
+- Agent execution is now intended to be API-first, with OpenAI Responses API as the initial provider target rather than a CLI-first model runtime.
+- The C# backend currently covers shared self-build contracts, backlog indexing, bounded developer-operation planning, local queue persistence, workflow-state tracking including active recovery children and automatic parent resume, per-issue execution records, GitHub backlog discovery with superseded recovery filtering, stronger review/test execution, repeated-failure quarantine, long-stall quarantine sweeps, quarantined-work remediation signaling and recovery-story creation on GitHub with overlap prevention, recovery-aware scheduling with source-issue linkage, latest-path preference, and released-parent de-prioritization, queue cleanup for superseded recovery jobs, bounded run-until-idle orchestration for multi-cycle execution, GitHub superseded-path visibility for older overlapping recovery issues with stale-label cleanup when paths reactivate, retirement of stale open recovery branches after parent resume with parent-heartbeat audit visibility, stage-aware in-progress heartbeat comments with timing, stalled-state, recovery-release, requeue, and recovery-chain data, automatic workflow-label transitions, and validated workflow sync with a guard that only updates GitHub after the workflow reaches `validated`.
+- The backend now includes the first provider abstraction layer so agent roles can route through a model API without binding orchestration logic to a single transport.
+- The deprecated JavaScript runner/orchestrator scaffold has been removed from the repo so backend implementation and documentation align on the C# path.
 
 ## Next Expected Layers
 
-- queue-backed orchestration
-- API and UI surfaces
-- issue generation and execution pipelines
+- richer C# queue-backed orchestration
+- OpenAI API-backed agent execution
+- API and UI surfaces on top of the backend runtime
+- further issue generation and execution pipelines
 - persistent job storage and credentials management
+- unattended worker hosting, notification policy, and controlled auto-redeploy after validated major changes

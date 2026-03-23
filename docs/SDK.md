@@ -1,15 +1,17 @@
 # SDK
 
-`dragon-agent-sdk` is the shared Node-based agent package for the current implementation.
+The current platform direction is a C# backend, not the earlier Node prototype.
 
-It provides:
+This document tracks the shared backend helper surface that supports self-build work:
 
-- agent interface normalization with `name`, `description`, `version`, and `execute(context)`
-- shared job parsing and result helpers
-- structured logging with `jobId`, `agent`, and timestamps
-- isolated workspace management under `workspaces/`
-- git helpers for clone, branch, commit, push, and pull request payload stubs
-- credential resolution with project-first lookup
-- local job publishing to queue files under `.dragon/queues/`
+- job and workflow contracts in `backend/src/Dragon.Backend.Contracts`
+- orchestration helpers in `backend/src/Dragon.Backend.Orchestrator`
+- deterministic developer-operation planning for bounded repository edits
+- queue, workflow-state, and execution-record persistence under `.dragon/`
+- GitHub synchronization helpers for heartbeat, quarantine, recovery, and completion flows
 
-Current scope is intentionally local-first so the SDK can back the runner before RabbitMQ and API services are built.
+Near-term scope stays local-first so the backend can keep iterating on self-build behavior before more distributed infrastructure is added.
+
+## Developer Operations
+
+The developer agent supports bounded `write_file`, `append_text`, and `replace_text` operations for deterministic self-improvement tasks.

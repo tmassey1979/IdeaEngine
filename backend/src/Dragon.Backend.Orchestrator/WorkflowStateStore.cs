@@ -136,6 +136,46 @@ public sealed class WorkflowStateStore
         return updated;
     }
 
+    public IssueWorkflowState ReleaseQuarantineForRetry(int issueNumber, string note)
+    {
+        var snapshots = ReadAll().ToDictionary(entry => entry.Key, entry => entry.Value);
+        if (!snapshots.TryGetValue(issueNumber, out var existing))
+        {
+            throw new InvalidOperationException($"Cannot release workflow state for unknown issue #{issueNumber}.");
+        }
+
+        if (existing.ActiveRecoveryIssueNumbers?.Any() == true)
+        {
+            throw new InvalidOperationException($"Cannot release issue #{issueNumber} while recovery children are still active.");
+        }
+
+        var retryStage = FailurePolicy.InferCurrentStage(existing);
+        var stages = existing.Stages.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(retryStage) &&
+            stages.TryGetValue(retryStage, out var retryStageState) &&
+            string.Equals(retryStageState.Status, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            stages.Remove(retryStage);
+        }
+
+        var updated = existing with
+        {
+            Stages = stages,
+            OverallStatus = DetermineOverallStatus(stages),
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Note = note
+        };
+
+        snapshots[issueNumber] = updated;
+        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
+        File.WriteAllText(
+            StatePath,
+            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
+        );
+
+        return updated;
+    }
+
     private static void ReconcileRecoveryLinkage(IDictionary<int, IssueWorkflowState> snapshots, int issueNumber)
     {
         if (!snapshots.TryGetValue(issueNumber, out var workflow) || workflow.SourceIssueNumber is null)

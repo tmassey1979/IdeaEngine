@@ -2,21 +2,16 @@
   "name": "dragon-idea-engine",
   "version": "0.1.0",
   "private": true,
-  "description": "Plugin-based autonomous software factory scaffold.",
-  "workspaces": [
-    "runner/*",
-    "agents/*",
-    "services/*",
-    "ui/*",
-    "sdk/*"
-  ],
+  "description": "C# autonomous software factory backend scaffold.",
   "scripts": {
-    "test": "node --test",
-    "test:backend": "dotnet test backend/Dragon.Backend.slnx",
-    "runner": "node runner/dragon-agent-runner/src/cli.js",
-    "orchestrator": "node services/dragon-orchestrator/src/cli.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "serve:status": "dotnet run --project backend/src/Dragon.Backend.Cli -- serve-status --root . --prefix http://127.0.0.1:5078/",
+    "status:ui": "node scripts/refresh-ui-status.mjs status",
+    "run:ui": "node scripts/refresh-ui-status.mjs run",
+    "run:polling": "dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --root . --max-passes 10 --idle-passes 2 --max-cycles 100",
+    "run:watch": "dotnet run --project backend/src/Dragon.Backend.Cli -- run-watch --root . --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 100",
+    "test": "dotnet test backend/Dragon.Backend.slnx",
+    "test:backend": "dotnet test backend/Dragon.Backend.slnx"
   }
 }

@@ -1,6 +1,0 @@
-{
-  "name": "@dragon-idea-engine/test-agent",
-  "version": "0.1.0",
-  "private": true,
-  "main": "src/index.js"
-}

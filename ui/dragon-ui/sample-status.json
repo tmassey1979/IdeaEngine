@@ -1,0 +1,192 @@
+{
+  "generatedAt": "2026-03-17T18:27:02.6650205+00:00",
+  "source": "status",
+  "lastCommand": "github-run-watch",
+  "workerMode": "watch",
+  "workerState": "complete",
+  "workerCompletionReason": "idle_target_reached",
+  "workerActivity": "Loading GitHub issues for the next watch pass.",
+  "nextPollAt": null,
+  "pollIntervalSeconds": 30,
+  "idleStreak": 2,
+  "idleTarget": 2,
+  "idlePassesRemaining": 0,
+  "passBudgetRemaining": 4,
+  "currentPassNumber": 4,
+  "maxPasses": 8,
+  "health": "attention",
+  "attentionSummary": "1 failed issue(s) need review.",
+  "rollup": {
+    "failedIssues": 1,
+    "quarantinedIssues": 0,
+    "actionableQuarantinedIssues": 0,
+    "inactiveQuarantinedIssues": 0,
+    "inProgressIssues": 1,
+    "validatedIssues": 4
+  },
+  "leadJob": {
+    "issueNumber": 23,
+    "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+    "workType": "story",
+    "agent": "review",
+    "action": "summarize_issue",
+    "blocking": true,
+    "targetArtifact": "backend/src/Dragon.Backend.Orchestrator/WorkflowStateStore.cs",
+    "targetOutcome": "document workflow state recovery behavior",
+    "priority": "high"
+  },
+  "interventionTarget": {
+    "kind": "github-replay-drift",
+    "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+    "issueNumber": 22,
+    "recoveryIssueNumber": 500,
+    "pendingGithubSyncIssueNumber": 500,
+    "targetArtifact": null,
+    "targetOutcome": null,
+    "observedAt": "2026-03-23T12:00:00Z",
+    "ageSummary": "4h 6m old",
+    "escalation": "critical"
+  },
+  "latestActivity": {
+    "issueNumber": 23,
+    "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+    "currentStage": "review",
+    "summary": "Review completed for implementation stage architect with no changed paths supplied.",
+    "recordedAt": "2026-03-16T22:16:05.8700824+00:00"
+  },
+  "recentLoopSignal": {
+    "mode": "failing",
+    "summary": "Recent activity needs review after issue #23."
+  },
+  "queueDirection": "unknown",
+  "queueDelta": 0,
+  "queueComparedAt": null,
+  "rollupDelta": {
+    "failedIssues": 0,
+    "quarantinedIssues": 0,
+    "inProgressIssues": 0,
+    "validatedIssues": 0
+  },
+  "latestPass": {
+    "passNumber": 4,
+    "cycleCount": 3,
+    "seededCycles": 1,
+    "consumedCycles": 2,
+    "reachedIdle": false,
+    "reachedMaxCycles": false,
+    "githubReplayAttemptedCount": 4,
+    "githubReplayUpdatedCount": 4,
+    "githubReplayFailedCount": 0,
+    "githubReplaySummary": "Replayed 4 pending GitHub updates: 4 updated, 0 still failing."
+  },
+  "latestGithubSync": null,
+  "latestGithubReplay": {
+    "attemptedCount": 4,
+    "updatedCount": 4,
+    "failedCount": 0,
+    "summary": "Replayed 4 pending GitHub updates: 4 updated, 0 still failing.",
+    "recordedAt": "2026-03-23T16:06:12.0000000+00:00"
+  },
+  "pendingGithubSyncCount": 2,
+  "pendingGithubSync": [
+    {
+      "issueNumber": 147,
+      "summary": "GitHub writeback retry queued after recovery issue creation was rejected by createIssue permissions.",
+      "recordedAt": "2026-03-23T15:44:18.0000000+00:00",
+      "attemptCount": 3,
+      "lastAttemptedAt": "2026-03-23T16:02:11.0000000+00:00",
+      "nextRetryAt": "2026-03-23T16:02:41.0000000+00:00"
+    },
+    {
+      "issueNumber": 148,
+      "summary": "GitHub writeback retry queued after issue sync returned HTTP 403 for comment or label updates.",
+      "recordedAt": "2026-03-23T15:45:02.0000000+00:00",
+      "attemptCount": 2,
+      "lastAttemptedAt": "2026-03-23T16:01:44.0000000+00:00",
+      "nextRetryAt": "2026-03-23T16:02:14.0000000+00:00"
+    }
+  ],
+  "pendingGithubSyncSummary": "2 GitHub updates are waiting for retry. Oldest: issue #147 (42m 44s old).",
+  "interventionEscalationNote": "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+  "interventionEscalationStreak": 3,
+  "queuedJobs": 1,
+  "issues": [
+    {
+      "issueNumber": 22,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:13:29.3752334+00:00"
+    },
+    {
+      "issueNumber": 23,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+      "overallStatus": "in_progress",
+      "currentStage": "review",
+      "queuedJobCount": 1,
+      "workflowNote": null,
+      "latestExecutionSummary": "Review completed for implementation stage architect with no changed paths supplied.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:16:05.8700824+00:00"
+    },
+    {
+      "issueNumber": 101,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Core System Principles",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:04:42.5779746+00:00"
+    },
+    {
+      "issueNumber": 102,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:08:58.4405796+00:00"
+    },
+    {
+      "issueNumber": 103,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Repository Structure",
+      "overallStatus": "validated",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Executed dotnet test against backend/Dragon.Backend.slnx.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:09:05.5359423+00:00"
+    },
+    {
+      "issueNumber": 104,
+      "issueTitle": "[Story] Dragon Idea Engine Master Codex: Root Repo",
+      "overallStatus": "failed",
+      "currentStage": "test",
+      "queuedJobCount": 0,
+      "workflowNote": null,
+      "latestExecutionSummary": "Test failed because the review stage has not completed successfully.",
+      "latestExecutionNotes": "",
+      "latestExecutionRecordedAt": "2026-03-16T22:11:22.1959085+00:00"
+    }
+  ],
+  "leadQuarantine": {
+    "issueNumber": 22,
+    "issueTitle": "Provider Notes",
+    "note": "Parent is quarantined.",
+    "queuedRecoveryJobs": 1,
+    "recoveryIssueNumber": 500,
+    "recoveryIssueTitle": "[Recovery] Provider Notes",
+    "state": "sync-drift",
+    "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+    "oldestPendingGithubSyncAt": "2026-03-23T12:00:00Z"
+  }
+}

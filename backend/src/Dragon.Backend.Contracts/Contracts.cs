@@ -49,7 +49,8 @@ public sealed record JobExecutionResult(
     string Status,
     string Summary,
     DateTimeOffset ObservedAt,
-    IReadOnlyList<string>? ChangedPaths = null
+    IReadOnlyList<string>? ChangedPaths = null,
+    IReadOnlyList<RequestedFollowUp>? RequestedFollowUps = null
 );
 
 public sealed record WorkflowStageState(
@@ -91,5 +92,55 @@ public sealed record ExecutionRecord(
     string Summary,
     DateTimeOffset RecordedAt,
     IReadOnlyList<string> ChangedPaths,
-    IReadOnlyList<string> FollowUpAgents
+    IReadOnlyList<string> FollowUpAgents,
+    string Notes = ""
+);
+
+public sealed record AgentModelMessage(
+    string Role,
+    string Content
+);
+
+public sealed record AgentModelRequest(
+    string Agent,
+    string Purpose,
+    string Model,
+    string? Instructions,
+    IReadOnlyList<AgentModelMessage> Messages,
+    IReadOnlyDictionary<string, string>? Metadata = null,
+    bool Background = false
+);
+
+public sealed record AgentModelResponse(
+    string Provider,
+    string Model,
+    string ResponseId,
+    string OutputText,
+    string? FinishReason = null
+);
+
+public sealed record AgentStructuredResult(
+    string Summary,
+    string? Recommendation = null,
+    IReadOnlyList<string>? Artifacts = null,
+    IReadOnlyList<DeveloperOperation>? Operations = null,
+    IReadOnlyList<RequestedFollowUp>? FollowUps = null
+);
+
+public sealed record RequestedFollowUp(
+    string? Agent,
+    string? Action,
+    string? Priority = null,
+    string? Reason = null,
+    bool Blocking = false,
+    string? TargetArtifact = null,
+    string? TargetOutcome = null
+);
+
+public sealed record AgentModelProviderDescriptor(
+    string Name,
+    string Transport,
+    string DefaultModel,
+    string ApiKeyEnvironmentVariable,
+    string Notes
 );

@@ -1,5 +1,7 @@
 .vscode/
 node_modules/
 .dragon/
+.env
+.env.local
 **/bin/
 **/obj/

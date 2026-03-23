@@ -1,0 +1,94 @@
+services:
+  dragon-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: dragon-idea-engine/backend:local
+    restart: unless-stopped
+    environment:
+      DRAGON_ROOT: /workspace
+      DRAGON_STATUS_PREFIX: http://+:5078/
+      DRAGON_STATUS_FILE: /workspace/.dragon/status/runtime-status.json
+      DRAGON_RUN_MODE: ${DRAGON_RUN_MODE:-watch}
+      DRAGON_POLL_SECONDS: ${DRAGON_POLL_SECONDS:-30}
+      DRAGON_MAX_PASSES: ${DRAGON_MAX_PASSES:-10}
+      DRAGON_IDLE_PASSES: ${DRAGON_IDLE_PASSES:-2}
+      DRAGON_MAX_CYCLES: ${DRAGON_MAX_CYCLES:-100}
+      DRAGON_GITHUB_OWNER: ${DRAGON_GITHUB_OWNER:-}
+      DRAGON_GITHUB_REPO: ${DRAGON_GITHUB_REPO:-}
+      DRAGON_SYNC_GITHUB: ${DRAGON_SYNC_GITHUB:-false}
+      DRAGON_RELEASE_QUARANTINED_ON_START: ${DRAGON_RELEASE_QUARANTINED_ON_START:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GH_TOKEN: ${GH_TOKEN:-}
+      GH_BIN: /usr/bin/gh
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=dragon;Username=dragon;Password=dragon
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4317
+    volumes:
+      - ./:/workspace
+    ports:
+      - "5078:5078"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      lgtm:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5078/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dragon
+      POSTGRES_USER: dragon
+      POSTGRES_PASSWORD: dragon
+    ports:
+      - "5432:5432"
+    volumes:
+      - dragon-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dragon -d dragon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: dragon
+      RABBITMQ_DEFAULT_PASS: dragon
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - dragon-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  lgtm:
+    image: grafana/otel-lgtm:0.8.1
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - dragon-lgtm:/data
+
+volumes:
+  dragon-postgres:
+  dragon-rabbitmq:
+  dragon-lgtm:

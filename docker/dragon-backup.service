@@ -1,0 +1,9 @@
+[Unit]
+Description=Dragon Idea Engine Backup Job
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO_DIR__
+ExecStart=/bin/bash -lc 'cd "__REPO_DIR__" && ./scripts/backup-pi.sh'

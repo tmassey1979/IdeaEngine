@@ -1,5 +1,6 @@
 using Dragon.Backend.Contracts;
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 
 namespace Dragon.Backend.Orchestrator;
@@ -7,6 +8,7 @@ namespace Dragon.Backend.Orchestrator;
 public delegate CommandResult LocalCommandRunner(string fileName, string arguments, string workingDirectory);
 
 public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
+public sealed record ModelExecutionRetryOptions(int MaxAttempts = 3, int BaseDelayMilliseconds = 1000);
 
 public sealed class LocalJobExecutor
 {
@@ -16,10 +18,33 @@ public sealed class LocalJobExecutor
     };
 
     private readonly LocalCommandRunner commandRunner;
+    private readonly IAgentModelProvider? modelProvider;
+    private readonly ModelExecutionRetryOptions modelRetryOptions;
 
-    public LocalJobExecutor(LocalCommandRunner? commandRunner = null)
+    public LocalJobExecutor(
+        LocalCommandRunner? commandRunner = null,
+        IAgentModelProvider? modelProvider = null,
+        ModelExecutionRetryOptions? modelRetryOptions = null)
     {
         this.commandRunner = commandRunner ?? RunCommand;
+        this.modelProvider = modelProvider;
+        this.modelRetryOptions = modelRetryOptions ?? new ModelExecutionRetryOptions();
+    }
+
+    public static LocalJobExecutor CreateDefault(Func<string, string?> environmentReader, LocalCommandRunner? commandRunner = null)
+    {
+        IAgentModelProvider? provider = null;
+
+        try
+        {
+            provider = new OpenAiResponsesProvider(OpenAiResponsesOptions.FromEnvironment(environmentReader));
+        }
+        catch (InvalidOperationException)
+        {
+            provider = null;
+        }
+
+        return new LocalJobExecutor(commandRunner, provider);
     }
 
     public JobExecutionResult Execute(string rootDirectory, SelfBuildJob job)
@@ -33,20 +58,79 @@ public sealed class LocalJobExecutor
                 "developer" => ExecuteDeveloper(rootDirectory, job),
                 "review" => ExecutionOutcome.FromSummary(ExecuteReview(rootDirectory, job)),
                 "test" => ExecutionOutcome.FromSummary(ExecuteTest(rootDirectory, job)),
+                _ when IsModelBackedAgent(job.Agent) => ExecuteModelBacked(rootDirectory, job),
                 _ => ExecutionOutcome.FromSummary($"No local executor is registered for {job.Agent}; marked complete for bootstrap flow.")
             };
 
-            return new JobExecutionResult(jobId, job.Agent, "success", outcome.Summary, DateTimeOffset.UtcNow, outcome.ChangedPaths);
+            return new JobExecutionResult(jobId, job.Agent, "success", outcome.Summary, DateTimeOffset.UtcNow, outcome.ChangedPaths, outcome.RequestedFollowUps);
         }
         catch (Exception exception)
         {
-            return new JobExecutionResult(jobId, job.Agent, "failed", exception.Message, DateTimeOffset.UtcNow);
+            return new JobExecutionResult(jobId, job.Agent, "failed", FormatFailureSummary(exception), DateTimeOffset.UtcNow);
         }
+    }
+
+    private ExecutionOutcome ExecuteModelBacked(string rootDirectory, SelfBuildJob job)
+    {
+        if (modelProvider is null)
+        {
+            return ExecutionOutcome.FromSummary($"No model provider configured for {job.Agent}; marked complete for bootstrap flow.");
+        }
+
+        var request = AgentPromptFactory.Build(job, modelProvider.Describe().DefaultModel);
+        var response = ExecuteModelRequestWithRetry(request);
+        var structuredResult = AgentStructuredResultParser.Parse(response.OutputText);
+        var summary = !string.IsNullOrWhiteSpace(structuredResult?.Summary)
+            ? structuredResult.Summary
+            : string.IsNullOrWhiteSpace(response.OutputText)
+            ? $"{job.Agent} completed through {response.Provider}."
+            : response.OutputText.Trim();
+
+        if (structuredResult?.Operations?.Count > 0)
+        {
+            var changedPaths = ApplyOperations(rootDirectory, structuredResult.Operations);
+            return new ExecutionOutcome(summary, changedPaths, structuredResult.FollowUps ?? []);
+        }
+
+        return new ExecutionOutcome(summary, [], structuredResult?.FollowUps ?? []);
+    }
+
+    private AgentModelResponse ExecuteModelRequestWithRetry(AgentModelRequest request)
+    {
+        Exception? lastException = null;
+        var maxAttempts = Math.Max(1, modelRetryOptions.MaxAttempts);
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                return modelProvider!.GenerateAsync(request).GetAwaiter().GetResult();
+            }
+            catch (Exception exception) when (attempt < maxAttempts && IsTransientModelFailure(exception))
+            {
+                lastException = exception;
+                SleepBeforeModelRetry(attempt);
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("Model execution failed without an exception.");
     }
 
     private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
     {
-        var operations = job.Payload.Operations ?? [];
+        var touchedPaths = ApplyOperations(rootDirectory, job.Payload.Operations ?? []);
+
+        return new ExecutionOutcome(
+            touchedPaths.Count > 0
+                ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
+                : "Developer job contained no operations.",
+            touchedPaths,
+            []
+        );
+    }
+
+    private static IReadOnlyList<string> ApplyOperations(string rootDirectory, IReadOnlyList<DeveloperOperation> operations)
+    {
         var touchedPaths = new List<string>();
 
         foreach (var operation in operations)
@@ -58,9 +142,17 @@ public sealed class LocalJobExecutor
             {
                 case "write_file":
                     File.WriteAllText(fullPath, operation.Content ?? string.Empty);
+                    touchedPaths.Add(operation.Path);
                     break;
                 case "append_text":
-                    File.AppendAllText(fullPath, operation.Content ?? string.Empty);
+                    var appendContent = operation.Content ?? string.Empty;
+                    var existingContent = File.Exists(fullPath) ? File.ReadAllText(fullPath) : string.Empty;
+                    if (string.IsNullOrEmpty(appendContent) || !existingContent.Contains(appendContent, StringComparison.Ordinal))
+                    {
+                        File.AppendAllText(fullPath, appendContent);
+                        touchedPaths.Add(operation.Path);
+                    }
+
                     break;
                 case "replace_text":
                     var source = File.Exists(fullPath) ? File.ReadAllText(fullPath) : string.Empty;
@@ -70,20 +162,14 @@ public sealed class LocalJobExecutor
                     }
 
                     File.WriteAllText(fullPath, source.Replace(operation.SearchText, operation.ReplaceWith ?? string.Empty, StringComparison.Ordinal));
+                    touchedPaths.Add(operation.Path);
                     break;
                 default:
                     throw new InvalidOperationException($"Unsupported developer operation: {operation.Type}");
             }
-
-            touchedPaths.Add(operation.Path);
         }
 
-        return new ExecutionOutcome(
-            touchedPaths.Count > 0
-                ? $"Applied {touchedPaths.Count} developer operation(s): {string.Join(", ", touchedPaths)}"
-                : "Developer job contained no operations.",
-            touchedPaths
-        );
+        return touchedPaths;
     }
 
     private string ExecuteReview(string rootDirectory, SelfBuildJob job)
@@ -253,8 +339,99 @@ public sealed class LocalJobExecutor
         return new CommandResult(process.ExitCode, stdout, stderr);
     }
 
-    private sealed record ExecutionOutcome(string Summary, IReadOnlyList<string> ChangedPaths)
+    private void SleepBeforeModelRetry(int attempt)
     {
-        public static ExecutionOutcome FromSummary(string summary) => new(summary, []);
+        var baseDelayMilliseconds = Math.Max(0, modelRetryOptions.BaseDelayMilliseconds);
+        if (baseDelayMilliseconds == 0)
+        {
+            return;
+        }
+
+        var multiplier = Math.Max(1, attempt);
+        Thread.Sleep(TimeSpan.FromMilliseconds(baseDelayMilliseconds * multiplier));
     }
+
+    private static bool IsTransientModelFailure(Exception exception)
+    {
+        return exception switch
+        {
+            AgentModelProviderException providerException => providerException.IsTransient,
+            HttpRequestException httpRequestException => IsTransientStatusCode(httpRequestException.StatusCode),
+            TaskCanceledException => true,
+            TimeoutException => true,
+            _ => false
+        };
+    }
+
+    private static bool IsTransientStatusCode(HttpStatusCode? statusCode)
+    {
+        return statusCode switch
+        {
+            HttpStatusCode.RequestTimeout => true,
+            HttpStatusCode.TooManyRequests => true,
+            HttpStatusCode.BadGateway => true,
+            HttpStatusCode.ServiceUnavailable => true,
+            HttpStatusCode.GatewayTimeout => true,
+            var code when code is >= HttpStatusCode.InternalServerError => true,
+            _ => false
+        };
+    }
+
+    private static string FormatFailureSummary(Exception exception)
+    {
+        if (exception is AgentModelProviderException providerException)
+        {
+            var status = providerException.StatusCode is null
+                ? null
+                : $"HTTP {(int)providerException.StatusCode.Value}";
+            var retryAfter = providerException.RetryAfter is null
+                ? null
+                : $"retry after {FormatRetryAfter(providerException.RetryAfter.Value)}";
+            var qualifiers = new[] { status, retryAfter }
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToArray();
+            var suffix = qualifiers.Length == 0 ? string.Empty : $" ({string.Join(", ", qualifiers)})";
+            var prefix = providerException.IsTransient
+                ? "Transient model provider failure"
+                : "Model provider failure";
+
+            return $"{prefix} from {providerException.Provider}{suffix}: {providerException.Message}";
+        }
+
+        return exception.Message;
+    }
+
+    private static string FormatRetryAfter(TimeSpan retryAfter)
+    {
+        if (retryAfter.TotalMinutes >= 1 && retryAfter.Seconds == 0)
+        {
+            return $"{Math.Floor(retryAfter.TotalMinutes)}m";
+        }
+
+        if (retryAfter.TotalSeconds >= 1)
+        {
+            return $"{Math.Ceiling(retryAfter.TotalSeconds)}s";
+        }
+
+        return "0s";
+    }
+
+    private sealed record ExecutionOutcome(
+        string Summary,
+        IReadOnlyList<string> ChangedPaths,
+        IReadOnlyList<RequestedFollowUp> RequestedFollowUps)
+    {
+        public static ExecutionOutcome FromSummary(string summary) => new(summary, [], []);
+    }
+
+    private static bool IsModelBackedAgent(string agent) => agent switch
+    {
+        "architect" => true,
+        "documentation" => true,
+        "feedback" => true,
+        "idea" => true,
+        "repository-manager" => true,
+        "refactor" => true,
+        _ => false
+    };
 }

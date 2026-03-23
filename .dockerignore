@@ -1,0 +1,14 @@
+.git
+.github
+.dragon
+**/bin
+**/obj
+**/.vs
+**/.idea
+**/.vscode
+node_modules
+npm-debug.log
+ui/dragon-ui/sample-status.json
+ui/dragon-ui/sample-status.js
+ui/dragon-ui/sample-status.previous.json
+ui/dragon-ui/sample-status.previous.js

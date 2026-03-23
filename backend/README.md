@@ -5,6 +5,7 @@ This folder is the C# backend foundation for Dragon Idea Engine.
 Current scope:
 
 - shared contracts for backlog-driven self-build jobs
+- API-first provider contracts for model-backed agent execution
 - backlog metadata loading from `planning/backlog.json`
 - bounded developer-operation planning for C# orchestration
 - local queue storage and workflow state for the bootstrap loop
@@ -22,23 +23,77 @@ Current scope:
 - automatic GitHub label transitions for in-progress, quarantined, and completed states
 - stage-aware heartbeat content that shows the current stage, when it last changed, whether it appears stalled, and the latest stage outcome
 - a small CLI that can print planned self-build jobs from backlog context and run one local self-build cycle
+- an OpenAI Responses API provider scaffold behind a provider abstraction for unattended agent execution
 
 Useful commands:
 
 ```bash
 dotnet test backend/Dragon.Backend.slnx
+dotnet run --project backend/src/Dragon.Backend.Cli -- provider-describe
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- run-until-idle --max-cycles 20 --root .
+dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --max-passes 10 --idle-passes 2 --max-cycles 20 --root .
+dotnet run --project backend/src/Dragon.Backend.Cli -- run-watch --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 20 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- queue --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-cycle-once --owner tmassey1979 --repo IdeaEngine --sync-github --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-until-idle --owner tmassey1979 --repo IdeaEngine --sync-github --max-cycles 20 --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-polling --owner tmassey1979 --repo IdeaEngine --sync-github --max-passes 10 --idle-passes 2 --max-cycles 20 --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-watch --owner tmassey1979 --repo IdeaEngine --sync-github --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 20 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- sync-workflow --owner tmassey1979 --repo IdeaEngine --issue 23 --root .
 ```
 
+Docker runtime:
+
+```bash
+cp .env.docker.example .env
+docker compose up --build
+```
+
+That stack now includes:
+
+- `dragon-backend`: published CLI worker container running the status server and watch loop together
+- `postgres`: default relational store for future persistence work
+- `rabbitmq`: default message broker for future queue/event wiring
+- `lgtm`: bundled observability stack with Grafana + OTLP endpoints
+
+The backend container currently still uses the repo's file-backed state under
+`/workspace/.dragon`, but the compose stack brings up the surrounding server
+resources now so the runtime can grow into them without reworking deployment.
+
+Useful ports:
+
+- backend status: `http://127.0.0.1:5078/status`
+- backend health: `http://127.0.0.1:5078/health`
+- Postgres: `127.0.0.1:5432`
+- RabbitMQ AMQP: `127.0.0.1:5672`
+- RabbitMQ management: `http://127.0.0.1:15672`
+- Grafana / LGTM: `http://127.0.0.1:3000`
+
+Useful environment overrides:
+
+- `DRAGON_RUN_MODE=watch|polling|idle|github-watch|github-polling|github-idle`
+- `DRAGON_POLL_SECONDS`
+- `DRAGON_MAX_PASSES`
+- `DRAGON_IDLE_PASSES`
+- `DRAGON_MAX_CYCLES`
+- `DRAGON_GITHUB_OWNER`
+- `DRAGON_GITHUB_REPO`
+- `DRAGON_SYNC_GITHUB=true`
+- `OPENAI_API_KEY`
+- `GITHUB_TOKEN` / `GH_TOKEN`
+
+Provider direction:
+
+- `IAgentModelProvider` is the backend abstraction boundary
+- `OpenAiResponsesProvider` is the initial production-oriented provider target
+- additional providers should be added later without changing role-based agent behavior
+
 `--sync-github` is guarded: it only comments on and closes an issue after the workflow reaches `validated`, and the sync comment now includes recent execution IDs and changed-path trace data.
 `run-until-idle` is bounded by `--max-cycles` and keeps cycling until the local queue is empty and there is no more schedulable backlog work in the current issue set.
+`run-polling` is the next bare-minimum unattended step: it repeats `run-until-idle` across multiple passes and only stops after the loop has stayed idle for the configured number of polls.
+`run-watch` extends that one step further by waiting between passes, which makes it usable as a lightweight unattended worker instead of only a bounded batch poller.
 
 Repeated failures are also guarded: when the same stage keeps failing across cycles, the issue is marked `quarantined` in `.dragon/state/issues.json`, the loop stops reseeding it automatically, and the GitHub issue gets a maintained remediation comment plus a `quarantined` label instead of being closed.
 

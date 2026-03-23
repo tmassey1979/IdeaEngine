@@ -1,0 +1,10 @@
+[Unit]
+Description=Scheduled Dragon Idea Engine Alert Check
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+Unit=dragon-alert-check.service
+
+[Install]
+WantedBy=timers.target

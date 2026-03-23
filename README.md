@@ -1,34 +1,78 @@
 # Dragon Idea Engine
 
-Dragon Idea Engine is an autonomous software factory scaffold built around a plugin-driven agent runner.
+Dragon Idea Engine is an autonomous software factory scaffold centered on a C# backend.
 
-The backend direction is now C#. The existing Node-based services remain useful as a behavior prototype, but the durable backend path is being rebuilt under [`backend/`](/mnt/c/code/Playground/IdeaEngine/backend).
+The supported backend path now lives under [`backend/`](/mnt/c/code/Playground/IdeaEngine/backend). The earlier Node-based runtime scaffold has been retired from the repo so the implementation surface matches the current direction.
 
 Current implementation focus:
 
-- root workspace structure
-- plugin-based agent runtime
-- starter agent plugins
-- shared agent SDK
-- job lifecycle, retry, dead-letter, and SDK utility foundations
-- minimum self-build orchestration that can select the next open story and publish the next job
+- C# self-build contracts and workflow state
+- local queue persistence and bounded orchestration
+- API-first agent execution design with OpenAI as the initial provider target
+- GitHub-backed backlog discovery and workflow sync
+- recovery, quarantine, and validation flow
+- regression coverage around changed-path canonicalization
 
-See [docs/MASTER_CODEX.md](/mnt/c/code/Playground/IdeaEngine/docs/MASTER_CODEX.md) for the extracted product codex and [docs/ARCHITECTURE.md](/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md) for the current implementation shape.
+See [codex/MASTER_CODEX.md](/mnt/c/code/Playground/IdeaEngine/codex/MASTER_CODEX.md) for the extracted product codex, [docs/ARCHITECTURE.md](/mnt/c/code/Playground/IdeaEngine/docs/ARCHITECTURE.md) for the current implementation shape, [docs/OPENAI_PROVIDER.md](/mnt/c/code/Playground/IdeaEngine/docs/OPENAI_PROVIDER.md) for the provider strategy, and [docs/AUTONOMY_ROADMAP.md](/mnt/c/code/Playground/IdeaEngine/docs/AUTONOMY_ROADMAP.md) for the unattended-operation roadmap.
 
 Current C# backend entrypoint:
 
 ```bash
 dotnet test backend/Dragon.Backend.slnx
+npm run status:ui
+dotnet run --project backend/src/Dragon.Backend.Cli -- provider-describe
 dotnet run --project backend/src/Dragon.Backend.Cli -- plan-from-backlog --title "[Story] Dragon Idea Engine Master Codex: Core System Principles" --number 22 --root .
 dotnet run --project backend/src/Dragon.Backend.Cli -- cycle-once --root .
+dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --root . --max-passes 10 --idle-passes 2 --max-cycles 100
+dotnet run --project backend/src/Dragon.Backend.Cli -- run-watch --root . --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 100
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-issues --owner tmassey1979 --repo IdeaEngine --root .
 GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-cycle-once --owner tmassey1979 --repo IdeaEngine --sync-github --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-polling --owner tmassey1979 --repo IdeaEngine --sync-github --max-passes 10 --idle-passes 2 --max-cycles 100 --root .
+GH_BIN=/home/temassey/.local/bin/gh dotnet run --project backend/src/Dragon.Backend.Cli -- github-run-watch --owner tmassey1979 --repo IdeaEngine --sync-github --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 100 --root .
 ```
 
-Current self-build entrypoint:
+Dashboard status export:
 
 ```bash
-node services/dragon-orchestrator/src/cli.js cycle-once --owner tmassey1979 --repo IdeaEngine
-node services/dragon-orchestrator/src/cli.js queue
-node services/dragon-orchestrator/src/cli.js consume-next
+npm run status:ui
 ```
+
+That refreshes [ui/dragon-ui/sample-status.json](/mnt/c/code/Playground/IdeaEngine/ui/dragon-ui/sample-status.json) from the live backend `status` snapshot so the mock dashboard reflects current queue and workflow state without editing the sample file by hand.
+
+To run the local self-build loop and refresh the dashboard snapshot in one step:
+
+```bash
+npm run run:ui
+```
+
+To keep polling for new work while still stopping after the loop has gone idle
+for multiple passes:
+
+```bash
+npm run run:polling
+```
+
+To keep the local runner alive between passes with a controlled poll interval:
+
+```bash
+npm run run:watch
+```
+
+Docker stack:
+
+```bash
+cp .env.docker.example .env
+npm run docker:up
+```
+
+That now boots:
+
+- the backend worker container
+- Postgres
+- RabbitMQ
+- a bundled observability stack
+
+The backend status endpoint is exposed at `http://127.0.0.1:5078/status`, which
+matches the live-first dashboard path.
+
+For Raspberry Pi host bootstrap, guided first-run, env configuration, reboot-safe service install, status reporting, shortcut command install, Pi self-tests, tooling refresh helpers, daily routine helpers, evening routine helpers, weekly routine helpers, backup verification helpers, backup-and-verify helpers, restore-and-verify helpers, preflight start, start-and-wait, stop, wait-until-stopped, restart, restart-and-wait, ensure-running, and wait-until-healthy helpers, updates, optional scheduled self-updates, health checks, preflight readiness checks, diagnostics, backups, scheduled backup timers, temp cleanup, uninstall, state reset, first-aid recovery, alert-friendly checks, optional self-check timers, webhook notifications, alert configuration helpers, an ops cheat sheet, service/timer reinstall helpers, log-tail helpers, a richer status dashboard, a live status watcher, a guided service doctor, and a lightweight share-status bundle, see [docs/PI_SETUP.md](/mnt/c/code/Playground/IdeaEngine/docs/PI_SETUP.md), [scripts/pi-bootstrap-all.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-bootstrap-all.sh), [scripts/setup-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/setup-pi.sh), [scripts/configure-pi-env.sh](/mnt/c/code/Playground/IdeaEngine/scripts/configure-pi-env.sh), [scripts/configure-pi-alerts.sh](/mnt/c/code/Playground/IdeaEngine/scripts/configure-pi-alerts.sh), [scripts/install-pi-aliases.sh](/mnt/c/code/Playground/IdeaEngine/scripts/install-pi-aliases.sh), [scripts/pi-self-test.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-self-test.sh), [scripts/pi-refresh-tooling.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-refresh-tooling.sh), [scripts/pi-daily-routine.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-daily-routine.sh), [scripts/pi-evening-routine.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-evening-routine.sh), [scripts/pi-weekly-routine.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-weekly-routine.sh), [scripts/pi-verify-backup.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-verify-backup.sh), [scripts/pi-backup-and-verify.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-backup-and-verify.sh), [scripts/pi-restore-and-verify.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-restore-and-verify.sh), [scripts/pi-ops-summary.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-ops-summary.sh), [scripts/pi-reinstall-service.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-reinstall-service.sh), [scripts/pi-tail-logs.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-tail-logs.sh), [scripts/pi-status-dashboard.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-status-dashboard.sh), [scripts/pi-watch-status.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-watch-status.sh), [scripts/pi-service-doctor.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-service-doctor.sh), [scripts/pi-share-status.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-share-status.sh), [scripts/pi-preflight.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-preflight.sh), [scripts/pi-start.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-start.sh), [scripts/pi-start-and-wait.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-start-and-wait.sh), [scripts/pi-stop.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-stop.sh), [scripts/pi-stop-and-wait.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-stop-and-wait.sh), [scripts/pi-wait-until-stopped.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-wait-until-stopped.sh), [scripts/pi-restart.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-restart.sh), [scripts/pi-restart-and-wait.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-restart-and-wait.sh), [scripts/pi-ensure-running.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-ensure-running.sh), [scripts/pi-wait-until-healthy.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-wait-until-healthy.sh), [scripts/pi-uninstall.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-uninstall.sh), [scripts/pi-reset-state.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-reset-state.sh), [scripts/pi-firstaid.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-firstaid.sh), [scripts/pi-alert-check.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-alert-check.sh), [scripts/pi-alert-notify.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-alert-notify.sh), [scripts/pi-report.sh](/mnt/c/code/Playground/IdeaEngine/scripts/pi-report.sh), [scripts/update-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/update-pi.sh), [scripts/healthcheck-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/healthcheck-pi.sh), [scripts/collect-pi-diagnostics.sh](/mnt/c/code/Playground/IdeaEngine/scripts/collect-pi-diagnostics.sh), [scripts/backup-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/backup-pi.sh), [scripts/restore-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/restore-pi.sh), and [scripts/cleanup-pi.sh](/mnt/c/code/Playground/IdeaEngine/scripts/cleanup-pi.sh).

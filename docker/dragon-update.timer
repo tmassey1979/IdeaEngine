@@ -1,0 +1,10 @@
+[Unit]
+Description=Scheduled Dragon Idea Engine Update Check
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+Unit=dragon-update.service
+
+[Install]
+WantedBy=timers.target

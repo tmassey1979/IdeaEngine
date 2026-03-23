@@ -37,7 +37,8 @@ public sealed class ExecutionRecordStore
             execution.Summary,
             execution.ObservedAt,
             execution.ChangedPaths?.Count > 0 ? execution.ChangedPaths : ReadChangedPaths(job),
-            followUps.Select(item => item.Agent).ToArray()
+            followUps.Select(item => item.Agent).ToArray(),
+            BuildNotes(job)
         );
 
         records.Add(record);
@@ -64,5 +65,39 @@ public sealed class ExecutionRecordStore
         }
 
         return changedPathsRaw.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static string BuildNotes(SelfBuildJob job)
+    {
+        var notes = new List<string>();
+
+        if (job.Metadata.TryGetValue("implementationConflictResolution", out var implementationResolution) &&
+            !string.IsNullOrWhiteSpace(implementationResolution))
+        {
+            var supersededImplementationIssues = job.Metadata.GetValueOrDefault("supersededImplementationIssues");
+            notes.Add(string.IsNullOrWhiteSpace(supersededImplementationIssues)
+                ? implementationResolution
+                : $"{implementationResolution} Superseded implementation issues: {supersededImplementationIssues}.");
+        }
+
+        if (job.Metadata.TryGetValue("summaryConflictResolution", out var summaryResolution) &&
+            !string.IsNullOrWhiteSpace(summaryResolution))
+        {
+            var supersededSummaryIssues = job.Metadata.GetValueOrDefault("supersededSummaryIssues");
+            notes.Add(string.IsNullOrWhiteSpace(supersededSummaryIssues)
+                ? summaryResolution
+                : $"{summaryResolution} Superseded summary issues: {supersededSummaryIssues}.");
+        }
+
+        if (string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            var signature = job.Metadata.GetValueOrDefault("interventionSignature");
+            if (!string.IsNullOrWhiteSpace(signature))
+            {
+                notes.Add($"Intervention escalation acknowledged: {signature}.");
+            }
+        }
+
+        return string.Join(" ", notes);
     }
 }

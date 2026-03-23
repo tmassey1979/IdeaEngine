@@ -41,6 +41,17 @@ public static class FailurePolicy
             return new FailureDisposition(false, null);
         }
 
+        var repeatedProviderPressureFailures = repeatedAgentFailures.All(record =>
+            record.Summary.StartsWith("Transient model provider failure", StringComparison.OrdinalIgnoreCase));
+
+        if (repeatedProviderPressureFailures)
+        {
+            return new FailureDisposition(
+                true,
+                $"Quarantined after {repeatedAgentFailures.Count} repeated failed {latestFailure.JobAgent} executions caused by transient model provider pressure. Latest failure: {latestFailure.Summary}"
+            );
+        }
+
         return new FailureDisposition(
             true,
             $"Quarantined after {repeatedAgentFailures.Count} repeated failed {latestFailure.JobAgent} executions. Latest failure: {latestFailure.JobAgent} / {latestFailure.JobId}."
@@ -76,7 +87,7 @@ public static class FailurePolicy
         );
     }
 
-    private static string InferCurrentStage(IssueWorkflowState workflow)
+    public static string InferCurrentStage(IssueWorkflowState workflow)
     {
         if (workflow.Stages.TryGetValue("developer", out var developer) &&
             string.Equals(developer.Status, "failed", StringComparison.OrdinalIgnoreCase))
