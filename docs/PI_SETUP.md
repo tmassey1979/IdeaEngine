@@ -34,9 +34,13 @@ INSTALL_SYSTEMD_SERVICE=false AUTO_START=true ./setup-pi.sh
 
 After the script finishes:
 
-1. Edit `.env` and set `OPENAI_API_KEY`.
-2. Set either `GITHUB_TOKEN` or `GH_TOKEN`.
-3. Start the service:
+1. Configure `.env`:
+
+```bash
+~/dragon/IdeaEngine/scripts/configure-pi-env.sh
+```
+
+2. Start the service:
 
 ```bash
 sudo systemctl start dragon-idea-engine
@@ -52,6 +56,7 @@ Routine maintenance:
 
 What those do:
 
+- `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
 
