@@ -1634,12 +1634,14 @@ public sealed class SelfBuildLoop
     private static string BuildAttentionSummary(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues, string health, LeadQuarantineSnapshot? leadQuarantine)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
+        var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
 
         return health switch
         {
             "blocked" when leadQuarantine is not null =>
                 $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work. Lead recovery: issue #{leadQuarantine.IssueNumber}" +
-                $"{(leadQuarantine.RecoveryIssueNumber is not null ? $" via recovery #{leadQuarantine.RecoveryIssueNumber.Value}" : string.Empty)}.",
+                $"{(leadQuarantine.RecoveryIssueNumber is not null ? $" via recovery #{leadQuarantine.RecoveryIssueNumber.Value}" : string.Empty)}" +
+                $"{(leadRecoveryAge is not null ? $" ({leadRecoveryAge})" : string.Empty)}.",
             "blocked" => $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work.",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
@@ -1719,13 +1721,47 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        var latest = pendingGithubSync
-            .OrderByDescending(item => item.RecordedAt)
+        var oldest = pendingGithubSync
+            .OrderBy(item => item.RecordedAt)
             .First();
 
         return pendingGithubSync.Count == 1
-            ? $"1 GitHub update is waiting for retry: issue #{latest.IssueNumber}."
-            : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Latest: issue #{latest.IssueNumber}.";
+            ? $"1 GitHub update is waiting for retry: issue #{oldest.IssueNumber} ({FormatElapsed(DateTimeOffset.UtcNow - oldest.RecordedAt)} old)."
+            : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Oldest: issue #{oldest.IssueNumber} ({FormatElapsed(DateTimeOffset.UtcNow - oldest.RecordedAt)} old).";
+    }
+
+    private static string? FormatLeadQuarantineAge(LeadQuarantineSnapshot? leadQuarantine)
+    {
+        if (leadQuarantine?.OldestPendingGithubSyncAt is null)
+        {
+            return null;
+        }
+
+        var elapsed = DateTimeOffset.UtcNow >= leadQuarantine.OldestPendingGithubSyncAt.Value
+            ? DateTimeOffset.UtcNow - leadQuarantine.OldestPendingGithubSyncAt.Value
+            : TimeSpan.Zero;
+
+        return $"{FormatElapsed(elapsed)} old";
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        if (elapsed < TimeSpan.Zero)
+        {
+            elapsed = TimeSpan.Zero;
+        }
+
+        if (elapsed.TotalHours >= 1)
+        {
+            return $"{Math.Floor(elapsed.TotalHours)}h {elapsed.Minutes}m";
+        }
+
+        if (elapsed.TotalMinutes >= 1)
+        {
+            return $"{Math.Floor(elapsed.TotalMinutes)}m {elapsed.Seconds}s";
+        }
+
+        return $"{Math.Max(0, elapsed.Seconds)}s";
     }
 
     private static LeadQuarantineSnapshot? AnnotateLeadQuarantine(
@@ -1779,7 +1815,11 @@ public sealed class SelfBuildLoop
             var recoverySuffix = leadQuarantine.RecoveryIssueNumber is not null
                 ? $" via recovery #{leadQuarantine.RecoveryIssueNumber.Value}"
                 : string.Empty;
-            return new RecentLoopSignalSnapshot("blocked", $"Loop is blocked by recovery work for issue #{leadQuarantine.IssueNumber}{recoverySuffix}.");
+            var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
+            return new RecentLoopSignalSnapshot(
+                "blocked",
+                $"Loop is blocked by recovery work for issue #{leadQuarantine.IssueNumber}{recoverySuffix}" +
+                $"{(leadRecoveryAge is not null ? $" with oldest writeback drift {leadRecoveryAge}" : string.Empty)}.");
         }
 
         if (latestActivity is null)

@@ -404,6 +404,8 @@ public sealed class PlannerTests
         Assert.NotNull(status.LeadQuarantine);
         Assert.Equal("sync-drift", status.LeadQuarantine!.State);
         Assert.Contains("GitHub updates for recovery #500", status.LeadQuarantine.Summary, StringComparison.Ordinal);
+        Assert.Contains("old", status.AttentionSummary, StringComparison.Ordinal);
+        Assert.Contains("oldest writeback drift", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -532,7 +534,8 @@ public sealed class PlannerTests
         Assert.NotNull(pending.LastAttemptedAt);
         Assert.NotNull(pending.NextRetryAt);
         Assert.True(pending.NextRetryAt > pending.LastAttemptedAt);
-        Assert.Equal("1 GitHub update is waiting for retry: issue #22.", status.PendingGithubSyncSummary);
+        Assert.Contains("1 GitHub update is waiting for retry: issue #22", status.PendingGithubSyncSummary, StringComparison.Ordinal);
+        Assert.Contains("old", status.PendingGithubSyncSummary, StringComparison.Ordinal);
     }
 
     [Fact]
