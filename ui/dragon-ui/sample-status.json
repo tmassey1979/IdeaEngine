@@ -172,6 +172,7 @@
     "recoveryIssueNumber": 500,
     "recoveryIssueTitle": "[Recovery] Provider Notes",
     "state": "sync-drift",
-    "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry."
+    "summary": "Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+    "oldestPendingGithubSyncAt": "2026-03-23T12:00:00Z"
   }
 }
