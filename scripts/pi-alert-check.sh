@@ -6,6 +6,7 @@ SERVICE_NAME="${SERVICE_NAME:-dragon-idea-engine}"
 MAX_SERVICE_RESTARTS="${MAX_SERVICE_RESTARTS:-5}"
 MAX_FAILED_ISSUES="${MAX_FAILED_ISSUES:-0}"
 MAX_ACTIONABLE_QUARANTINED="${MAX_ACTIONABLE_QUARANTINED:-0}"
+MAX_DELAYED_RETRY_MINUTES="${MAX_DELAYED_RETRY_MINUTES:-0}"
 ALLOW_HEALTH_STATES="${ALLOW_HEALTH_STATES:-healthy,idle}"
 REPORT_FILE=""
 
@@ -30,15 +31,17 @@ main() {
   trap cleanup EXIT
   "${REPO_DIR}/scripts/pi-report.sh" --json > "${REPORT_FILE}"
 
-  python3 - "${REPORT_FILE}" "${MAX_SERVICE_RESTARTS}" "${MAX_FAILED_ISSUES}" "${MAX_ACTIONABLE_QUARANTINED}" "${ALLOW_HEALTH_STATES}" <<'PY'
+  python3 - "${REPORT_FILE}" "${MAX_SERVICE_RESTARTS}" "${MAX_FAILED_ISSUES}" "${MAX_ACTIONABLE_QUARANTINED}" "${MAX_DELAYED_RETRY_MINUTES}" "${ALLOW_HEALTH_STATES}" <<'PY'
 import json
 import sys
+from datetime import datetime, timezone
 
 report_file = sys.argv[1]
 max_service_restarts = int(sys.argv[2])
 max_failed_issues = int(sys.argv[3])
 max_actionable_quarantined = int(sys.argv[4])
-allow_health_states = {item.strip() for item in sys.argv[5].split(",") if item.strip()}
+max_delayed_retry_minutes = int(sys.argv[5])
+allow_health_states = {item.strip() for item in sys.argv[6].split(",") if item.strip()}
 
 with open(report_file, "r", encoding="utf-8") as handle:
     report = json.load(handle)
@@ -91,6 +94,20 @@ if actionable_quarantined > max_actionable_quarantined:
         f"actionable quarantined issues {actionable_quarantined} exceeds {max_actionable_quarantined}"
     )
 
+next_delayed_retry_at = status.get("nextDelayedRetryAt")
+delayed_retry_minutes = 0
+if next_delayed_retry_at:
+    try:
+        delayed_retry_at = datetime.fromisoformat(next_delayed_retry_at.replace("Z", "+00:00"))
+        delayed_retry_minutes = max(0, (delayed_retry_at - datetime.now(timezone.utc)).total_seconds() / 60)
+    except ValueError:
+        delayed_retry_minutes = 0
+
+if max_delayed_retry_minutes > 0 and delayed_retry_minutes > max_delayed_retry_minutes:
+    problems.append(
+        f"delayed retry wait {int(delayed_retry_minutes)}m exceeds {max_delayed_retry_minutes}m"
+    )
+
 if problems:
     print("[alert] Dragon Pi check failed")
     for problem in problems:
@@ -102,6 +119,7 @@ print(f"service_active={service_active}")
 print(f"worker_health={worker_health}")
 print(f"failed_issues={failed_issues}")
 print(f"actionable_quarantined={actionable_quarantined}")
+print(f"delayed_retry_minutes={int(delayed_retry_minutes)}")
 PY
 }
 
