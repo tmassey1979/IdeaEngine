@@ -356,6 +356,7 @@ public sealed class GithubIssueService
                 $"- GitHub sync recorded at: {DescribeGlobalGithubSyncRecordedAt(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
+                $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -560,6 +561,7 @@ public sealed class GithubIssueService
                 $"- GitHub sync recorded at: {DescribeGlobalGithubSyncRecordedAt(rootDirectory)}",
                 $"- GitHub replay: {DescribeGlobalGithubReplay(rootDirectory)}",
                 $"- GitHub replay recorded at: {DescribeGlobalGithubReplayRecordedAt(rootDirectory)}",
+                $"- pending GitHub sync count: {DescribePendingGithubSyncCount(rootDirectory)}",
                 $"- pending GitHub sync: {DescribePendingGithubSyncSummary(rootDirectory)}",
                 $"- latest pass: {DescribeGlobalLatestPass(rootDirectory)}",
                 $"- latest pass outcome: {DescribeGlobalLatestPassOutcome(rootDirectory)}",
@@ -1770,6 +1772,29 @@ public sealed class GithubIssueService
             }
 
             return "clear";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribePendingGithubSyncCount(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("pendingGithubSyncCount", out var countProperty) &&
+                countProperty.ValueKind == JsonValueKind.Number &&
+                countProperty.TryGetInt32(out var count)
+                ? count.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : "not recorded";
         }
         catch (JsonException)
         {

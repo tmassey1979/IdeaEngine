@@ -4788,6 +4788,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub sync recorded at: 2026-03-23T12:01:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay: 3/3 updated: Replayed 3 pending GitHub updates.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-23T12:01:30.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 1", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: 1 pending GitHub update remains queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 seed, 0 consume, replay 3/3", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
@@ -5256,6 +5257,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub sync recorded at: 2026-03-16T15:26:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: No pending GitHub updates needed replay on the latest pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-16T15:26:15.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 2: 4 cycles, 1 seed, 3 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
@@ -5433,6 +5435,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub sync recorded at: 2026-03-16T15:30:30.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: No pending GitHub updates needed replay on the latest pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-16T15:30:30.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 7: 1 seed, 1 consume, escalation 1/1", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
@@ -5578,6 +5581,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("GitHub sync recorded at: 2026-03-16T15:30:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay: 0/0 updated: No pending GitHub updates needed replay on the latest pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub replay recorded at: 2026-03-16T15:30:00.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("pending GitHub sync count: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("pending GitHub sync: clear", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass: pass 6: 3 cycles, 1 seed, 2 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: idle reached", StringComparison.Ordinal));
