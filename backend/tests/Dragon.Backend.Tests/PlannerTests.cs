@@ -4682,6 +4682,13 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 1,
               "pendingGithubSyncSummary": "1 pending GitHub update remains queued for retry.",
+              "latestActivity": {
+                "issueNumber": 500,
+                "issueTitle": "[Recovery] Core",
+                "currentStage": "review",
+                "summary": "Recovery review is waiting on GitHub writeback replay.",
+                "recordedAt": "2026-03-23T12:01:40Z"
+              },
               "health": "healthy",
               "attentionSummary": "3 GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
               "latestPass": {
@@ -4749,6 +4756,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker activity: Replaying pending GitHub updates before the next watch pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead job: issue #500 · documentation:review_issue · docs/generated/provider-notes.md · stabilize provider notes recovery summary · priority high · blocking · recovery", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: issue #22 · recovery #500 · 1 queued recovery job · sync-drift · Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker latest activity: issue #500 · stage review · Recovery review is waiting on GitHub writeback replay. · 2026-03-23T12:01:40.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
@@ -5107,6 +5115,13 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 0,
               "pendingGithubSyncSummary": null,
+              "latestActivity": {
+                "issueNumber": 22,
+                "issueTitle": "Core",
+                "currentStage": "review",
+                "summary": "Implementation advanced into review.",
+                "recordedAt": "2026-03-16T15:26:18Z"
+              },
               "health": "healthy",
               "attentionSummary": "1 queued job(s), 1 issue(s) in progress.",
               "latestPass": {
@@ -5183,6 +5198,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker activity: Advancing queued implementation work for issue #22.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead job: issue #22 · documentation:implement_issue · docs/architecture.md · refresh architecture docs · priority medium · story", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: none active", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker latest activity: issue #22 · stage review · Implementation advanced into review. · 2026-03-16T15:26:18.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 2 / 6 · idle 0 / 2 · remaining 2 · budget 4", StringComparison.Ordinal));
@@ -5263,6 +5279,13 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 0,
               "pendingGithubSyncSummary": null,
+              "latestActivity": {
+                "issueNumber": 22,
+                "issueTitle": "Core",
+                "currentStage": "review",
+                "summary": "Operator escalation summary remains the active checkpoint.",
+                "recordedAt": "2026-03-16T15:30:32Z"
+              },
               "health": "attention",
               "attentionSummary": "Critical intervention target remains acknowledged but unresolved. Escalate issue #22: Summarize the persistent critical intervention target and the next operator action.",
               "latestPass": {
@@ -5326,6 +5349,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker activity: Tracking acknowledged operator escalation before the next watch pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead job: issue #22 · developer:summarize_issue · backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs · Summarize the persistent critical intervention target and the next operator action. · priority high · blocking · operator-escalation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: issue #22 · recovery #500 · 1 queued recovery job · recovery-active · Recovery issue #500 is actively draining work for parent issue #22.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker latest activity: issue #22 · stage review · Operator escalation summary remains the active checkpoint. · 2026-03-16T15:30:32.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 7 / 10 · idle 1 / 2 · remaining 1 · budget 3", StringComparison.Ordinal));
@@ -5383,6 +5407,13 @@ public sealed class PlannerTests
               },
               "pendingGithubSyncCount": 0,
               "pendingGithubSyncSummary": null,
+              "latestActivity": {
+                "issueNumber": 22,
+                "issueTitle": "Core",
+                "currentStage": "complete",
+                "summary": "Idle confirmation pass completed after validation.",
+                "recordedAt": "2026-03-16T15:30:00Z"
+              },
               "health": "idle",
               "attentionSummary": "No queued work and no active issue workflows.",
               "latestPass": {
@@ -5438,6 +5469,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker activity: Worker stopped after reaching the configured idle target.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead job: none queued", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker lead quarantine: none active", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker latest activity: issue #22 · stage complete · Idle confirmation pass completed after validation. · 2026-03-16T15:30:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: idle target reached", StringComparison.Ordinal));

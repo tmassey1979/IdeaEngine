@@ -342,6 +342,7 @@ public sealed class GithubIssueService
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
+                $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -537,6 +538,7 @@ public sealed class GithubIssueService
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
+                $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -1096,6 +1098,73 @@ public sealed class GithubIssueService
 
             return parts.Count == 0
                 ? "none active"
+                : string.Join(" · ", parts);
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalLatestActivity(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("latestActivity", out var latestActivity) ||
+                latestActivity.ValueKind != JsonValueKind.Object)
+            {
+                return "not recorded";
+            }
+
+            var issueNumber = latestActivity.TryGetProperty("issueNumber", out var issueNumberProperty) &&
+                issueNumberProperty.ValueKind == JsonValueKind.Number &&
+                issueNumberProperty.TryGetInt32(out var parsedIssueNumber)
+                ? parsedIssueNumber
+                : (int?)null;
+            var currentStage = latestActivity.TryGetProperty("currentStage", out var currentStageProperty) &&
+                currentStageProperty.ValueKind == JsonValueKind.String
+                ? currentStageProperty.GetString()
+                : null;
+            var summary = latestActivity.TryGetProperty("summary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String
+                ? summaryProperty.GetString()
+                : null;
+            var recordedAt = latestActivity.TryGetProperty("recordedAt", out var recordedAtProperty) &&
+                recordedAtProperty.ValueKind == JsonValueKind.String &&
+                recordedAtProperty.TryGetDateTimeOffset(out var parsedRecordedAt)
+                ? parsedRecordedAt
+                : (DateTimeOffset?)null;
+
+            var parts = new List<string>();
+            if (issueNumber is > 0)
+            {
+                parts.Add($"issue #{issueNumber.Value}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentStage))
+            {
+                parts.Add($"stage {currentStage}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(summary))
+            {
+                parts.Add(summary!);
+            }
+
+            if (recordedAt is not null)
+            {
+                parts.Add(recordedAt.Value.ToString("O"));
+            }
+
+            return parts.Count == 0
+                ? "not recorded"
                 : string.Join(" · ", parts);
         }
         catch (JsonException)
