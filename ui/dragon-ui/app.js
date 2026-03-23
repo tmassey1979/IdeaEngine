@@ -644,6 +644,7 @@ function renderStatusSnapshot(snapshot) {
   const attentionSummary = document.getElementById("status-attention-summary");
   const failed = document.getElementById("status-rollup-failed");
   const quarantined = document.getElementById("status-rollup-quarantined");
+  const quarantineDetail = document.getElementById("status-rollup-quarantine-detail");
   const inProgress = document.getElementById("status-rollup-in-progress");
   const validated = document.getElementById("status-rollup-validated");
   const failedDelta = document.getElementById("status-rollup-delta-failed");
@@ -724,6 +725,7 @@ function renderStatusSnapshot(snapshot) {
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
+  quarantineDetail.textContent = `${snapshot.rollup?.actionableQuarantinedIssues ?? 0} actionable / ${snapshot.rollup?.inactiveQuarantinedIssues ?? 0} inactive`;
   inProgress.textContent = String(snapshot.rollup?.inProgressIssues ?? 0);
   validated.textContent = String(snapshot.rollup?.validatedIssues ?? 0);
   failedDelta.textContent = formatDelta(snapshot.rollupDelta?.failedIssues ?? 0);
@@ -861,6 +863,7 @@ async function bootStatusMock() {
     const attentionSummary = document.getElementById("status-attention-summary");
     const failed = document.getElementById("status-rollup-failed");
     const quarantined = document.getElementById("status-rollup-quarantined");
+    const quarantineDetail = document.getElementById("status-rollup-quarantine-detail");
     const inProgress = document.getElementById("status-rollup-in-progress");
     const validated = document.getElementById("status-rollup-validated");
     const failedDelta = document.getElementById("status-rollup-delta-failed");
@@ -930,6 +933,7 @@ async function bootStatusMock() {
     attentionSummary.textContent = "Could not load status summary";
     failed.textContent = "0";
     quarantined.textContent = "0";
+    quarantineDetail.textContent = "0 actionable / 0 inactive";
     inProgress.textContent = "0";
     validated.textContent = "0";
     failedDelta.textContent = "0";

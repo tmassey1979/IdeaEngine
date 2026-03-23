@@ -1534,21 +1534,31 @@ public sealed class SelfBuildLoop
 
         return health switch
         {
-            "blocked" => $"{rollup.QuarantinedIssues} quarantined issue(s) still have queued recovery work.",
-            "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.QuarantinedIssues} quarantined issue(s) need intervention.",
+            "blocked" => $"{rollup.ActionableQuarantinedIssues} quarantined issue(s) still have queued recovery work.",
+            "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
             "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
             _ => "No queued work and no active issue workflows."
         };
     }
 
-    private static StatusRollup BuildStatusRollup(IReadOnlyList<IssueStatusSnapshot> issues) =>
-        new(
+    private static StatusRollup BuildStatusRollup(IReadOnlyList<IssueStatusSnapshot> issues)
+    {
+        var quarantinedIssues = issues
+            .Where(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        var actionableQuarantinedIssues = quarantinedIssues.Count(issue => issue.QueuedJobCount > 0);
+
+        return new StatusRollup(
             issues.Count(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase)),
-            issues.Count(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)),
+            quarantinedIssues.Length,
+            actionableQuarantinedIssues,
+            quarantinedIssues.Length - actionableQuarantinedIssues,
             issues.Count(issue => string.Equals(issue.OverallStatus, "in_progress", StringComparison.OrdinalIgnoreCase)),
             issues.Count(issue => string.Equals(issue.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         );
+    }
 
     private static LatestActivitySnapshot? BuildLatestActivity(IReadOnlyList<IssueStatusSnapshot> issues)
     {
@@ -1708,6 +1718,8 @@ public sealed record LatestPassSummary(
 public sealed record StatusRollup(
     int FailedIssues,
     int QuarantinedIssues,
+    int ActionableQuarantinedIssues,
+    int InactiveQuarantinedIssues,
     int InProgressIssues,
     int ValidatedIssues
 );

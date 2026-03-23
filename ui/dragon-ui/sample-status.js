@@ -19,6 +19,8 @@ globalThis.__DRAGON_STATUS__ = {
   "rollup": {
     "failedIssues": 1,
     "quarantinedIssues": 0,
+    "actionableQuarantinedIssues": 0,
+    "inactiveQuarantinedIssues": 0,
     "inProgressIssues": 1,
     "validatedIssues": 4
   },

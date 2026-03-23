@@ -653,6 +653,8 @@ public sealed class PlannerTests
         Assert.Contains("queued job", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("failedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("actionableQuarantinedIssues").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("inactiveQuarantinedIssues").GetInt32());
         Assert.Equal(1, rootElement.GetProperty("rollup").GetProperty("inProgressIssues").GetInt32());
         Assert.Equal(610, rootElement.GetProperty("leadJob").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("leadJob").GetProperty("agent").GetString());
@@ -1370,7 +1372,7 @@ public sealed class PlannerTests
             null,
             "healthy",
             "previous",
-            new StatusRollup(0, 0, 1, 0),
+            new StatusRollup(0, 0, 0, 0, 1, 0),
             null,
             null,
             new RecentLoopSignalSnapshot("draining", "previous"),
@@ -1397,7 +1399,7 @@ public sealed class PlannerTests
             6,
             "healthy",
             "current",
-            new StatusRollup(1, 0, 0, 1),
+            new StatusRollup(1, 0, 0, 0, 0, 1),
             new LeadJobSnapshot(500, "Provider Notes", "documentation", "implement_issue", "docs/generated/provider-notes.md", "refresh provider notes summary", "high", true, "story"),
             null,
             new RecentLoopSignalSnapshot("draining", "current"),
