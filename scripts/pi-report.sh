@@ -9,6 +9,7 @@ STATUS_URL="${STATUS_URL:-http://127.0.0.1:5078/status}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5078/health}"
 STATUS_SNAPSHOT_PATH="${STATUS_SNAPSHOT_PATH:-$REPO_DIR/.dragon/status/runtime-status.json}"
 BACKUP_ROOT="${BACKUP_ROOT:-$REPO_DIR/.tmp/pi-backups}"
+OUTPUT_FORMAT="${OUTPUT_FORMAT:-text}"
 
 STATUS_FILE=""
 STATUS_SOURCE="unavailable"
@@ -27,6 +28,24 @@ cleanup() {
   if [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]]; then
     rm -f "${STATUS_FILE}"
   fi
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --json)
+        OUTPUT_FORMAT="json"
+        ;;
+      --text)
+        OUTPUT_FORMAT="text"
+        ;;
+      *)
+        echo "Unknown argument: $1" >&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
 }
 
 json_query() {
@@ -276,6 +295,55 @@ PY
   echo "${output}"
 }
 
+compose_summary_json() {
+  if [[ ! -d "${REPO_DIR}" ]] || ! command_exists docker; then
+    echo '[]'
+    return
+  fi
+
+  local output
+  output="$(cd "${REPO_DIR}" && docker compose ps --format json 2>/dev/null || true)"
+  if [[ -z "${output}" ]]; then
+    echo '[]'
+    return
+  fi
+
+  if command_exists python3; then
+    python3 - <<'PY' <<<"${output}"
+import json
+import sys
+
+raw = sys.stdin.read().strip()
+if not raw:
+    print("[]")
+    raise SystemExit(0)
+
+try:
+    data = json.loads(raw)
+except json.JSONDecodeError:
+    lines = [line for line in raw.splitlines() if line.strip()]
+    data = [json.loads(line) for line in lines]
+
+if isinstance(data, dict):
+    data = [data]
+
+normalized = []
+for item in data:
+    normalized.append({
+        "name": item.get("Name", "unknown"),
+        "state": item.get("State", "unknown"),
+        "health": item.get("Health", ""),
+        "status": item.get("Status", ""),
+    })
+
+print(json.dumps(normalized))
+PY
+    return
+  fi
+
+  echo '[]'
+}
+
 newest_backup() {
   if [[ ! -d "${BACKUP_ROOT}" ]]; then
     echo "none found"
@@ -322,7 +390,135 @@ recent_service_failures() {
   done <<< "${lines}"
 }
 
+recent_service_failures_json() {
+  if ! command_exists journalctl; then
+    echo '[]'
+    return
+  fi
+
+  local lines
+  lines="$(journalctl -u "${SERVICE_NAME}.service" -n 80 --no-pager 2>/dev/null | grep -Ei "error|failed|exception|fatal|panic|crash" | tail -n 5 || true)"
+  if [[ -z "${lines}" ]]; then
+    echo '[]'
+    return
+  fi
+
+  if command_exists python3; then
+    python3 - <<'PY' <<<"${lines}"
+import json
+import sys
+
+lines = [line for line in sys.stdin.read().splitlines() if line.strip()]
+print(json.dumps(lines))
+PY
+    return
+  fi
+
+  echo '[]'
+}
+
+emit_json_report() {
+  local compose_json failure_json newest_backup_value
+  compose_json="$(compose_summary_json)"
+  failure_json="$(recent_service_failures_json)"
+  newest_backup_value="$(newest_backup)"
+
+  python3 - "${STATUS_FILE:-}" "${STATUS_SOURCE}" "${REPO_DIR}" "${SERVICE_NAME}" "${BACKUP_TIMER_NAME}" "${UPDATE_TIMER_NAME}" "${service_active}" "${service_enabled}" "${service_substate}" "${service_result}" "${service_exec_status}" "${service_restart_count}" "${backup_timer_active}" "${backup_timer_enabled}" "${backup_timer_next}" "${backup_timer_last}" "${update_timer_active}" "${update_timer_enabled}" "${update_timer_next}" "${update_timer_last}" "${health_endpoint_state}" "${status_endpoint_state}" "${compose_json}" "${failure_json}" "${newest_backup_value}" <<'PY'
+import json
+import os
+import sys
+
+(
+    status_file,
+    status_source,
+    repo_dir,
+    service_name,
+    backup_timer_name,
+    update_timer_name,
+    service_active,
+    service_enabled,
+    service_substate,
+    service_result,
+    service_exec_status,
+    service_restart_count,
+    backup_timer_active,
+    backup_timer_enabled,
+    backup_timer_next,
+    backup_timer_last,
+    update_timer_active,
+    update_timer_enabled,
+    update_timer_next,
+    update_timer_last,
+    health_endpoint_state,
+    status_endpoint_state,
+    compose_json,
+    failure_json,
+    newest_backup_value,
+) = sys.argv[1:]
+
+status_payload = None
+if status_file and os.path.isfile(status_file):
+    try:
+        with open(status_file, "r", encoding="utf-8") as handle:
+            status_payload = json.load(handle)
+    except Exception:
+        status_payload = None
+
+report = {
+    "timestamp": os.popen("date -Is").read().strip(),
+    "repoDir": repo_dir,
+    "statusSource": status_source,
+    "service": {
+        "name": service_name,
+        "active": service_active,
+        "enabled": service_enabled,
+        "substate": service_substate,
+        "result": service_result,
+        "execMainStatus": service_exec_status,
+        "restartCount": service_restart_count,
+        "recentFailures": json.loads(failure_json),
+    },
+    "timers": {
+        "backup": {
+            "name": backup_timer_name,
+            "active": backup_timer_active,
+            "enabled": backup_timer_enabled,
+            "next": backup_timer_next,
+            "last": backup_timer_last,
+        },
+        "update": {
+            "name": update_timer_name,
+            "active": update_timer_active,
+            "enabled": update_timer_enabled,
+            "next": update_timer_next,
+            "last": update_timer_last,
+        },
+    },
+    "endpoints": {
+        "health": health_endpoint_state,
+        "status": status_endpoint_state,
+    },
+    "compose": json.loads(compose_json or "[]"),
+    "newestBackup": newest_backup_value,
+    "status": status_payload,
+}
+
+print(json.dumps(report, indent=2))
+PY
+}
+
+endpoint_state() {
+  local url="$1"
+
+  if command_exists curl && curl -fsS "${url}" >/dev/null 2>&1; then
+    echo "reachable"
+  else
+    echo "unreachable"
+  fi
+}
+
 main() {
+  parse_args "$@"
   trap cleanup EXIT
 
   fetch_status
@@ -331,6 +527,9 @@ main() {
   local service_substate service_result service_exec_status service_restart_count
   local backup_timer_active backup_timer_enabled
   local update_timer_active update_timer_enabled
+  local backup_timer_next backup_timer_last
+  local update_timer_next update_timer_last
+  local health_endpoint_state status_endpoint_state
   service_active="$(service_state is-active)"
   service_enabled="$(service_state is-enabled)"
   service_substate="$(service_property SubState)"
@@ -341,6 +540,21 @@ main() {
   backup_timer_enabled="$(timer_state is-enabled "${BACKUP_TIMER_NAME}")"
   update_timer_active="$(timer_state is-active "${UPDATE_TIMER_NAME}")"
   update_timer_enabled="$(timer_state is-enabled "${UPDATE_TIMER_NAME}")"
+  backup_timer_next="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
+  backup_timer_last="$(systemctl show "${BACKUP_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
+  update_timer_next="$(systemctl show "${UPDATE_TIMER_NAME}.timer" --property NextElapseUSec --value 2>/dev/null || true)"
+  update_timer_last="$(systemctl show "${UPDATE_TIMER_NAME}.timer" --property LastTriggerUSec --value 2>/dev/null || true)"
+  backup_timer_next="${backup_timer_next:-unknown}"
+  backup_timer_last="${backup_timer_last:-unknown}"
+  update_timer_next="${update_timer_next:-unknown}"
+  update_timer_last="${update_timer_last:-unknown}"
+  health_endpoint_state="$(endpoint_state "${HEALTH_URL}")"
+  status_endpoint_state="$(endpoint_state "${STATUS_URL}")"
+
+  if [[ "${OUTPUT_FORMAT}" == "json" ]]; then
+    emit_json_report
+    return
+  fi
 
   print_heading "Dragon Pi Report"
   echo "timestamp: $(date -Is)"
@@ -356,15 +570,17 @@ main() {
   echo "service_restart_count: ${service_restart_count}"
   echo "backup_timer_active: ${backup_timer_active}"
   echo "backup_timer_enabled: ${backup_timer_enabled}"
-  timer_schedule "${BACKUP_TIMER_NAME}" "backup_timer"
+  echo "backup_timer_next=${backup_timer_next}"
+  echo "backup_timer_last=${backup_timer_last}"
   echo "update_timer_active: ${update_timer_active}"
   echo "update_timer_enabled: ${update_timer_enabled}"
-  timer_schedule "${UPDATE_TIMER_NAME}" "update_timer"
+  echo "update_timer_next=${update_timer_next}"
+  echo "update_timer_last=${update_timer_last}"
   recent_service_failures
 
   print_heading "Endpoints"
-  print_endpoint_status "${HEALTH_URL}" "health"
-  print_endpoint_status "${STATUS_URL}" "status"
+  echo "health: ${health_endpoint_state}"
+  echo "status: ${status_endpoint_state}"
 
   print_heading "Worker"
   if [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]] && command_exists python3; then
