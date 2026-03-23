@@ -2838,6 +2838,69 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void EnqueuePersistentInterventionEscalationFollowUp_SpecializesProviderBackoffReplaySummary()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var snapshot = new StatusSnapshot(
+            DateTimeOffset.UtcNow,
+            "status",
+            "github-run-watch",
+            "github-run-watch",
+            "waiting",
+            null,
+            null,
+            30,
+            0,
+            2,
+            2,
+            7,
+            3,
+            10,
+            "attention",
+            "provider backoff is delaying replay",
+            new StatusRollup(0, 0, 0, 0, 0, 1),
+            null,
+            null,
+            null,
+            new RecentLoopSignalSnapshot("waiting", "provider backoff is delaying replay"),
+            "unknown",
+            0,
+            null,
+            new StatusRollupDelta(0, 0, 0, 0),
+            0,
+            [],
+            null,
+            null,
+            null,
+            0,
+            [],
+            null,
+            null,
+            new InterventionTargetSnapshot(
+                "github-replay-drift",
+                "Provider backoff is delaying GitHub writeback replay. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
+                22,
+                500,
+                500,
+                "backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs",
+                null,
+                DateTimeOffset.UtcNow.AddHours(-2),
+                "2h 0m old",
+                "critical"),
+            "Escalation: global intervention target is critical. Provider backoff is delaying GitHub writeback replay.",
+            3,
+            ReplayPriorityReason: "provider-backoff");
+
+        var job = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
+
+        Assert.NotNull(job);
+        Assert.Equal("Summarize the provider backoff bottleneck delaying GitHub writeback replay and the next operator action.", job!.Metadata["targetOutcome"]);
+        Assert.Equal("Persistent provider backoff delaying GitHub writeback replay needs explicit operator summary.", job.Metadata["requestedReason"]);
+        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the provider backoff bottleneck delaying GitHub writeback replay and the next operator action.", job.Metadata["interventionSignature"]);
+    }
+
+    [Fact]
     public void EnqueuePersistentInterventionEscalationFollowUp_DoesNotDuplicateExistingEscalationSummary()
     {
         var root = CreateTempRoot();

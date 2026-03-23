@@ -229,7 +229,7 @@ public sealed class SelfBuildLoop
             ? null
             : snapshot.InterventionTarget with
             {
-                TargetOutcome = BuildInterventionEscalationTargetOutcome(snapshot.InterventionTarget)
+                TargetOutcome = BuildInterventionEscalationTargetOutcome(snapshot.InterventionTarget, snapshot.ReplayPriorityReason)
             };
         var signature = effectiveInterventionTarget is null
             ? null
@@ -284,7 +284,7 @@ public sealed class SelfBuildLoop
             ["requestedBy"] = "system",
             ["source"] = "dragon-orchestrator-dotnet",
             ["requestedPriority"] = "high",
-            ["requestedReason"] = BuildInterventionEscalationRequestedReason(effectiveInterventionTarget),
+            ["requestedReason"] = BuildInterventionEscalationRequestedReason(effectiveInterventionTarget, snapshot.ReplayPriorityReason),
             ["interventionEscalation"] = "true",
             ["interventionSignature"] = signature!,
             ["interventionKind"] = effectiveInterventionTarget.Kind,
@@ -360,22 +360,34 @@ public sealed class SelfBuildLoop
             string.Equals(record.Status, "success", StringComparison.OrdinalIgnoreCase) &&
             record.Notes.Contains($"Intervention escalation acknowledged: {signature}.", StringComparison.Ordinal));
 
-    private static string BuildInterventionEscalationTargetOutcome(InterventionTargetSnapshot interventionTarget)
+    private static string BuildInterventionEscalationTargetOutcome(InterventionTargetSnapshot interventionTarget, string? replayPriorityReason)
     {
         if (!string.IsNullOrWhiteSpace(interventionTarget.TargetOutcome))
         {
             return interventionTarget.TargetOutcome!;
         }
 
-        return string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase)
-            ? "Summarize the GitHub writeback replay bottleneck and the next operator action."
-            : "Summarize the persistent critical intervention target and the next operator action.";
+        if (string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(replayPriorityReason, "provider-backoff", StringComparison.OrdinalIgnoreCase)
+                ? "Summarize the provider backoff bottleneck delaying GitHub writeback replay and the next operator action."
+                : "Summarize the GitHub writeback replay bottleneck and the next operator action.";
+        }
+
+        return "Summarize the persistent critical intervention target and the next operator action.";
     }
 
-    private static string BuildInterventionEscalationRequestedReason(InterventionTargetSnapshot interventionTarget) =>
-        string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase)
-            ? "Persistent GitHub writeback replay bottleneck needs explicit operator summary."
-            : "Persistent critical intervention target needs explicit operator summary.";
+    private static string BuildInterventionEscalationRequestedReason(InterventionTargetSnapshot interventionTarget, string? replayPriorityReason)
+    {
+        if (string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(replayPriorityReason, "provider-backoff", StringComparison.OrdinalIgnoreCase)
+                ? "Persistent provider backoff delaying GitHub writeback replay needs explicit operator summary."
+                : "Persistent GitHub writeback replay bottleneck needs explicit operator summary.";
+        }
+
+        return "Persistent critical intervention target needs explicit operator summary.";
+    }
 
     private InterventionTargetSnapshot AnnotateInterventionTarget(InterventionTargetSnapshot interventionTarget)
     {
