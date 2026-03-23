@@ -62,6 +62,7 @@ public sealed class SelfBuildLoop
         int? maxPasses = null,
         string? workerActivity = null)
     {
+        var now = nowProvider();
         var queuedJobs = queueStore.ReadAll();
         var readyLeadJob = queueStore.Peek();
         var leadJob = readyLeadJob ?? queueStore.PeekAny();
@@ -94,21 +95,21 @@ public sealed class SelfBuildLoop
         var baseLeadQuarantine = BuildLeadQuarantine(workflows, queuedJobs, pendingGithubSync);
         var rollup = BuildStatusRollup(workflows, queuedJobs);
         var latestActivity = BuildLatestActivity(issues);
-        var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync);
+        var pendingGithubSyncSummary = BuildPendingGithubSyncSummary(pendingGithubSync, now);
         var pendingGithubSyncNextRetryAt = pendingGithubSync
             .Select(item => item.NextRetryAt)
             .Where(value => value is not null)
             .Min();
-        var pendingGithubSyncRetryState = BuildPendingGithubSyncRetryState(pendingGithubSyncNextRetryAt, DateTimeOffset.UtcNow);
+        var pendingGithubSyncRetryState = BuildPendingGithubSyncRetryState(pendingGithubSyncNextRetryAt, now);
         var pendingGithubSyncRetryOverdueMinutes = pendingGithubSyncNextRetryAt is null
             ? 0
-            : Math.Max(0, (int)Math.Floor((DateTimeOffset.UtcNow - pendingGithubSyncNextRetryAt.Value).TotalMinutes));
+            : Math.Max(0, (int)Math.Floor((now - pendingGithubSyncNextRetryAt.Value).TotalMinutes));
         var nextDelayedRetryAt = queuedJobs
             .Select(ReadRetryNotBeforeUtc)
             .Where(value => value is not null)
             .Min();
         var nextWakeReason = DeriveNextWakeReason(nextPollAt, nextDelayedRetryAt);
-        var delayedRetryUrgency = DeriveDelayedRetryUrgency(nextDelayedRetryAt, DateTimeOffset.UtcNow);
+        var delayedRetryUrgency = DeriveDelayedRetryUrgency(nextDelayedRetryAt, now);
         var delayedRetrySummary = nextDelayedRetryAt is null
             ? null
             : $"Next delayed provider retry unlocks at {nextDelayedRetryAt.Value:O}.";
@@ -128,8 +129,8 @@ public sealed class SelfBuildLoop
                 ReadRetryNotBeforeUtc(leadJob),
                 readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync));
-        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, DateTimeOffset.UtcNow);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, DateTimeOffset.UtcNow);
+        var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
@@ -137,7 +138,7 @@ public sealed class SelfBuildLoop
             : workerActivity;
 
         return new StatusSnapshot(
-            DateTimeOffset.UtcNow,
+            now,
             "status",
             lastCommand,
             workerMode,
@@ -2086,6 +2087,7 @@ public sealed class SelfBuildLoop
         LatestGithubReplaySnapshot? latestGithubReplay,
         InterventionTargetSnapshot? interventionTarget,
         DateTimeOffset? nextDelayedRetryAt,
+        DateTimeOffset? pendingGithubSyncNextRetryAt,
         DateTimeOffset now)
     {
         if (leadQuarantine is not null)
@@ -2117,6 +2119,12 @@ public sealed class SelfBuildLoop
                 : "healthy";
         }
 
+        if (pendingGithubSyncNextRetryAt is not null &&
+            now - pendingGithubSyncNextRetryAt.Value >= LongDelayedRetryAttentionThreshold)
+        {
+            return "attention";
+        }
+
         if (interventionTarget is not null &&
             !string.Equals(interventionTarget.Kind, "idle", StringComparison.OrdinalIgnoreCase))
         {
@@ -2144,6 +2152,7 @@ public sealed class SelfBuildLoop
         LatestGithubReplaySnapshot? latestGithubReplay,
         InterventionTargetSnapshot? interventionTarget,
         DateTimeOffset? nextDelayedRetryAt,
+        DateTimeOffset? pendingGithubSyncNextRetryAt,
         DateTimeOffset now)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
@@ -2151,6 +2160,9 @@ public sealed class SelfBuildLoop
         var delayedRetryAge = nextDelayedRetryAt is null
             ? (TimeSpan?)null
             : nextDelayedRetryAt.Value - now;
+        var pendingGithubRetryAge = pendingGithubSyncNextRetryAt is null
+            ? (TimeSpan?)null
+            : now - pendingGithubSyncNextRetryAt.Value;
 
         return health switch
         {
@@ -2165,6 +2177,8 @@ public sealed class SelfBuildLoop
                 $"Critical intervention target remains acknowledged but unresolved. {interventionTarget.Summary}",
             "attention" when delayedRetryAge is not null =>
                 $"Provider retry remains delayed for {FormatElapsed(delayedRetryAge.Value)} before the next execution window.",
+            "attention" when pendingGithubRetryAge is not null =>
+                $"GitHub writeback retry has been overdue for {FormatElapsed(pendingGithubRetryAge.Value)} and still has not drained.",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
             "healthy" when queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay) =>
@@ -2292,7 +2306,7 @@ public sealed class SelfBuildLoop
         );
     }
 
-    private static string? BuildPendingGithubSyncSummary(IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync)
+    private static string? BuildPendingGithubSyncSummary(IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync, DateTimeOffset now)
     {
         if (pendingGithubSync.Count == 0)
         {
@@ -2304,8 +2318,8 @@ public sealed class SelfBuildLoop
             .First();
 
         return pendingGithubSync.Count == 1
-            ? $"1 GitHub update is waiting for retry: issue #{oldest.IssueNumber} ({FormatElapsed(DateTimeOffset.UtcNow - oldest.RecordedAt)} old)."
-            : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Oldest: issue #{oldest.IssueNumber} ({FormatElapsed(DateTimeOffset.UtcNow - oldest.RecordedAt)} old).";
+            ? $"1 GitHub update is waiting for retry: issue #{oldest.IssueNumber} ({FormatElapsed(now - oldest.RecordedAt)} old)."
+            : $"{pendingGithubSync.Count} GitHub updates are waiting for retry. Oldest: issue #{oldest.IssueNumber} ({FormatElapsed(now - oldest.RecordedAt)} old).";
     }
 
     private static string? BuildPendingGithubSyncRetryState(DateTimeOffset? nextRetryAt, DateTimeOffset now)

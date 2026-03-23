@@ -641,6 +641,66 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_TreatsLongOverduePendingGithubRetryAsAttention()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 147,
+                "summary": "GitHub writeback retry queued after issue sync returned HTTP 403.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 3,
+                "lastAttemptedAt": "2026-03-23T12:10:00Z",
+                "nextRetryAt": "2026-03-23T12:15:00Z"
+              }
+            ]
+            """);
+
+        var loop = new SelfBuildLoop(root, nowProvider: () => DateTimeOffset.Parse("2026-03-23T12:45:00Z"));
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.Equal("attention", status.Health);
+        Assert.Equal(DateTimeOffset.Parse("2026-03-23T12:15:00Z"), status.PendingGithubSyncNextRetryAt);
+        Assert.Equal("ready now", status.PendingGithubSyncRetryState);
+        Assert.Equal(30, status.PendingGithubSyncRetryOverdueMinutes);
+        Assert.Contains("GitHub writeback retry has been overdue", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ReadStatus_TreatsShortOverduePendingGithubRetryAsHealthy()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "pending-github-sync.json"),
+            """
+            [
+              {
+                "issueNumber": 147,
+                "summary": "GitHub writeback retry queued after issue sync returned HTTP 403.",
+                "recordedAt": "2026-03-23T12:00:00Z",
+                "attemptCount": 3,
+                "lastAttemptedAt": "2026-03-23T12:10:00Z",
+                "nextRetryAt": "2026-03-23T12:14:00Z"
+              }
+            ]
+            """);
+
+        var loop = new SelfBuildLoop(root, nowProvider: () => DateTimeOffset.Parse("2026-03-23T12:20:00Z"));
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.Equal("healthy", status.Health);
+        Assert.Equal(DateTimeOffset.Parse("2026-03-23T12:14:00Z"), status.PendingGithubSyncNextRetryAt);
+        Assert.Equal("ready now", status.PendingGithubSyncRetryState);
+        Assert.Equal(6, status.PendingGithubSyncRetryOverdueMinutes);
+        Assert.Equal("0 queued job(s), 0 issue(s) in progress.", status.AttentionSummary);
+    }
+
+    [Fact]
     public void ReadStatus_TreatsQuarantineWithQueuedRecoveryChildWorkAsBlockedAndExposesLeadQuarantine()
     {
         var root = CreateTempRoot();
