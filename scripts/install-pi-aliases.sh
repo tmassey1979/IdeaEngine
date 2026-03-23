@@ -52,6 +52,7 @@ main() {
   install_wrapper "dragon-ops-summary" "pi-ops-summary.sh"
   install_wrapper "dragon-reinstall-service" "pi-reinstall-service.sh"
   install_wrapper "dragon-tail-logs" "pi-tail-logs.sh"
+  install_wrapper "dragon-status-dashboard" "pi-status-dashboard.sh"
 
   print_path_hint
 }
