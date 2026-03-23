@@ -4725,6 +4725,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Replaying pending GitHub updates before the next watch pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub sync: issue #500 pending: GitHub sync failed for recovery issue #500.", StringComparison.Ordinal));
@@ -5143,6 +5144,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: running", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Advancing queued implementation work for issue #22.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: not scheduled", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 2 / 6 · idle 0 / 2 · remaining 2 · budget 4", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub sync: issue #22 updated: Updated GitHub heartbeat for issue #22.", StringComparison.Ordinal));
@@ -5261,6 +5263,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker state: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Tracking acknowledged operator escalation before the next watch pass.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker cadence: every 30 seconds, next poll 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next poll: 2026-03-16T15:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 7 / 10 · idle 1 / 2 · remaining 1 · budget 3", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub sync: issue #22 updated: Updated GitHub heartbeat for issue #22.", StringComparison.Ordinal));
@@ -5365,6 +5368,7 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("worker state: complete", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker activity: Worker stopped after reaching the configured idle target.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker next poll: not scheduled", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 6 / 6 · idle 2 / 2 · remaining 0 · budget 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: idle target reached", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("GitHub sync: issue #22 not attempted: GitHub sync skipped because no workflow updates were needed.", StringComparison.Ordinal));

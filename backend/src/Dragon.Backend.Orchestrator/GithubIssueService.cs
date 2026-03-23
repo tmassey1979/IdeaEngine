@@ -340,6 +340,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
+                $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -531,6 +532,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
+                $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
                 $"- GitHub sync: {DescribeGlobalGithubSync(rootDirectory)}",
@@ -935,6 +937,32 @@ public sealed class GithubIssueService
             }
 
             return $"next poll {nextPollAt!.Value:O}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerNextPoll(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not scheduled";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("nextPollAt", out var nextPollProperty) &&
+                nextPollProperty.ValueKind == JsonValueKind.String &&
+                nextPollProperty.TryGetDateTimeOffset(out var nextPollAt))
+            {
+                return nextPollAt.ToString("O");
+            }
+
+            return "not scheduled";
         }
         catch (JsonException)
         {
