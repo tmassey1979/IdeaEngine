@@ -2010,6 +2010,39 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_UsesProviderRetryAfterDelay_ForTransientRetries()
+    {
+        var issue = new GithubIssue(
+            506,
+            "[Story] Dragon Idea Engine Master Codex: Architect Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "architect", "IdeaEngine", "DragonIdeaEngine");
+        var observedSleeps = new List<TimeSpan>();
+        var provider = new FailingThenSuccessfulAgentModelProvider(
+            failuresBeforeSuccess: 1,
+            new AgentModelProviderException(
+                "openai-responses",
+                "OpenAI Responses request failed with HTTP 429 (Too Many Requests).",
+                true,
+                HttpStatusCode.TooManyRequests,
+                TimeSpan.FromSeconds(7)));
+        var executor = new LocalJobExecutor(
+            (_, _, _) => new CommandResult(0, "ok", string.Empty),
+            provider,
+            new ModelExecutionRetryOptions(MaxAttempts: 3, BaseDelayMilliseconds: 0),
+            delay => observedSleeps.Add(delay));
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Equal("Recovered after retry.", result.Summary);
+        Assert.Equal([TimeSpan.FromSeconds(7)], observedSleeps);
+        Assert.Equal(2, provider.AttemptCount);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReturnsNullForPlainText()
     {
         var parsed = AgentStructuredResultParser.Parse("plain text result");

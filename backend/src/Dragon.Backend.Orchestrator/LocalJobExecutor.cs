@@ -20,15 +20,18 @@ public sealed class LocalJobExecutor
     private readonly LocalCommandRunner commandRunner;
     private readonly IAgentModelProvider? modelProvider;
     private readonly ModelExecutionRetryOptions modelRetryOptions;
+    private readonly Action<TimeSpan> sleepAction;
 
     public LocalJobExecutor(
         LocalCommandRunner? commandRunner = null,
         IAgentModelProvider? modelProvider = null,
-        ModelExecutionRetryOptions? modelRetryOptions = null)
+        ModelExecutionRetryOptions? modelRetryOptions = null,
+        Action<TimeSpan>? sleepAction = null)
     {
         this.commandRunner = commandRunner ?? RunCommand;
         this.modelProvider = modelProvider;
         this.modelRetryOptions = modelRetryOptions ?? new ModelExecutionRetryOptions();
+        this.sleepAction = sleepAction ?? Thread.Sleep;
     }
 
     public static LocalJobExecutor CreateDefault(Func<string, string?> environmentReader, LocalCommandRunner? commandRunner = null)
@@ -109,7 +112,7 @@ public sealed class LocalJobExecutor
             catch (Exception exception) when (attempt < maxAttempts && IsTransientModelFailure(exception))
             {
                 lastException = exception;
-                SleepBeforeModelRetry(attempt);
+                SleepBeforeModelRetry(exception, attempt);
             }
         }
 
@@ -339,16 +342,15 @@ public sealed class LocalJobExecutor
         return new CommandResult(process.ExitCode, stdout, stderr);
     }
 
-    private void SleepBeforeModelRetry(int attempt)
+    private void SleepBeforeModelRetry(Exception exception, int attempt)
     {
-        var baseDelayMilliseconds = Math.Max(0, modelRetryOptions.BaseDelayMilliseconds);
-        if (baseDelayMilliseconds == 0)
+        var retryDelay = ResolveRetryDelay(exception, attempt);
+        if (retryDelay <= TimeSpan.Zero)
         {
             return;
         }
 
-        var multiplier = Math.Max(1, attempt);
-        Thread.Sleep(TimeSpan.FromMilliseconds(baseDelayMilliseconds * multiplier));
+        sleepAction(retryDelay);
     }
 
     private static bool IsTransientModelFailure(Exception exception)
@@ -375,6 +377,25 @@ public sealed class LocalJobExecutor
             var code when code is >= HttpStatusCode.InternalServerError => true,
             _ => false
         };
+    }
+
+    private TimeSpan ResolveRetryDelay(Exception exception, int attempt)
+    {
+        if (exception is AgentModelProviderException providerException &&
+            providerException.RetryAfter is { } retryAfter &&
+            retryAfter > TimeSpan.Zero)
+        {
+            return retryAfter;
+        }
+
+        var baseDelayMilliseconds = Math.Max(0, modelRetryOptions.BaseDelayMilliseconds);
+        if (baseDelayMilliseconds == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var multiplier = Math.Max(1, attempt);
+        return TimeSpan.FromMilliseconds(baseDelayMilliseconds * multiplier);
     }
 
     private static string FormatFailureSummary(Exception exception)
