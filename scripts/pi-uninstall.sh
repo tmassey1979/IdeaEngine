@@ -18,6 +18,12 @@ WRAPPERS=(
   "dragon-update"
   "dragon-backup"
   "dragon-diagnostics"
+  "dragon-firstaid"
+  "dragon-alert-check"
+  "dragon-alert-notify"
+  "dragon-configure-alerts"
+  "dragon-ops-summary"
+  "dragon-reinstall-service"
 )
 
 disable_unit_if_present() {

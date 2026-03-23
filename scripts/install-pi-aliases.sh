@@ -50,6 +50,7 @@ main() {
   install_wrapper "dragon-alert-notify" "pi-alert-notify.sh"
   install_wrapper "dragon-configure-alerts" "configure-pi-alerts.sh"
   install_wrapper "dragon-ops-summary" "pi-ops-summary.sh"
+  install_wrapper "dragon-reinstall-service" "pi-reinstall-service.sh"
 
   print_path_hint
 }
