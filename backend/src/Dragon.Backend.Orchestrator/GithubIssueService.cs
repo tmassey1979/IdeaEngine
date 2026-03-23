@@ -330,6 +330,7 @@ public sealed class GithubIssueService
                 "Automated backend heartbeat:",
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- recovery chain: {DescribeRecoveryChain(workflow)}",
+                $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- current stage: {currentStage}",
                 $"- current stage updated: {currentStageTiming}",
                 $"- stalled: {(stallState.IsStalled ? "yes" : "no")}",
@@ -499,6 +500,7 @@ public sealed class GithubIssueService
                 "Automated backend quarantine update:",
                 $"- workflow status: {workflow.OverallStatus}",
                 $"- recovery chain: {DescribeRecoveryChain(workflow)}",
+                $"- recovery state: {DescribeRecoveryState(workflow)}",
                 $"- blocked stage: {currentStage}",
                 $"- note: {workflow.Note ?? "No note recorded."}",
                 recoveryIssueNumber is not null ? $"- recovery issue: #{recoveryIssueNumber}" : "- recovery issue: not created",
@@ -544,6 +546,36 @@ public sealed class GithubIssueService
         }
 
         return $"current #{workflow.IssueNumber}";
+    }
+
+    private static string DescribeRecoveryState(IssueWorkflowState workflow)
+    {
+        if (workflow.SourceIssueNumber is not null)
+        {
+            return $"active child issue for parent #{workflow.SourceIssueNumber}";
+        }
+
+        if (workflow.ActiveRecoveryIssueNumbers?.Any() ?? false)
+        {
+            return $"active recovery children {string.Join(", ", workflow.ActiveRecoveryIssueNumbers!.Select(value => $"#{value}"))}";
+        }
+
+        if (workflow.Note?.Contains("parent requeued for active flow", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "recovery hold released and parent requeued";
+        }
+
+        if (workflow.Note?.Contains("Recovery child completed", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "recovery hold released";
+        }
+
+        if (string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+        {
+            return "awaiting recovery path";
+        }
+
+        return "no active recovery hold";
     }
 
     private void MarkSupersededRecoveryIssues(

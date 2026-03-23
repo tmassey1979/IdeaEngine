@@ -3382,6 +3382,7 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue close 23", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #23 -> children #500", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery state: active recovery children #500", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("active recovery children: #500", StringComparison.Ordinal));
     }
 
@@ -3574,6 +3575,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("--method POST", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("dragon-backend-remediation", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: current #22", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery state: awaiting recovery path", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: #999", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("Recovery checklist", StringComparison.Ordinal));
         Assert.DoesNotContain(commands, command => command.Contains("issue close 22", StringComparison.Ordinal));
@@ -3910,6 +3912,7 @@ public sealed class PlannerTests
         Assert.True(result.Updated);
         Assert.Contains(commands, command => command.Contains("issue edit 500", StringComparison.Ordinal) && command.Contains("remove-label superseded", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery chain: parent #22 -> current #500", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("recovery state: active child issue for parent #22", StringComparison.Ordinal));
     }
 
     [Fact]
