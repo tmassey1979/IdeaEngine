@@ -262,6 +262,50 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_TreatsHistoricalQuarantineWithoutQueuedWorkAsAttention()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        store.Update(500, "Provider Notes", "documentation", new JobExecutionResult("job-1", "documentation", "success", "updated", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(500, "quarantined", "Quarantined after repeated failures.");
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus();
+
+        Assert.Equal("attention", status.Health);
+        Assert.Contains("quarantined issue", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ReadStatus_TreatsQuarantineWithQueuedRecoveryWorkAsBlocked()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "recover_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            500,
+            new SelfBuildJobPayload("[Recovery] Provider Notes", ["story", "recovery"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "recovery",
+                ["requestedBlocking"] = "true"
+            }));
+
+        var store = new WorkflowStateStore(root);
+        store.Update(500, "Provider Notes", "documentation", new JobExecutionResult("job-1", "documentation", "success", "updated", DateTimeOffset.UtcNow));
+        store.OverrideOverallStatus(500, "quarantined", "Quarantined after repeated failures.");
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus();
+
+        Assert.Equal("blocked", status.Health);
+        Assert.Contains("queued recovery work", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesLatestGithubSyncFailure()
     {
         var root = CreateTempRoot();

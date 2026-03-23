@@ -1503,9 +1503,16 @@ public sealed class SelfBuildLoop
 
     private static string DeriveStatusHealth(int queuedJobs, IReadOnlyList<IssueStatusSnapshot> issues)
     {
-        if (issues.Any(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)))
+        if (issues.Any(issue =>
+                string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase) &&
+                issue.QueuedJobCount > 0))
         {
             return "blocked";
+        }
+
+        if (issues.Any(issue => string.Equals(issue.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "attention";
         }
 
         if (issues.Any(issue => string.Equals(issue.OverallStatus, "failed", StringComparison.OrdinalIgnoreCase)))
@@ -1527,7 +1534,8 @@ public sealed class SelfBuildLoop
 
         return health switch
         {
-            "blocked" => $"{rollup.QuarantinedIssues} quarantined issue(s) need intervention.",
+            "blocked" => $"{rollup.QuarantinedIssues} quarantined issue(s) still have queued recovery work.",
+            "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.QuarantinedIssues} quarantined issue(s) need intervention.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
             "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
             _ => "No queued work and no active issue workflows."
