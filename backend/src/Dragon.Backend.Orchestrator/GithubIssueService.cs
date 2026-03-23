@@ -343,6 +343,7 @@ public sealed class GithubIssueService
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
+                $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -539,6 +540,7 @@ public sealed class GithubIssueService
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
+                $"- worker rollup: {DescribeGlobalWorkerRollup(rootDirectory)}",
                 $"- worker cadence: {DescribeGlobalWorkerCadence(rootDirectory)}",
                 $"- worker next poll: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
@@ -1172,6 +1174,51 @@ public sealed class GithubIssueService
             return "not recorded";
         }
     }
+
+    private static string DescribeGlobalWorkerRollup(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            var root = document.RootElement;
+            var queuedJobs = root.TryGetProperty("queuedJobs", out var queuedJobsProperty) &&
+                queuedJobsProperty.ValueKind == JsonValueKind.Number &&
+                queuedJobsProperty.TryGetInt32(out var parsedQueuedJobs)
+                ? parsedQueuedJobs
+                : 0;
+
+            if (!root.TryGetProperty("rollup", out var rollup) || rollup.ValueKind != JsonValueKind.Object)
+            {
+                return $"queued {queuedJobs}";
+            }
+
+            var failedIssues = ReadInt32Property(rollup, "failedIssues");
+            var quarantinedIssues = ReadInt32Property(rollup, "quarantinedIssues");
+            var actionableQuarantinedIssues = ReadInt32Property(rollup, "actionableQuarantinedIssues");
+            var inactiveQuarantinedIssues = ReadInt32Property(rollup, "inactiveQuarantinedIssues");
+            var inProgressIssues = ReadInt32Property(rollup, "inProgressIssues");
+            var validatedIssues = ReadInt32Property(rollup, "validatedIssues");
+
+            return $"queued {queuedJobs} · in-progress {inProgressIssues} · failed {failedIssues} · quarantined {quarantinedIssues} ({actionableQuarantinedIssues} actionable, {inactiveQuarantinedIssues} inactive) · validated {validatedIssues}";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static int ReadInt32Property(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) &&
+        property.ValueKind == JsonValueKind.Number &&
+        property.TryGetInt32(out var parsedValue)
+            ? parsedValue
+            : 0;
 
     private static string DescribeGlobalWorkerCadence(string rootDirectory)
     {
