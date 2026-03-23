@@ -80,6 +80,7 @@ dragon-health
 dragon-update
 dragon-backup
 dragon-firstaid
+dragon-alert-check
 dragon-report --json
 ~/dragon/IdeaEngine/scripts/pi-report.sh
 ~/dragon/IdeaEngine/scripts/healthcheck-pi.sh
@@ -92,10 +93,11 @@ dragon-report --json
 What those do:
 
 - `configure-pi-env.sh` creates or updates `.env` from prompts or exported environment variables
-- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, and `dragon-firstaid`
+- `install-pi-aliases.sh` installs shortcut commands like `dragon-report`, `dragon-health`, `dragon-update`, `dragon-backup`, `dragon-diagnostics`, `dragon-firstaid`, and `dragon-alert-check`
 - `pi-uninstall.sh` disables installed services and timers, removes the shortcut commands, and can optionally remove the repo checkout
 - `pi-reset-state.sh` preserves the install but clears `.dragon` runtime state, with optional backup-first and diagnostics cleanup
 - `pi-firstaid.sh` runs a standard recovery flow: report, diagnostics capture, optional backup, and state reset
+- `pi-alert-check.sh` evaluates `pi-report.sh --json` and exits nonzero for unhealthy states so you can plug it into timers, cron, or external monitoring
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
@@ -131,6 +133,13 @@ First aid recovery:
 ```bash
 dragon-firstaid
 COLLECT_DIAGNOSTICS=false BACKUP_BEFORE_RESET=false dragon-firstaid
+```
+
+Alert-friendly check:
+
+```bash
+dragon-alert-check
+ALLOW_HEALTH_STATES=healthy,idle,attention MAX_FAILED_ISSUES=1 dragon-alert-check
 ```
 
 Notes:
