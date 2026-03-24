@@ -1335,6 +1335,42 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void QueueStore_PrioritizesStructuredImplementationProfilesAheadOfGenericImplementationWork()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            24,
+            new SelfBuildJobPayload("Generic Implementation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            25,
+            new SelfBuildJobPayload("Structured Implementation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "pipeline/runtime-generation"
+            }));
+
+        var next = queue.Peek();
+
+        Assert.NotNull(next);
+        Assert.Equal(25, next!.Issue);
+        Assert.Equal("pipeline/runtime-generation", next.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesQueuedCountsAndLatestExecutionNotes()
     {
         var root = CreateTempRoot();

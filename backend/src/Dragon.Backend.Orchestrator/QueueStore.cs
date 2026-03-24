@@ -135,6 +135,7 @@ public sealed class QueueStore
             .ThenBy(item => GetTargetingRank(item.job))
             .ThenBy(item => GetRoleAlignmentRank(item.job))
             .ThenBy(item => GetActionRank(item.job))
+            .ThenBy(item => GetImplementationProfileRank(item.job))
             .ThenBy(item => GetRollupBreadthRank(item.job))
             .ThenBy(item => item.index)
             .First()
@@ -172,6 +173,7 @@ public sealed class QueueStore
         .ThenBy(item => GetTargetingRank(item.job))
         .ThenBy(item => GetRoleAlignmentRank(item.job))
         .ThenBy(item => GetActionRank(item.job))
+        .ThenBy(item => GetImplementationProfileRank(item.job))
         .ThenBy(item => GetRollupBreadthRank(item.job))
         .ThenBy(item => item.index)
         .First()
@@ -269,6 +271,18 @@ public sealed class QueueStore
         }
 
         return 3;
+    }
+
+    private static int GetImplementationProfileRank(SelfBuildJob job)
+    {
+        if (!string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        return string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("implementationProfile"))
+            ? 1
+            : 0;
     }
 
     private static int GetRollupBreadthRank(SelfBuildJob job)

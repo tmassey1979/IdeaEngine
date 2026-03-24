@@ -1924,12 +1924,17 @@ public sealed class SelfBuildLoop
             return 0;
         }
 
-        if (string.Equals(priority, "low", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("implementationProfile")))
         {
-            return 2;
+            return 1;
         }
 
-        return 1;
+        if (string.Equals(priority, "low", StringComparison.OrdinalIgnoreCase))
+        {
+            return 3;
+        }
+
+        return 2;
     }
 
     private static int GetImplementationSpecificityRank(SelfBuildJob job)
