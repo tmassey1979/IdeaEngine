@@ -109,6 +109,45 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
+        if (IsBackendStackStory(matcher))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/README.md",
+                    RenderBackendStackReadmeTemplate(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                    RenderBackendStackComposeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/.env.example",
+                    RenderBackendStackEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj",
+                    RenderDotnetApiProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/appsettings.json",
+                    RenderBackendStackApiSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj",
+                    RenderDotnetWorkerProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/appsettings.json",
+                    RenderBackendStackWorkerSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/infra/core-services.json",
+                    RenderBackendStackCoreServicesTemplate())
+            ];
+        }
+
         if (matcher.Matches("agent runner"))
         {
             return
@@ -1179,6 +1218,121 @@ RABBITMQ_DEFAULT_USER=dragon
 RABBITMQ_DEFAULT_PASS=dragon
 """;
 
+    private static string RenderBackendStackReadmeTemplate(GithubIssue issue) =>
+        $$"""
+        # Pi Autonomous Engine Backend Stack
+
+        This template bundle captures a coordinated backend slice for **{{issue.Heading ?? issue.Title}}**.
+
+        ## Included Services
+
+        - Dragon API
+        - Dragon Worker
+        - RabbitMQ
+        - Postgres
+        - Keycloak
+        - MinIO
+        - Redis
+
+        ## Purpose
+
+        Use this scaffold when a backlog story describes shared Raspberry Pi services, single-device deployment, or a combined local backend platform for generated projects.
+        """;
+
+    private static string RenderBackendStackComposeTemplate() =>
+        """
+version: "3.9"
+
+services:
+  dragon-api:
+    build: ./dragon-api
+    env_file: .env.example
+    depends_on:
+      - rabbitmq
+      - postgres
+      - keycloak
+  dragon-worker:
+    build: ./dragon-worker
+    env_file: .env.example
+    depends_on:
+      - rabbitmq
+      - postgres
+      - redis
+  rabbitmq:
+    image: rabbitmq:3-management
+  postgres:
+    image: postgres:16
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: ["start-dev"]
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+  redis:
+    image: redis:7
+""";
+
+    private static string RenderBackendStackEnvTemplate() =>
+        """
+ASPNETCORE_ENVIRONMENT=Development
+DOTNET_ENVIRONMENT=Development
+POSTGRES_CONNECTION=Host=postgres;Username=dragon;Password=dragon;Database=dragon
+RABBITMQ_CONNECTION=amqp://guest:guest@rabbitmq:5672
+KEYCLOAK_AUTHORITY=http://keycloak:8080/realms/dragon
+MINIO_ENDPOINT=http://minio:9000
+REDIS_CONNECTION=redis:6379
+""";
+
+    private static string RenderBackendStackApiSettingsTemplate() =>
+        """
+{
+  "AllowedHosts": "*",
+  "Authentication": {
+    "Provider": "keycloak"
+  },
+  "CoreServices": {
+    "Messaging": "rabbitmq",
+    "Database": "postgres",
+    "ObjectStorage": "minio"
+  }
+}
+""";
+
+    private static string RenderBackendStackWorkerSettingsTemplate() =>
+        """
+{
+  "Worker": {
+    "PollSeconds": 5,
+    "QueueName": "dragon.jobs.pi"
+  },
+  "CoreServices": {
+    "Messaging": "rabbitmq",
+    "Caching": "redis",
+    "Database": "postgres"
+  }
+}
+""";
+
+    private static string RenderBackendStackCoreServicesTemplate() =>
+        """
+{
+  "profile": "pi-autonomous-engine",
+  "services": [
+    "database",
+    "messaging",
+    "authentication",
+    "caching",
+    "object-storage",
+    "logging"
+  ],
+  "constraints": {
+    "singleDevice": true,
+    "lightweightContainers": true,
+    "limitedCpuOverhead": true
+  }
+}
+""";
+
     private static string RenderDotnetDirectoryBuildPropsTemplate() =>
         """
 <Project>
@@ -1828,6 +1982,15 @@ export function pipelineSmokeTest(): boolean {
             "worker service",
             "queue polling",
             "hosted service");
+
+    private static bool IsBackendStackStory(StoryMatcher matcher) =>
+        matcher.Matches(
+            "pi edition core services",
+            "phase 1 raspberry pi autonomous engine",
+            "all components on a single device",
+            "shared infrastructure services",
+            "object storage",
+            "caching");
 
     private static string InferPluginTemplateName(GithubIssue issue)
     {

@@ -357,6 +357,41 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesBackendStackBundle_ForPiCoreServicesStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                130,
+                "[Story] REUSABLE COMPONENT LIBRARY: PI EDITION CORE SERVICES",
+                "OPEN",
+                ["story"],
+                "The Raspberry Pi edition will provide shared infrastructure services running locally.",
+                "PI EDITION CORE SERVICES",
+                "codex/sections/07-reusable-component-library.md"
+            )
+        );
+
+        Assert.Equal(8, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/README.md" &&
+            operation.Content!.Contains("PI EDITION CORE SERVICES", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml" &&
+            operation.Content!.Contains("keycloak", StringComparison.Ordinal) &&
+            operation.Content!.Contains("minio", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/.env.example" &&
+            operation.Content!.Contains("RABBITMQ_CONNECTION=", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj" &&
+            operation.Content!.Contains("Microsoft.NET.Sdk.Web", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/appsettings.json" &&
+            operation.Content!.Contains("\"Provider\": \"keycloak\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj" &&
+            operation.Content!.Contains("Microsoft.NET.Sdk.Worker", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/appsettings.json" &&
+            operation.Content!.Contains("\"QueueName\": \"dragon.jobs.pi\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/infra/core-services.json" &&
+            operation.Content!.Contains("\"singleDevice\": true", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_WritesProjectFactoryBundle_ForRepositoryCreationStory()
     {
         var operations = DeveloperOperationPlanner.Plan(
@@ -465,6 +500,29 @@ public sealed class PlannerTests
             operation.Content!.Contains("xunit", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/tests/WorkerOptionsTests.cs" &&
             operation.Content!.Contains("Defaults_AreStable", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_UsesTechnicalDetailsToPreferBackendStackBundle_WhenTitleIsGeneric()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                138,
+                "[Story] Dragon Idea Engine Infrastructure Architecture: Platform Foundation",
+                "OPEN",
+                ["story"],
+                "This story provides the shared local backend for the Pi edition.",
+                "Platform Foundation",
+                "codex/sections/03-dragon-idea-engine-infrastructure-architecture.md",
+                null,
+                ["RabbitMQ Queue", "Agent Runner Workers", "Agent Plugins", "Object Storage", "Caching"]
+            )
+        );
+
+        Assert.Equal(8, operations.Count);
+        Assert.All(operations, operation => Assert.StartsWith("templates/repo-templates/backend-stack/pi-autonomous-engine/", operation.Path, StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path.EndsWith("infra/core-services.json", StringComparison.Ordinal) &&
+            operation.Content!.Contains("\"object-storage\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -966,6 +1024,32 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dockerfile");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs");
+    }
+
+    [Fact]
+    public void SeedNext_SelectsRefactorForBackendStackStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                109,
+                "[Story] REUSABLE COMPONENT LIBRARY: PI EDITION CORE SERVICES",
+                "OPEN",
+                ["story"],
+                "Shared infrastructure services running locally for the Raspberry Pi edition.",
+                "PI EDITION CORE SERVICES",
+                "codex/sections/07-reusable-component-library.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("refactor", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj");
     }
 
     [Fact]
