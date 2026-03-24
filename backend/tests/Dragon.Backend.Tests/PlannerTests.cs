@@ -384,6 +384,62 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesDotnetApiBundle_ForApiGatewayStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                134,
+                "[Story] REUSABLE COMPONENT LIBRARY: API Gateway Component",
+                "OPEN",
+                ["story"],
+                "Expose health and identity routes through a minimal ASP.NET Core gateway.",
+                "API Gateway Component",
+                "codex/sections/07-reusable-component-library.md"
+            )
+        );
+
+        Assert.Equal(5, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj" &&
+            operation.Content!.Contains("Microsoft.NET.Sdk.Web", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs" &&
+            operation.Content!.Contains("MapGet(\"/health\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/appsettings.json" &&
+            operation.Content!.Contains("\"Authentication\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/Dragon.Api.Tests.csproj" &&
+            operation.Content!.Contains("Microsoft.AspNetCore.Mvc.Testing", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs" &&
+            operation.Content!.Contains("GetHealth_ReturnsSuccess", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_WritesDotnetWorkerBundle_ForMessagingLayerStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                135,
+                "[Story] REUSABLE COMPONENT LIBRARY: Messaging Layer",
+                "OPEN",
+                ["story"],
+                "Provide a reusable worker shell around queue polling and messaging.",
+                "Messaging Layer",
+                "codex/sections/07-reusable-component-library.md"
+            )
+        );
+
+        Assert.Equal(5, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj" &&
+            operation.Content!.Contains("Microsoft.NET.Sdk.Worker", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Program.cs" &&
+            operation.Content!.Contains("AddHostedService<QueueWorker>", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/WorkerOptions.cs" &&
+            operation.Content!.Contains("QueueName", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj" &&
+            operation.Content!.Contains("xunit", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/tests/WorkerOptionsTests.cs" &&
+            operation.Content!.Contains("Defaults_AreStable", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_WritesPipelineRuntimeBundle_ForCodeGenerationStory()
     {
         var operations = DeveloperOperationPlanner.Plan(
@@ -811,6 +867,32 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/task-router.ts");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/code-generator.ts");
+    }
+
+    [Fact]
+    public void SeedNext_SelectsRefactorForDotnetApiStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                108,
+                "[Story] REUSABLE COMPONENT LIBRARY: API Gateway Component",
+                "OPEN",
+                ["story"],
+                "Expose health and identity routes through a minimal ASP.NET Core gateway.",
+                "API Gateway Component",
+                "codex/sections/07-reusable-component-library.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("refactor", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs");
     }
 
     [Fact]

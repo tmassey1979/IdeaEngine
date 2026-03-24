@@ -328,6 +328,60 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
+        if (matcher.Matches("api gateway component", "authentication and identity"))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj",
+                    RenderDotnetApiProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Program.cs",
+                    RenderDotnetApiProgramTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/appsettings.json",
+                    RenderDotnetApiSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/tests/Dragon.Api.Tests.csproj",
+                    RenderDotnetApiTestsProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs",
+                    RenderDotnetApiTestsTemplate())
+            ];
+        }
+
+        if (matcher.Matches("database layer", "messaging layer", "standard service templates"))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj",
+                    RenderDotnetWorkerProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Program.cs",
+                    RenderDotnetWorkerProgramTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/WorkerOptions.cs",
+                    RenderDotnetWorkerOptionsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj",
+                    RenderDotnetWorkerTestsProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/tests/WorkerOptionsTests.cs",
+                    RenderDotnetWorkerTestsTemplate())
+            ];
+        }
+
         if (matcher.Matches("project initialization", "repository creation", "repository manager agent"))
         {
             return
@@ -1067,6 +1121,176 @@ GITHUB_TOKEN=
 POSTGRES_PASSWORD=dragon
 RABBITMQ_DEFAULT_USER=dragon
 RABBITMQ_DEFAULT_PASS=dragon
+""";
+
+    private static string RenderDotnetApiProjectTemplate() =>
+        """
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>
+""";
+
+    private static string RenderDotnetApiProgramTemplate() =>
+        """
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/identity", () => Results.Ok(new { provider = "dragon" }));
+
+app.Run();
+
+public partial class Program;
+""";
+
+    private static string RenderDotnetApiSettingsTemplate() =>
+        """
+{
+  "AllowedHosts": "*",
+  "Authentication": {
+    "Provider": "dragon"
+  }
+}
+""";
+
+    private static string RenderDotnetApiTestsProjectTemplate() =>
+        """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\\Dragon.Api.csproj" />
+  </ItemGroup>
+</Project>
+""";
+
+    private static string RenderDotnetApiTestsTemplate() =>
+        """
+using Microsoft.AspNetCore.Mvc.Testing;
+
+namespace Dragon.Api.Tests;
+
+public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> factory;
+
+    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    {
+        this.factory = factory;
+    }
+
+    [Fact]
+    public async Task GetHealth_ReturnsSuccess()
+    {
+        var client = factory.CreateClient();
+        var response = await client.GetAsync("/health");
+
+        response.EnsureSuccessStatusCode();
+    }
+}
+""";
+
+    private static string RenderDotnetWorkerProjectTemplate() =>
+        """
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>
+""";
+
+    private static string RenderDotnetWorkerProgramTemplate() =>
+        """
+using Microsoft.Extensions.Options;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.Configure<WorkerOptions>(builder.Configuration.GetSection("Worker"));
+builder.Services.AddHostedService<QueueWorker>();
+
+var host = builder.Build();
+await host.RunAsync();
+
+public sealed class QueueWorker : BackgroundService
+{
+    private readonly WorkerOptions options;
+
+    public QueueWorker(IOptions<WorkerOptions> options)
+    {
+        this.options = options.Value;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(options.PollSeconds), stoppingToken);
+        }
+    }
+}
+""";
+
+    private static string RenderDotnetWorkerOptionsTemplate() =>
+        """
+public sealed class WorkerOptions
+{
+    public int PollSeconds { get; init; } = 10;
+    public string QueueName { get; init; } = "dragon.jobs";
+}
+""";
+
+    private static string RenderDotnetWorkerTestsProjectTemplate() =>
+        """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\\Dragon.Worker.csproj" />
+  </ItemGroup>
+</Project>
+""";
+
+    private static string RenderDotnetWorkerTestsTemplate() =>
+        """
+namespace Dragon.Worker.Tests;
+
+public sealed class WorkerOptionsTests
+{
+    [Fact]
+    public void Defaults_AreStable()
+    {
+        var options = new WorkerOptions();
+
+        Assert.Equal(10, options.PollSeconds);
+        Assert.Equal("dragon.jobs", options.QueueName);
+    }
+}
 """;
 
     private static string RenderProjectFactoryPackageTemplate() =>
