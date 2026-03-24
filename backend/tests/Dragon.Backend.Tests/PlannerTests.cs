@@ -2600,6 +2600,7 @@ public sealed class PlannerTests
         Assert.True(rootElement.TryGetProperty("generatedAt", out _));
         Assert.Equal("healthy", rootElement.GetProperty("health").GetString());
         Assert.Contains("queued job", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("pipeline runtime generation", rootElement.GetProperty("attentionSummary").GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("failedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("quarantinedIssues").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("rollup").GetProperty("actionableQuarantinedIssues").GetInt32());
@@ -2641,7 +2642,7 @@ public sealed class PlannerTests
         Assert.Equal("refresh dashboard status snapshot", rootElement.GetProperty("interventionTarget").GetProperty("targetOutcome").GetString());
         Assert.Equal("fresh", rootElement.GetProperty("interventionTarget").GetProperty("escalation").GetString());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("interventionEscalationNote").ValueKind);
-        Assert.Equal("Advance issue #610: refresh dashboard status snapshot.", rootElement.GetProperty("workerActivity").GetString());
+        Assert.Equal("Advance pipeline runtime generation work for issue #610.", rootElement.GetProperty("workerActivity").GetString());
 
         var issueElement = Assert.Single(rootElement.GetProperty("issues").EnumerateArray());
         Assert.Equal(610, issueElement.GetProperty("issueNumber").GetInt32());

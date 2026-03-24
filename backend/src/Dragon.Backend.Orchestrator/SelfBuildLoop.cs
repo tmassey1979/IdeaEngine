@@ -136,7 +136,7 @@ public sealed class SelfBuildLoop
                 readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync, replayPrioritySummary));
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now, providerBackoffIssueCount, overdueWritebackIssueCount);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now, providerBackoffIssueCount, overdueWritebackIssueCount, leadJobSnapshot);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes, providerBackoffIssueCount, overdueWritebackIssueCount);
         var triageSummary = BuildTriageSummary(waitSignal, recentLoopSignal, attentionSummary, health, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget, triageSummary);
@@ -2416,7 +2416,8 @@ public sealed class SelfBuildLoop
         DateTimeOffset? pendingGithubSyncNextRetryAt,
         DateTimeOffset now,
         int providerBackoffIssueCount,
-        int overdueWritebackIssueCount)
+        int overdueWritebackIssueCount,
+        LeadJobSnapshot? leadJob)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
         var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
@@ -2452,9 +2453,19 @@ public sealed class SelfBuildLoop
                 $"{latestGithubReplay!.AttemptedCount} GitHub update(s) were replayed on the latest pass and the worker is waiting for a quiet confirmation pass.",
             "healthy" when delayedRetryAge is not null =>
                 $"Waiting for the next provider retry window in {FormatElapsed(delayedRetryAge.Value)}.",
-            "healthy" => $"{queuedJobs} queued job(s), {rollup.InProgressIssues} issue(s) in progress.",
+            "healthy" => BuildHealthyAttentionSummary(queuedJobs, rollup.InProgressIssues, leadJob),
             _ => "No queued work and no active issue workflows."
         };
+    }
+
+    private static string BuildHealthyAttentionSummary(int queuedJobs, int inProgressIssues, LeadJobSnapshot? leadJob)
+    {
+        var summary = $"{queuedJobs} queued job(s), {inProgressIssues} issue(s) in progress.";
+        var implementationProfile = FormatImplementationProfileLabel(leadJob?.ImplementationProfile);
+
+        return string.IsNullOrWhiteSpace(implementationProfile)
+            ? summary
+            : $"{summary} Lead implementation profile: {implementationProfile}.";
     }
 
     private TimeSpan DetermineWatchDelay(TimeSpan pollInterval, bool capToPollInterval)
@@ -2784,10 +2795,13 @@ public sealed class SelfBuildLoop
                 : string.Equals(leadJob.Action, "implement_issue", StringComparison.OrdinalIgnoreCase)
                     ? "implementation"
                     : "queued-work";
+            var implementationProfile = FormatImplementationProfileLabel(leadJob.ImplementationProfile);
             var summary = isOperatorEscalation
                 ? leadJob.TargetOutcome is not null
                     ? $"Escalate issue #{leadJob.IssueNumber}: {leadJob.TargetOutcome}."
                     : $"Escalate persistent critical intervention for issue #{leadJob.IssueNumber}."
+                : !string.IsNullOrWhiteSpace(implementationProfile)
+                    ? $"Advance {implementationProfile} work for issue #{leadJob.IssueNumber}."
                 : leadJob.TargetOutcome is not null
                     ? $"Advance issue #{leadJob.IssueNumber}: {leadJob.TargetOutcome}."
                     : $"Advance issue #{leadJob.IssueNumber} via {leadJob.Action}.";
@@ -2863,7 +2877,7 @@ public sealed class SelfBuildLoop
 
         if (interventionTarget is null)
         {
-            return null;
+            return BuildLeadJobProfileActivity(leadJob);
         }
 
         return interventionTarget.Kind switch
@@ -2890,8 +2904,8 @@ public sealed class SelfBuildLoop
             },
             "implementation" => workerState switch
             {
-                "running" => "Advancing the lead implementation target.",
-                "waiting" => "Waiting to advance the lead implementation target on the next pass.",
+                "running" => BuildLeadJobProfileActivity(leadJob) ?? "Advancing the lead implementation target.",
+                "waiting" => BuildLeadJobProfileWaitingActivity(leadJob) ?? "Waiting to advance the lead implementation target on the next pass.",
                 "complete" => "Completed the current run with queued implementation still remaining.",
                 _ => interventionTarget.Summary
             },
@@ -2921,6 +2935,50 @@ public sealed class SelfBuildLoop
             _ => interventionTarget.Summary
         };
     }
+
+    private static string? BuildLeadJobProfileActivity(LeadJobSnapshot? leadJob)
+    {
+        if (leadJob is null)
+        {
+            return null;
+        }
+
+        var implementationProfile = FormatImplementationProfileLabel(leadJob.ImplementationProfile);
+        if (string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            return null;
+        }
+
+        return $"Advancing {implementationProfile} work for issue #{leadJob.IssueNumber}.";
+    }
+
+    private static string? BuildLeadJobProfileWaitingActivity(LeadJobSnapshot? leadJob)
+    {
+        if (leadJob is null)
+        {
+            return null;
+        }
+
+        var implementationProfile = FormatImplementationProfileLabel(leadJob.ImplementationProfile);
+        if (string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            return null;
+        }
+
+        return $"Waiting to continue {implementationProfile} work on the next pass.";
+    }
+
+    private static string? FormatImplementationProfileLabel(string? implementationProfile) =>
+        implementationProfile?.ToLowerInvariant() switch
+        {
+            "backend-stack/pi-autonomous-engine" => "Pi autonomous engine stack",
+            "backend-stack/pi-lite-engine" => "Pi lite backend stack",
+            "dotnet/api" => ".NET API slice",
+            "dotnet/worker" => ".NET worker slice",
+            "pipeline/repository-bootstrap" => "pipeline repository bootstrap",
+            "pipeline/runtime-generation" => "pipeline runtime generation",
+            _ => implementationProfile
+        };
 
     private static bool ReplayWasDeferred(LatestGithubReplaySnapshot? latestGithubReplay) =>
         latestGithubReplay is not null &&
