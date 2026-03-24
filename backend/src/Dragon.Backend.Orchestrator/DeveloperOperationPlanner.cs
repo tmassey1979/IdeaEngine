@@ -201,6 +201,52 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
+        if (title.Contains("execution monitor", StringComparison.Ordinal) ||
+            title.Contains("pipeline monitoring", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/observability/pipeline-monitoring.json",
+                    RenderPipelineMonitoringTemplate())
+            ];
+        }
+
+        if (title.Contains("agent health monitoring", StringComparison.Ordinal) ||
+            title.Contains("agent performance monitoring", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/observability/agent-health-metrics.json",
+                    RenderAgentMonitoringTemplate())
+            ];
+        }
+
+        if (title.Contains("monitoring and observability", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/observability/cluster-observability.json",
+                    RenderClusterObservabilityTemplate())
+            ];
+        }
+
+        if (title.Contains("continuous monitoring", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/security/continuous-monitoring.json",
+                    RenderContinuousMonitoringTemplate())
+            ];
+        }
+
         if (rule is not null)
         {
             return
@@ -486,6 +532,84 @@ export const developerAgent = {
       "enabled": false
     }
   ]
+}
+""";
+
+    private static string RenderPipelineMonitoringTemplate() =>
+        """
+{
+  "name": "pipeline-monitoring",
+  "metrics": [
+    "generation_duration_seconds",
+    "task_success_rate",
+    "agent_utilization_percent",
+    "failure_events_total"
+  ],
+  "dashboards": [
+    "pipeline-overview",
+    "pipeline-failures"
+  ],
+  "alerts": [
+    {
+      "name": "pipeline-failure-spike",
+      "condition": "failure_events_total > 0"
+    }
+  ]
+}
+""";
+
+    private static string RenderAgentMonitoringTemplate() =>
+        """
+{
+  "name": "agent-health-monitoring",
+  "metrics": [
+    "heartbeat_signals_total",
+    "task_completion_success_rate",
+    "execution_duration_seconds",
+    "error_rate",
+    "quality_score",
+    "resource_consumption_percent"
+  ],
+  "offlinePolicy": {
+    "markOfflineAfterMissedHeartbeats": 3,
+    "reassignTasks": true
+  }
+}
+""";
+
+    private static string RenderClusterObservabilityTemplate() =>
+        """
+{
+  "name": "cluster-observability",
+  "metrics": [
+    "cpu_usage_percent",
+    "memory_usage_percent",
+    "task_queue_depth",
+    "agent_success_rate",
+    "node_availability"
+  ],
+  "visualizations": [
+    "cluster-health",
+    "queue-depth",
+    "node-availability"
+  ]
+}
+""";
+
+    private static string RenderContinuousMonitoringTemplate() =>
+        """
+{
+  "name": "continuous-compliance-monitoring",
+  "checks": [
+    "new_vulnerability_discovery",
+    "regulation_changes",
+    "security_patch_requirements",
+    "technology_deprecations"
+  ],
+  "actions": {
+    "openIssueOnFailure": true,
+    "triggerAutomatedUpdates": true
+  }
 }
 """;
 

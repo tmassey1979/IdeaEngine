@@ -270,6 +270,94 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesPipelineMonitoringTemplate_ForExecutionMonitorStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                1106,
+                "[Story] AGENT ORCHESTRATION ENGINE: Execution Monitor",
+                "OPEN",
+                ["story"],
+                "task completion time\ntask success rate\nagent failure rate",
+                "Execution Monitor",
+                "codex/sections/11-agent-orchestration-engine.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/observability/pipeline-monitoring.json", operation.Path);
+        Assert.Contains("\"generation_duration_seconds\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"pipeline-failure-spike\"", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesAgentMonitoringTemplate_ForAgentHealthMonitoringStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                1205,
+                "[Story] AGENT CAPABILITY REGISTRY AND DISCOVERY: Agent Health Monitoring",
+                "OPEN",
+                ["story"],
+                "heartbeat signals\ntask completion success\nerror rates",
+                "Agent Health Monitoring",
+                "codex/sections/12-agent-capability-registry-and-discovery.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/observability/agent-health-metrics.json", operation.Path);
+        Assert.Contains("\"heartbeat_signals_total\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"markOfflineAfterMissedHeartbeats\": 3", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesClusterObservabilityTemplate_ForMonitoringAndObservabilityStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                1710,
+                "[Story] DISTRIBUTED AGENT CLUSTER ARCHITECTURE: Monitoring and Observability",
+                "OPEN",
+                ["story"],
+                "CPU usage\nmemory usage\ntask queue depth",
+                "Monitoring and Observability",
+                "codex/sections/17-distributed-agent-cluster-architecture.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/observability/cluster-observability.json", operation.Path);
+        Assert.Contains("\"cpu_usage_percent\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"node-availability\"", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesContinuousMonitoringTemplate_ForComplianceMonitoringStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                1813,
+                "[Story] SECURITY AND COMPLIANCE VALIDATION SYSTEM: Continuous Monitoring",
+                "OPEN",
+                ["story"],
+                "new vulnerability discovery\nregulation changes\nsecurity patch requirements",
+                "Continuous Monitoring",
+                "codex/sections/18-security-and-compliance-validation-system.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/security/continuous-monitoring.json", operation.Path);
+        Assert.Contains("\"new_vulnerability_discovery\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"triggerAutomatedUpdates\": true", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ExecuteDeveloper_DoesNotDuplicateIdenticalAppendTextOperations()
     {
         var root = CreateTempRoot();
