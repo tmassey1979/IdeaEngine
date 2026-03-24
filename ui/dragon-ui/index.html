@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dragon UI Mockup</title>
+    <title>Dragon Idea Engine</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
@@ -16,711 +16,338 @@
     <script src="app.js" defer></script>
   </head>
   <body>
-    <div class="shell">
+    <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 64 64" role="img">
-              <defs>
-                <linearGradient id="dragonGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#ff6a3d" />
-                  <stop offset="55%" stop-color="#ff2f2f" />
-                  <stop offset="100%" stop-color="#6d0505" />
-                </linearGradient>
-                <linearGradient id="dragonShadow" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#280707" />
-                  <stop offset="100%" stop-color="#090909" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M50 14c-3-5-9-8-15-8-8 0-15 4-21 11 4-1 8-1 11 1-7 5-10 12-10 20 0 11 9 20 20 20 10 0 19-8 20-18 1-6-1-12-5-17l4-9-4 0z"
-                fill="url(#dragonShadow)"
-              />
-              <path
-                d="M49 13c-4-5-10-8-17-8-8 0-16 4-22 12 5-2 10-2 14 0-8 5-13 13-13 22 0 12 10 22 22 22 11 0 20-7 23-18 2-9-1-17-7-23l5-7-5 0zm-7 10c3 3 5 7 5 12 0 9-7 16-16 16-4 0-8-1-11-4 6 1 11 0 15-3-6 0-10-2-12-5 8-1 13-4 16-8-4 1-8 1-11 0 4-2 7-5 9-8l5 0z"
-                fill="url(#dragonGlow)"
-              />
-              <path d="M37 20l5-4-1 6 6 2-7 1-1 7-3-6-7-1 6-2 2-3z" fill="#ffb08f" opacity="0.95" />
-              <circle cx="39.5" cy="26" r="2.1" fill="#fff2f2" />
-              <circle cx="39.8" cy="26" r="0.9" fill="#120404" />
-            </svg>
-          </div>
+          <div class="brand-mark" aria-hidden="true">D</div>
           <div>
             <p class="eyebrow">Dragon Idea Engine</p>
-            <h1>War Room</h1>
+            <h1>Idea Foundry</h1>
           </div>
         </div>
 
         <nav class="nav">
-          <a class="nav-link active" href="#overview">Overview</a>
-          <a class="nav-link" href="#ideas">Ideas</a>
-          <a class="nav-link" href="#submit">Submit Idea</a>
+          <a class="nav-link active" href="#dashboard">Dashboard</a>
+          <a class="nav-link" href="#submit-idea">Submit Idea</a>
+          <a class="nav-link" href="#idea-queue">Idea Queue</a>
           <a class="nav-link" href="#projects">Projects</a>
-          <a class="nav-link" href="#progress">Progress</a>
-          <a class="nav-link" href="#workflows">Workflows</a>
-          <a class="nav-link" href="#recovery">Recovery</a>
-          <a class="nav-link" href="#repositories">Repositories</a>
+          <a class="nav-link" href="#idea-detail">Idea Detail</a>
         </nav>
 
-        <section class="sidebar-panel">
-          <p class="panel-label">System Pulse</p>
-          <div class="pulse-row">
-            <span class="dot good"></span>
-            <span>GitHub sync healthy</span>
-          </div>
-          <div class="pulse-row">
-            <span class="dot warn"></span>
-            <span>1 stalled story</span>
-          </div>
-          <div class="pulse-row">
-            <span class="dot good"></span>
-            <span>Queue drain in 03m</span>
-          </div>
-        </section>
-
-        <section class="sidebar-panel">
-          <p class="panel-label">Today</p>
-          <ul class="mini-list">
-            <li>8 stories validated</li>
-            <li>2 quarantines auto-triaged</li>
-            <li>1 recovery chain reopened</li>
+        <section class="sidebar-card">
+          <p class="panel-label">What this view should answer</p>
+          <ul class="sidebar-list">
+            <li>What are we building right now?</li>
+            <li>Which ideas are approved and waiting?</li>
+            <li>When should each idea reach MVP?</li>
+            <li>Is the system healthy enough to trust?</li>
           </ul>
         </section>
 
-        <section class="sidebar-panel">
-          <p class="panel-label">Safety Rails</p>
-          <ul class="mini-list">
-            <li>Ethics agent reviews autonomy boundaries</li>
-            <li>Review gates block unsafe or unverified changes</li>
-            <li>Operators retain approval control for sensitive work</li>
+        <section class="sidebar-card">
+          <p class="panel-label">Current UI stories</p>
+          <ul class="sidebar-list compact">
+            <li>#349 Dashboard-first shell</li>
+            <li>#352 Idea queue with approval + ETA</li>
+            <li>#353 Submission wizard</li>
+            <li>#350 Idea detail backlog + board</li>
+            <li>#354 System telemetry for health</li>
           </ul>
         </section>
       </aside>
 
-      <main class="content">
-        <header class="hero" id="overview">
-          <div>
-            <p class="eyebrow">Autonomous Software Factory</p>
-            <h2>Command the forge. Track every story, failure, and recovery chain.</h2>
-            <p class="hero-copy">
-              Dragon is an autonomous software delivery platform that turns
-              ideas into tracked execution. It reads GitHub work, runs
-              implementation loops, keeps workflow state in sync, manages
-              recovery when delivery stalls, and gives operators one place to
-              submit ideas, monitor progress, and guide active projects. An
-              embedded ethics agent helps enforce safety boundaries, keeping
-              autonomy aligned with operator intent, review gates, and
-              accountable decision-making.
+      <main class="main-content">
+        <section class="hero panel" id="dashboard">
+          <div class="hero-copy">
+            <p class="eyebrow">Dashboard</p>
+            <h2>Ideas come in, approved work enters the queue, and MVP progress stays visible.</h2>
+            <p>
+              The homepage is now a calm control panel: active builds, queued ideas, MVP forecasts,
+              and only the system health signals that matter.
             </p>
-            <div class="hero-rail-row">
-              <span class="hero-rail safe">Ethics agent active</span>
-              <span class="hero-rail">Review gates enforced</span>
-              <span class="hero-rail">Operator approvals on sensitive work</span>
-            </div>
           </div>
-
           <div class="hero-actions">
-            <button class="primary">Submit New Idea</button>
-            <button class="secondary">View Active Projects</button>
+            <a class="button primary" href="#submit-idea">Submit Idea</a>
+            <a class="button secondary" href="#idea-queue">Open Idea Queue</a>
           </div>
-        </header>
+        </section>
 
-        <section class="stats-grid">
-          <article class="stat-card accent-orange">
-            <p class="stat-label">Ideas In Intake</p>
-            <p class="stat-value">14</p>
-            <p class="stat-meta">4 waiting human approval, 10 ready to slice</p>
+        <section class="health-strip">
+          <article class="metric-card emphasis">
+            <p class="metric-label">Loop health</p>
+            <p class="metric-value" id="status-loop-health">Loading</p>
+            <p class="metric-meta" id="status-triage">Waiting for status snapshot</p>
           </article>
-          <article class="stat-card accent-blue">
-            <p class="stat-label">Active Projects</p>
-            <p class="stat-value">6</p>
-            <p class="stat-meta">3 self-hosting, 2 client repos, 1 incubating</p>
+          <article class="metric-card">
+            <p class="metric-label">Services</p>
+            <p class="metric-value" id="status-services">Checking</p>
+            <p class="metric-meta" id="status-service-note">Backend snapshot pending</p>
           </article>
-          <article class="stat-card accent-green">
-            <p class="stat-label">Tracked Issues</p>
-            <p class="stat-value" data-status-stat="issues">0</p>
-            <p class="stat-meta">Loaded from the backend status snapshot</p>
+          <article class="metric-card">
+            <p class="metric-label">CPU</p>
+            <p class="metric-value" id="status-cpu">Pending</p>
+            <p class="metric-meta">Host telemetry not wired yet</p>
           </article>
-          <article class="stat-card accent-red">
-            <p class="stat-label">Queued Jobs</p>
-            <p class="stat-value" data-status-stat="queued">0</p>
-            <p class="stat-meta">Live shape mirrors `dragon-backend status`</p>
-          </article>
-          <article class="stat-card accent-red">
-            <p class="stat-label">Loop Health</p>
-            <p class="stat-value" data-status-stat="health">unknown</p>
-            <p class="stat-meta" id="status-attention-summary">Waiting for status snapshot</p>
+          <article class="metric-card">
+            <p class="metric-label">Memory</p>
+            <p class="metric-value" id="status-memory">Pending</p>
+            <p class="metric-meta">Tracked under story #354</p>
           </article>
         </section>
 
-        <section class="panel status-panel" id="status">
+        <section class="dashboard-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Printing now</p>
+                <h3>Active projects</h3>
+              </div>
+              <span class="chip" id="status-active-projects">0 active</span>
+            </div>
+            <div id="active-projects-list" class="card-stack"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">Queue</p>
+                <h3>Approved ideas waiting for build</h3>
+              </div>
+              <span class="chip" id="status-approved-ideas">0 approved</span>
+            </div>
+            <div id="queue-preview-list" class="card-stack compact"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid secondary">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">MVP forecast</p>
+                <h3>Expected delivery windows</h3>
+              </div>
+              <span class="chip" id="status-mvp-window">Forecast loading</span>
+            </div>
+            <div id="forecast-list" class="forecast-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-label">System health</p>
+                <h3>Operational signals</h3>
+              </div>
+              <span class="chip" id="status-queue-depth">Queue loading</span>
+            </div>
+            <div class="signal-list">
+              <div class="signal-row">
+                <span>Worker wait signal</span>
+                <strong id="status-wait-signal">Waiting for snapshot</strong>
+              </div>
+              <div class="signal-row">
+                <span>Recent loop summary</span>
+                <strong id="status-loop-summary">No recent loop summary yet</strong>
+              </div>
+              <div class="signal-row">
+                <span>Lead work</span>
+                <strong id="status-lead-work">No lead work recorded</strong>
+              </div>
+              <div class="signal-row">
+                <span>Pending writeback</span>
+                <strong id="status-writeback">Not scheduled</strong>
+              </div>
+              <div class="signal-row">
+                <span>Provider retry</span>
+                <strong id="status-provider-retry">No delayed retry scheduled</strong>
+              </div>
+              <div class="signal-row">
+                <span>Snapshot source</span>
+                <strong id="status-source">sample</strong>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel wizard-panel" id="submit-idea">
           <div class="panel-head">
             <div>
-              <p class="panel-label">Backend Status</p>
-              <h3>Current self-build loop snapshot</h3>
+              <p class="panel-label">Submit Idea</p>
+              <h3>Guided intake wizard</h3>
             </div>
-            <span class="chip" id="status-chip">Loading sample snapshot</span>
+            <span class="chip">Story #353</span>
           </div>
-
-          <div class="status-banner">
-            <p class="status-banner-line"><span>Health</span><strong id="status-health">unknown</strong></p>
-            <p class="status-banner-line"><span>Snapshot source</span><strong id="status-source">unknown</strong></p>
-            <p class="status-banner-line"><span>Last command</span><strong id="status-last-command">unknown</strong></p>
-            <p class="status-banner-line"><span>Worker mode</span><strong id="status-worker-mode" class="worker-mode status">status</strong></p>
-            <p class="status-banner-line"><span>Worker state</span><strong id="status-worker-state" class="worker-state snapshot">snapshot</strong></p>
-            <p class="status-banner-line"><span>Worker activity</span><strong id="status-worker-activity">Not recorded</strong></p>
-            <p class="status-banner-line"><span>Completion reason</span><strong id="status-worker-completion" class="worker-completion active">active</strong></p>
-            <p class="status-banner-line"><span>GitHub sync</span><strong id="status-github-sync" class="worker-completion snapshot">not recorded</strong></p>
-            <p class="status-banner-line"><span>Pending GitHub sync</span><strong id="status-pending-github-sync" class="worker-progress snapshot">0</strong></p>
-            <p class="status-banner-line"><span>Poll cadence</span><strong id="status-poll-cadence">Not scheduled</strong></p>
-            <p class="status-banner-line"><span>Worker progress</span><strong id="status-worker-progress" class="worker-progress unknown">idle 0 / 0 · budget n/a</strong></p>
-            <p class="status-banner-line"><span>Generated</span><strong id="status-generated-at">Waiting for sample payload</strong></p>
-            <p class="status-banner-line"><span>Freshness</span><strong id="status-freshness" class="snapshot-freshness unknown">unknown</strong></p>
-            <p class="status-banner-line"><span>Next poll</span><strong id="status-next-poll">No next poll scheduled</strong></p>
-            <p class="status-banner-line"><span>Next delayed retry</span><strong id="status-next-delayed-retry">No delayed retry scheduled</strong></p>
-            <p class="status-banner-line"><span>Queue trend</span><strong id="status-queue-direction" class="queue-trend unknown">unknown</strong></p>
-            <p class="status-banner-line"><span>Compared to</span><strong id="status-queue-compared-at">No prior snapshot</strong></p>
-            <p class="status-banner-line"><span>Compare age</span><strong id="status-compare-age" class="snapshot-freshness unknown">unknown</strong></p>
-            <p class="status-banner-line"><span>Comparison mode</span><strong id="status-comparison-mode" class="comparison-mode backend">backend</strong></p>
-          </div>
-          <p class="status-compare-note" id="status-compare-note">
-            <span class="status-compare-label">Backend</span>
-            <span id="status-compare-note-text">Comparison data is coming directly from the exported backend snapshot.</span>
-          </p>
-          <p class="status-worker-note waiting" id="status-worker-note">
-            <span class="status-worker-label">Waiting</span>
-            <span id="status-worker-note-text">Worker is paused between passes and will poll again on schedule.</span>
-          </p>
-
-          <div class="status-activity" id="status-intervention-target-group">
-            <p class="status-activity-line"><span>Intervention target</span><strong id="status-intervention-target-issue">No immediate target</strong></p>
-            <p class="status-activity-line"><span>Kind</span><strong id="status-intervention-target-kind">idle</strong></p>
-            <p class="status-activity-line"><span>Recovery issue</span><strong id="status-intervention-target-recovery">none</strong></p>
-            <p class="status-activity-line"><span>Target artifact</span><strong id="status-intervention-target-artifact">none</strong></p>
-            <p class="status-activity-line"><span>Age</span><strong id="status-intervention-target-age">n/a</strong></p>
-            <p class="status-activity-line"><span>Escalation</span><strong id="status-intervention-target-escalation">normal</strong></p>
-            <p class="status-activity-line"><span>Acknowledged</span><strong id="status-intervention-target-acknowledged">no</strong></p>
-            <p class="status-activity-line"><span>Acknowledged streak</span><strong id="status-intervention-target-acknowledged-streak">0</strong></p>
-            <p class="status-activity-line"><span>Escalation streak</span><strong id="status-intervention-target-streak">0</strong></p>
-            <p class="status-activity-line status-activity-wide"><span>Escalation note</span><strong id="status-intervention-target-note">No escalation</strong></p>
-            <p class="status-activity-line status-activity-wide"><span>Summary</span><strong id="status-intervention-target-summary">No immediate intervention target.</strong></p>
-          </div>
-
-          <div class="status-activity" id="status-lead-job-group">
-            <p class="status-activity-line"><span>Lead job</span><strong id="status-lead-job-issue">No queued work</strong></p>
-            <p class="status-activity-line"><span>Work type</span><strong id="status-lead-job-work-type">story</strong></p>
-            <p class="status-activity-line"><span>Implementation profile</span><strong id="status-lead-job-profile">none</strong></p>
-            <p class="status-activity-line"><span>Validation mode</span><strong id="status-lead-job-validation-mode">none</strong></p>
-            <p class="status-activity-line"><span>Agent</span><strong id="status-lead-job-agent">unknown</strong></p>
-            <p class="status-activity-line"><span>Action</span><strong id="status-lead-job-action">unknown</strong></p>
-            <p class="status-activity-line"><span>Blocking</span><strong id="status-lead-job-blocking">no</strong></p>
-            <p class="status-activity-line"><span>Target artifact</span><strong id="status-lead-job-target">none</strong></p>
-            <p class="status-activity-line"><span>Target outcome</span><strong id="status-lead-job-outcome">none</strong></p>
-            <p class="status-activity-line"><span>Priority</span><strong id="status-lead-job-priority">normal</strong></p>
-            <p class="status-activity-line"><span>Delayed</span><strong id="status-lead-job-delayed">no</strong></p>
-            <p class="status-activity-line"><span>Retry unlock</span><strong id="status-lead-job-retry-unlock">none</strong></p>
-          </div>
-
-          <div class="status-activity" id="status-lead-quarantine-group">
-            <p class="status-activity-line"><span>Lead quarantine</span><strong id="status-lead-quarantine-issue">No actionable quarantine</strong></p>
-            <p class="status-activity-line"><span>Recovery state</span><strong id="status-lead-quarantine-state">inactive</strong></p>
-            <p class="status-activity-line"><span>Recovery issue</span><strong id="status-lead-quarantine-recovery">none</strong></p>
-            <p class="status-activity-line"><span>Queued recovery jobs</span><strong id="status-lead-quarantine-jobs">0</strong></p>
-            <p class="status-activity-line"><span>Drift age</span><strong id="status-lead-quarantine-age">n/a</strong></p>
-            <p class="status-activity-line status-activity-wide"><span>Recovery note</span><strong id="status-lead-quarantine-note">No recovery hold recorded</strong></p>
-            <p class="status-activity-line status-activity-wide"><span>Recovery summary</span><strong id="status-lead-quarantine-summary">No active recovery blocker</strong></p>
-          </div>
-
-          <div class="status-activity" id="status-latest-activity-group">
-            <p class="status-activity-line"><span>Latest activity</span><strong id="status-latest-issue">No recent execution</strong></p>
-            <p class="status-activity-line"><span>Stage</span><strong id="status-latest-stage">unknown</strong></p>
-            <p class="status-activity-line"><span>Summary</span><strong id="status-latest-summary">No recent execution summary</strong></p>
-          </div>
-
-          <div class="status-activity">
-            <p class="status-activity-line"><span>Loop signal</span><strong id="status-loop-mode">unknown</strong></p>
-            <p class="status-activity-line status-activity-wide"><span>Recent loop summary</span><strong id="status-loop-summary">No recent loop summary</strong></p>
-          </div>
-
-          <div class="status-activity">
-            <p class="status-activity-line"><span>Queue delta</span><strong id="status-queue-delta" class="queue-trend unknown">0</strong></p>
-          </div>
-
-          <div class="status-activity" id="status-latest-pass-group">
-            <p class="status-activity-line"><span>Latest pass</span><strong id="status-latest-pass-number">No pass recorded</strong></p>
-            <div class="status-activity-line status-activity-wide latest-pass-strip">
-              <span>Latest pass summary</span>
-              <div class="latest-pass-badges">
-                <strong id="status-latest-pass-cycles" class="cycle-mix unknown">0 cycles</strong>
-                <strong id="status-latest-pass-work" class="work-mix">0 seed, 0 consume</strong>
-                <strong id="status-latest-pass-replay" class="pass-replay unknown">No replay</strong>
-                <strong id="status-latest-pass-mix" class="pass-mix unknown">No pass mix</strong>
-                <strong id="status-latest-pass-outcome" class="pass-outcome unknown">No polling summary</strong>
+          <div class="wizard-steps">
+            <div class="wizard-step active">
+              <span>1</span>
+              <div>
+                <strong>Define the idea</strong>
+                <p>Name, problem, users, and MVP outcome.</p>
+              </div>
+            </div>
+            <div class="wizard-step">
+              <span>2</span>
+              <div>
+                <strong>Choose technical preferences</strong>
+                <p>Stack, languages, deployment target, and core integrations.</p>
+              </div>
+            </div>
+            <div class="wizard-step">
+              <span>3</span>
+              <div>
+                <strong>Set constraints</strong>
+                <p>Must-haves, nice-to-haves, timing, and approval notes.</p>
               </div>
             </div>
           </div>
-
-          <div class="status-activity" id="status-pending-github-group">
-            <p class="status-activity-line"><span>Pending GitHub updates</span><strong id="status-pending-github-summary">No pending GitHub updates</strong></p>
-            <div class="status-activity-line status-activity-wide">
-              <span>Retry backlog</span>
-              <div class="status-pending-list" id="status-pending-github-list">
-                <p class="status-line">No pending GitHub sync backlog.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="status-rollup">
-            <article class="status-rollup-card">
-              <span>Failed</span>
-              <strong id="status-rollup-failed">0</strong>
-              <small id="status-rollup-delta-failed">0</small>
-            </article>
-            <article class="status-rollup-card">
-              <span>Quarantined</span>
-              <strong id="status-rollup-quarantined">0</strong>
-              <small id="status-rollup-delta-quarantined">0</small>
-              <small id="status-rollup-quarantine-detail">0 actionable / 0 inactive</small>
-            </article>
-            <article class="status-rollup-card">
-              <span>In Progress</span>
-              <strong id="status-rollup-in-progress">0</strong>
-              <small id="status-rollup-delta-in-progress">0</small>
-            </article>
-            <article class="status-rollup-card">
-              <span>Validated</span>
-              <strong id="status-rollup-validated">0</strong>
-              <small id="status-rollup-delta-validated">0</small>
-            </article>
-          </div>
-
-          <div class="status-grid">
-            <div class="status-summary">
-              <p class="status-kicker">Queue</p>
-              <p class="status-number" data-status-stat="queued">0</p>
-              <p class="status-note">Queued jobs across all tracked issue workflows.</p>
-            </div>
-            <div class="status-summary">
-              <p class="status-kicker">Tracked issues</p>
-              <p class="status-number" data-status-stat="issues">0</p>
-              <p class="status-note">Issues with workflow state or queued work.</p>
-            </div>
-          </div>
-
-          <div class="status-feed" id="status-feed">
-            <article class="status-card">
-              <p class="panel-label">Waiting for sample data</p>
-              <h4>Snapshot unavailable</h4>
-              <p>Open <span class="mono">sample-status.json</span> next to this page to preview the backend-shaped dashboard state.</p>
-            </article>
+          <div class="wizard-grid">
+            <label>
+              <span>Idea name</span>
+              <input type="text" value="Field Service Ops Assistant" readonly />
+            </label>
+            <label>
+              <span>Primary platform</span>
+              <select disabled>
+                <option selected>Web application</option>
+              </select>
+            </label>
+            <label class="wide">
+              <span>Problem to solve</span>
+              <textarea readonly>Help service teams dispatch jobs, capture notes, and track invoice-ready work with a lightweight operator dashboard.</textarea>
+            </label>
+            <label>
+              <span>Frontend stack</span>
+              <select disabled>
+                <option selected>React + TypeScript</option>
+              </select>
+            </label>
+            <label>
+              <span>Backend stack</span>
+              <select disabled>
+                <option selected>ASP.NET Core + PostgreSQL</option>
+              </select>
+            </label>
+            <label>
+              <span>Deployment target</span>
+              <select disabled>
+                <option selected>Pi-hosted Docker stack</option>
+              </select>
+            </label>
+            <label>
+              <span>Languages</span>
+              <input type="text" value="TypeScript, C#" readonly />
+            </label>
+            <label>
+              <span>Integrations</span>
+              <input type="text" value="Email, Auth, Stripe later" readonly />
+            </label>
+            <label class="wide">
+              <span>MVP must-have scope</span>
+              <textarea readonly>Dispatch board, technician notes, customer records, simple invoice-ready workflow, and admin approval queue.</textarea>
+            </label>
           </div>
         </section>
 
-        <section class="two-column" id="ideas">
-          <article class="panel panel-large">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Idea Intake</p>
-                <h3>Ideas waiting to become work</h3>
-              </div>
-              <span class="chip">14 open ideas</span>
-            </div>
-
-            <div class="idea-list">
-              <article class="idea-card">
-                <div class="idea-meta">
-                  <span class="badge good">Approved</span>
-                  <span class="mono">Idea 118</span>
-                </div>
-                <h4>Voice-to-backlog capture for late-night idea dumps</h4>
-                <p>Convert spoken notes into triaged backlog candidates with suggested epics and first stories.</p>
-              </article>
-              <article class="idea-card">
-                <div class="idea-meta">
-                  <span class="badge warn">Reviewing</span>
-                  <span class="mono">Idea 121</span>
-                </div>
-                <h4>Autonomous regression report after every validated story</h4>
-                <p>Generate a short operator summary showing what changed, what passed, and what still looks risky.</p>
-              </article>
-              <article class="idea-card">
-                <div class="idea-meta">
-                  <span class="badge muted">Draft</span>
-                  <span class="mono">Idea 126</span>
-                </div>
-                <h4>Project heatmap for stalled repos and overloaded epics</h4>
-                <p>Highlight where the factory is burning time so new work can be redirected earlier.</p>
-              </article>
-            </div>
-          </article>
-
-          <article class="panel" id="submit">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Submit Idea</p>
-                <h3>Start something new</h3>
-              </div>
-            </div>
-
-            <form class="idea-form">
-              <label>
-                <span>Idea title</span>
-                <input type="text" value="Auto-generate release notes from validated stories" />
-              </label>
-              <label>
-                <span>Why this matters</span>
-                <textarea rows="5">As an operator, I want release notes assembled automatically so I can understand what changed without reading every issue thread.</textarea>
-              </label>
-              <label>
-                <span>Target project</span>
-                <select>
-                  <option>IdeaEngine</option>
-                  <option>Dragon CRM</option>
-                  <option>New incubator project</option>
-                </select>
-              </label>
-              <div class="guided-card">
-                <p class="guided-title">What tech will this idea need?</p>
-                <div class="option-grid">
-                  <label class="option-pill active">
-                    <input type="checkbox" checked />
-                    <span>C# Backend</span>
-                  </label>
-                  <label class="option-pill active">
-                    <input type="checkbox" checked />
-                    <span>Web UI</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="checkbox" />
-                    <span>Mobile App</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="checkbox" />
-                    <span>Database</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="checkbox" />
-                    <span>AI / LLM</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="checkbox" />
-                    <span>API Integrations</span>
-                  </label>
-                </div>
-              </div>
-              <div class="guided-card">
-                <p class="guided-title">Does it need any physical tools?</p>
-                <div class="option-grid">
-                  <label class="option-pill active">
-                    <input type="radio" name="physical-tools" checked />
-                    <span>No physical tools</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="radio" name="physical-tools" />
-                    <span>Device or sensor</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="radio" name="physical-tools" />
-                    <span>Raspberry Pi / edge box</span>
-                  </label>
-                  <label class="option-pill">
-                    <input type="radio" name="physical-tools" />
-                    <span>Special equipment</span>
-                  </label>
-                </div>
-              </div>
-              <label>
-                <span>Physical tool notes</span>
-                <input type="text" value="No hardware required for the first release" />
-              </label>
-              <div class="form-actions">
-                <button type="button" class="primary">Submit Idea</button>
-                <button type="button" class="secondary">Save Draft</button>
-              </div>
-            </form>
-          </article>
-        </section>
-
-        <section class="two-column" id="projects">
-          <article class="panel">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Projects</p>
-                <h3>What the system is building</h3>
-              </div>
-            </div>
-
-            <div class="project-list">
-              <article class="project-card active-project">
-                <div>
-                  <p class="project-name">IdeaEngine</p>
-                  <p class="project-meta">Self-hosting platform core</p>
-                </div>
-                <div class="project-stats">
-                  <strong>68%</strong>
-                  <span>104 / 153 stories delivered</span>
-                </div>
-              </article>
-              <article class="project-card">
-                <div>
-                  <p class="project-name">Dragon CRM</p>
-                  <p class="project-meta">Client workflow automation</p>
-                </div>
-                <div class="project-stats">
-                  <strong>41%</strong>
-                  <span>37 / 90 stories delivered</span>
-                </div>
-              </article>
-              <article class="project-card">
-                <div>
-                  <p class="project-name">Release Intelligence</p>
-                  <p class="project-meta">Incubator from idea intake</p>
-                </div>
-                <div class="project-stats">
-                  <strong>12%</strong>
-                  <span>idea approved, slicing in progress</span>
-                </div>
-              </article>
-            </div>
-          </article>
-
-          <article class="panel" id="progress">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Progress Monitor</p>
-                <h3>One project, end to end</h3>
-              </div>
-            </div>
-
-            <div class="progress-timeline">
-              <div class="progress-step done">
-                <span class="step-dot"></span>
-                <div>
-                  <h4>Idea accepted</h4>
-                  <p>Approved by operator and converted into an epic with sliced stories.</p>
-                </div>
-              </div>
-              <div class="progress-step done">
-                <span class="step-dot"></span>
-                <div>
-                  <h4>Stories in motion</h4>
-                  <p>Developer, review, and test stages are running against queued backlog work.</p>
-                </div>
-              </div>
-              <div class="progress-step current">
-                <span class="step-dot"></span>
-                <div>
-                  <h4>Recovery monitoring</h4>
-                  <p>One child story is paused while a recovery issue validates changed-path evidence.</p>
-                </div>
-              </div>
-              <div class="progress-step">
-                <span class="step-dot"></span>
-                <div>
-                  <h4>Validated release</h4>
-                  <p>System will close the story once meaningful implementation evidence is synced back to GitHub.</p>
-                </div>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section class="two-column" id="workflows">
-          <article class="panel panel-large">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Live Workflow Board</p>
-                <h3>Current issue flow</h3>
-              </div>
-              <span class="chip">Synced 18s ago</span>
-            </div>
-
-            <div class="kanban">
-              <div class="lane">
-                <div class="lane-head">
-                  <h4>Developer</h4>
-                  <span>4</span>
-                </div>
-                <article class="ticket">
-                  <p class="ticket-id">#344</p>
-                  <h5>Remove Deprecated Node Backend Scaffold</h5>
-                  <p>Cleanup landed locally, awaiting remote push confirmation.</p>
-                </article>
-                <article class="ticket">
-                  <p class="ticket-id">#351</p>
-                  <h5>Story Outcome Sync Notes</h5>
-                  <p>Heartbeat body being refined for real GitHub runs.</p>
-                </article>
-              </div>
-
-              <div class="lane">
-                <div class="lane-head">
-                  <h4>Review</h4>
-                  <span>3</span>
-                </div>
-                <article class="ticket warning">
-                  <p class="ticket-id">#352</p>
-                  <h5>Recovery Story Closure Rules</h5>
-                  <p>Waiting on changed-path evidence from latest execution.</p>
-                </article>
-                <article class="ticket">
-                  <p class="ticket-id">#347</p>
-                  <h5>Scheduler Resume Semantics</h5>
-                  <p>Parent issue resumed after recovery release.</p>
-                </article>
-              </div>
-
-              <div class="lane">
-                <div class="lane-head">
-                  <h4>Test</h4>
-                  <span>2</span>
-                </div>
-                <article class="ticket success">
-                  <p class="ticket-id">#339</p>
-                  <h5>Changed-Path Canonicalization</h5>
-                  <p>87 backend tests passed, awaiting validated sync.</p>
-                </article>
-              </div>
-            </div>
-          </article>
-
-          <article class="panel">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Queue Snapshot</p>
-                <h3>Next jobs</h3>
-              </div>
-            </div>
-
-            <ul class="queue-list">
-              <li>
-                <span class="mono">developer</span>
-                <strong>#351</strong>
-                <span>Plan real story completion notes</span>
-              </li>
-              <li>
-                <span class="mono">review</span>
-                <strong>#344</strong>
-                <span>Confirm remote state and issue closure</span>
-              </li>
-              <li>
-                <span class="mono">test</span>
-                <strong>#352</strong>
-                <span>Run backend suite after sync-path change</span>
-              </li>
-            </ul>
-
-            <div class="terminal">
-              <p class="terminal-title">Last command</p>
-              <code>github-run-until-idle --owner tmassey1979 --repo IdeaEngine</code>
-              <p class="terminal-result">cycle 4: validated #339, deferred-close #351, quarantined #352</p>
-            </div>
-          </article>
-        </section>
-
-        <section class="two-column" id="backlog">
-          <article class="panel">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Backlog Health</p>
-                <h3>Slice by state</h3>
-              </div>
-            </div>
-
-            <div class="backlog-list">
-              <div class="backlog-row">
-                <span>Runnable stories</span>
-                <div class="bar"><div class="fill fill-orange" style="width: 68%"></div></div>
-                <strong>27</strong>
-              </div>
-              <div class="backlog-row">
-                <span>In progress</span>
-                <div class="bar"><div class="fill fill-blue" style="width: 24%"></div></div>
-                <strong>9</strong>
-              </div>
-              <div class="backlog-row">
-                <span>Waiting follow-up</span>
-                <div class="bar"><div class="fill fill-gold" style="width: 18%"></div></div>
-                <strong>7</strong>
-              </div>
-              <div class="backlog-row">
-                <span>Quarantined</span>
-                <div class="bar"><div class="fill fill-red" style="width: 8%"></div></div>
-                <strong>3</strong>
-              </div>
-            </div>
-          </article>
-
-          <article class="panel" id="recovery">
-            <div class="panel-head">
-              <div>
-                <p class="panel-label">Recovery Chain</p>
-                <h3>Focused remediation</h3>
-              </div>
-            </div>
-
-            <div class="chain">
-              <div class="chain-node">
-                <span class="chain-kind">Parent</span>
-                <h4>#352 Story Outcome Sync Notes</h4>
-                <p>Held open while recovery path validates changed-path evidence.</p>
-              </div>
-              <div class="chain-link"></div>
-              <div class="chain-node active">
-                <span class="chain-kind">Recovery</span>
-                <h4>#353 Recovery: Sync Evidence Filter</h4>
-                <p>Preferred active path, auto-prioritized ahead of general backlog.</p>
-              </div>
-              <div class="chain-link short"></div>
-              <div class="chain-node muted">
-                <span class="chain-kind">Superseded</span>
-                <h4>#349 Recovery: Old Sync Heuristic</h4>
-                <p>Closed and retained for audit only.</p>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section class="panel repositories" id="repositories">
+        <section class="panel" id="idea-queue">
           <div class="panel-head">
             <div>
-              <p class="panel-label">Repository Signals</p>
-              <h3>What the system changed</h3>
+              <p class="panel-label">Idea Queue</p>
+              <h3>Submitted ideas, approvals, and build order</h3>
             </div>
+            <span class="chip">Story #352</span>
+          </div>
+          <div class="queue-table-wrap">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th>Idea</th>
+                  <th>Status</th>
+                  <th>Queue</th>
+                  <th>Current phase</th>
+                  <th>MVP ETA</th>
+                </tr>
+              </thead>
+              <tbody id="queue-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="projects">
+          <div class="panel-head">
+            <div>
+              <p class="panel-label">Projects</p>
+              <h3>Ideas already in active delivery</h3>
+            </div>
+            <span class="chip">Dashboard view</span>
+          </div>
+          <div id="project-grid" class="project-grid"></div>
+        </section>
+
+        <section class="panel detail-panel" id="idea-detail">
+          <div class="panel-head">
+            <div>
+              <p class="panel-label">Idea Detail</p>
+              <h3 id="idea-detail-title">Select an idea</h3>
+            </div>
+            <span class="chip" id="idea-detail-chip">Story #350</span>
           </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Repository</th>
-                <th>Last validated story</th>
-                <th>Changed paths</th>
-                <th>Runtime signal</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>IdeaEngine</td>
-                <td>#339 Changed-Path Canonicalization</td>
-                <td class="mono">backend/.../GithubIssueService.cs</td>
-                <td><span class="badge good">healthy</span></td>
-              </tr>
-              <tr>
-                <td>IdeaEngine</td>
-                <td>#344 Remove Deprecated Node Backend Scaffold</td>
-                <td class="mono">agents/, runner/, services/, sdk/</td>
-                <td><span class="badge warn">awaiting push</span></td>
-              </tr>
-              <tr>
-                <td>Dragon CRM</td>
-                <td>#118 Recovery Resume Policy</td>
-                <td class="mono">docs/ARCHITECTURE.md</td>
-                <td><span class="badge muted">planned</span></td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="detail-summary">
+            <article>
+              <span>Status</span>
+              <strong id="idea-detail-status">-</strong>
+            </article>
+            <article>
+              <span>Queue position</span>
+              <strong id="idea-detail-queue">-</strong>
+            </article>
+            <article>
+              <span>Current phase</span>
+              <strong id="idea-detail-phase">-</strong>
+            </article>
+            <article>
+              <span>MVP ETA</span>
+              <strong id="idea-detail-eta">-</strong>
+            </article>
+          </div>
+
+          <div class="detail-body">
+            <div class="detail-sidebar">
+              <div class="detail-card">
+                <p class="panel-label">Summary</p>
+                <p id="idea-detail-summary">Pick a project or queued idea to explore its backlog and delivery board.</p>
+              </div>
+              <div class="detail-card">
+                <p class="panel-label">Preferred stack</p>
+                <p id="idea-detail-stack">-</p>
+              </div>
+              <div class="detail-card">
+                <p class="panel-label">Blockers</p>
+                <ul id="idea-detail-blockers" class="sidebar-list compact"></ul>
+              </div>
+            </div>
+
+            <div class="detail-main">
+              <div class="tab-row">
+                <button class="tab active" data-tab="backlog">Backlog</button>
+                <button class="tab" data-tab="board">Board</button>
+                <button class="tab" data-tab="activity">Activity</button>
+              </div>
+
+              <div class="tab-panel active" data-panel="backlog">
+                <div id="idea-backlog-list" class="backlog-list"></div>
+              </div>
+
+              <div class="tab-panel" data-panel="board">
+                <div id="idea-board" class="board-grid"></div>
+              </div>
+
+              <div class="tab-panel" data-panel="activity">
+                <div id="idea-activity-list" class="activity-list"></div>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
     </div>
   </body>
-  </html>
+</html>
