@@ -367,6 +367,7 @@ public sealed class GithubIssueService
                 $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker next wake reason: {DescribeGlobalWorkerNextWakeReason(rootDirectory)}",
                 $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
+                $"- worker triage summary: {DescribeGlobalWorkerTriageSummary(rootDirectory)}",
                 $"- worker wait signal: {DescribeWaitSignal(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
@@ -629,6 +630,7 @@ public sealed class GithubIssueService
                 $"- worker next wake: {DescribeGlobalWorkerNextPoll(rootDirectory)}",
                 $"- worker next wake reason: {DescribeGlobalWorkerNextWakeReason(rootDirectory)}",
                 $"- worker next wake in: {DescribeGlobalWorkerNextPollIn(rootDirectory, workflow.UpdatedAt)}",
+                $"- worker triage summary: {DescribeGlobalWorkerTriageSummary(rootDirectory)}",
                 $"- worker wait signal: {DescribeWaitSignal(rootDirectory)}",
                 $"- worker progress: {DescribeGlobalWorkerProgress(rootDirectory)}",
                 $"- worker completion: {DescribeGlobalWorkerCompletion(rootDirectory)}",
@@ -2753,6 +2755,32 @@ public sealed class GithubIssueService
         {
             using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
             if (document.RootElement.TryGetProperty("attentionSummary", out var summaryProperty) &&
+                summaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(summaryProperty.GetString()))
+            {
+                return summaryProperty.GetString()!;
+            }
+
+            return "not recorded";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
+    private static string DescribeGlobalWorkerTriageSummary(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (document.RootElement.TryGetProperty("triageSummary", out var summaryProperty) &&
                 summaryProperty.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrWhiteSpace(summaryProperty.GetString()))
             {

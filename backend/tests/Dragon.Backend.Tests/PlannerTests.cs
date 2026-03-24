@@ -5445,6 +5445,7 @@ public sealed class PlannerTests
               "pendingGithubSyncRetryOverdueMinutes": 29,
               "replayPriorityReason": "overdue-github-writeback-retry",
               "replayPrioritySummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
+              "triageSummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
               "waitSignal": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
               "providerBackoffIssueCount": 0,
               "overdueWritebackIssueCount": 1,
@@ -5555,6 +5556,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker next wake: 2026-03-23T12:31:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake reason: waiting for delayed provider retry", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker next wake in: 1m 0s", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker triage summary: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker wait signal: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker progress: pass 4 / 9 · idle 2 / 3 · remaining 1 · budget 5", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker completion: active", StringComparison.Ordinal));
