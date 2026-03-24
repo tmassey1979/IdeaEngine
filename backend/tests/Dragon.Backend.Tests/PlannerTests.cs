@@ -660,6 +660,34 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_PrefersWorkerBundle_WhenDotnetServiceSignalsOverlap()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                142,
+                "[Story] Backend Runtime Component",
+                "OPEN",
+                ["story"],
+                "Expose /health while also running a hosted service for queue polling.",
+                "Backend Runtime Component",
+                "codex/sections/07-reusable-component-library.md",
+                null,
+                ["background service", "queue polling", "/health"]
+            )
+        );
+
+        Assert.Equal(12, operations.Count);
+        Assert.All(operations, operation =>
+        {
+            Assert.True(
+                operation.Path.StartsWith("templates/repo-templates/dotnet/dragon-worker/", StringComparison.Ordinal) ||
+                string.Equals(operation.Path, "templates/repo-templates/dotnet/Directory.Build.props", StringComparison.Ordinal),
+                $"Unexpected operation path: {operation.Path}");
+        });
+        Assert.DoesNotContain(operations, operation => operation.Path.Contains("dragon-api", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_WritesPipelineRuntimeBundle_ForCodeGenerationStory()
     {
         var operations = DeveloperOperationPlanner.Plan(

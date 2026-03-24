@@ -49,6 +49,7 @@ public static partial class DeveloperOperationPlanner
         var body = issue.Body ?? string.Empty;
         var rule = Rules.FirstOrDefault(candidate => candidate.Match.IsMatch($"{heading} {issue.Title}"));
         var backendStackProfile = SelectBackendStackProfile(matcher);
+        var dotnetComponentProfile = SelectDotnetComponentProfile(matcher);
 
         if (matcher.Matches("core system principles"))
         {
@@ -339,114 +340,14 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (IsDotnetApiStory(matcher))
+        if (dotnetComponentProfile is DotnetComponentProfile.Api)
         {
-            return
-            [
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/Directory.Build.props",
-                    RenderDotnetDirectoryBuildPropsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/Dragon.Api.sln",
-                    RenderDotnetApiSolutionTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj",
-                    RenderDotnetApiProjectTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/Program.cs",
-                    RenderDotnetApiProgramTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/appsettings.json",
-                    RenderDotnetApiSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/appsettings.Development.json",
-                    RenderDotnetApiDevelopmentSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/authsettings.schema.json",
-                    RenderDotnetApiAuthSchemaTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/.env.example",
-                    RenderDotnetApiEnvTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/Properties/launchSettings.json",
-                    RenderDotnetApiLaunchSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/Dockerfile",
-                    RenderDotnetApiDockerfileTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/tests/Dragon.Api.Tests.csproj",
-                    RenderDotnetApiTestsProjectTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs",
-                    RenderDotnetApiTestsTemplate())
-            ];
+            return BuildDotnetComponentOperations(dotnetComponentProfile.Value);
         }
 
-        if (IsDotnetWorkerStory(matcher))
+        if (dotnetComponentProfile is DotnetComponentProfile.Worker)
         {
-            return
-            [
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/Directory.Build.props",
-                    RenderDotnetDirectoryBuildPropsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.sln",
-                    RenderDotnetWorkerSolutionTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj",
-                    RenderDotnetWorkerProjectTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/Program.cs",
-                    RenderDotnetWorkerProgramTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/WorkerOptions.cs",
-                    RenderDotnetWorkerOptionsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/appsettings.json",
-                    RenderDotnetWorkerSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/appsettings.Development.json",
-                    RenderDotnetWorkerDevelopmentSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/queuesettings.schema.json",
-                    RenderDotnetWorkerQueueSchemaTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/.env.example",
-                    RenderDotnetWorkerEnvTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/Dockerfile",
-                    RenderDotnetWorkerDockerfileTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj",
-                    RenderDotnetWorkerTestsProjectTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/dotnet/dragon-worker/tests/WorkerOptionsTests.cs",
-                    RenderDotnetWorkerTestsTemplate())
-            ];
+            return BuildDotnetComponentOperations(dotnetComponentProfile.Value);
         }
 
         if (matcher.Matches("project initialization", "repository creation", "repository manager agent"))
@@ -1600,6 +1501,114 @@ docker compose ps >/dev/null
             _ => []
         };
 
+    private static IReadOnlyList<DeveloperOperation> BuildDotnetComponentOperations(DotnetComponentProfile profile) =>
+        profile switch
+        {
+            DotnetComponentProfile.Api =>
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/Directory.Build.props",
+                    RenderDotnetDirectoryBuildPropsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Dragon.Api.sln",
+                    RenderDotnetApiSolutionTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj",
+                    RenderDotnetApiProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Program.cs",
+                    RenderDotnetApiProgramTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/appsettings.json",
+                    RenderDotnetApiSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/appsettings.Development.json",
+                    RenderDotnetApiDevelopmentSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/authsettings.schema.json",
+                    RenderDotnetApiAuthSchemaTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/.env.example",
+                    RenderDotnetApiEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Properties/launchSettings.json",
+                    RenderDotnetApiLaunchSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Dockerfile",
+                    RenderDotnetApiDockerfileTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/tests/Dragon.Api.Tests.csproj",
+                    RenderDotnetApiTestsProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs",
+                    RenderDotnetApiTestsTemplate())
+            ],
+            DotnetComponentProfile.Worker =>
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/Directory.Build.props",
+                    RenderDotnetDirectoryBuildPropsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.sln",
+                    RenderDotnetWorkerSolutionTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj",
+                    RenderDotnetWorkerProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Program.cs",
+                    RenderDotnetWorkerProgramTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/WorkerOptions.cs",
+                    RenderDotnetWorkerOptionsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/appsettings.json",
+                    RenderDotnetWorkerSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/appsettings.Development.json",
+                    RenderDotnetWorkerDevelopmentSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/queuesettings.schema.json",
+                    RenderDotnetWorkerQueueSchemaTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/.env.example",
+                    RenderDotnetWorkerEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Dockerfile",
+                    RenderDotnetWorkerDockerfileTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj",
+                    RenderDotnetWorkerTestsProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/tests/WorkerOptionsTests.cs",
+                    RenderDotnetWorkerTestsTemplate())
+            ],
+            _ => []
+        };
+
     private static string RenderDotnetDirectoryBuildPropsTemplate() =>
         """
 <Project>
@@ -2230,8 +2239,9 @@ export function pipelineSmokeTest(): boolean {
         issue.SourceFile ?? string.Empty,
         issue.TechnicalDetails ?? []);
 
-    private static bool IsDotnetApiStory(StoryMatcher matcher) =>
-        matcher.Matches(
+    private static DotnetComponentProfile? SelectDotnetComponentProfile(StoryMatcher matcher)
+    {
+        var apiSignals = matcher.CountMatches(
             "api gateway component",
             "authentication and identity",
             "asp.net core",
@@ -2239,9 +2249,7 @@ export function pipelineSmokeTest(): boolean {
             "web api",
             "/health",
             "identity routes");
-
-    private static bool IsDotnetWorkerStory(StoryMatcher matcher) =>
-        matcher.Matches(
+        var workerSignals = matcher.CountMatches(
             "database layer",
             "messaging layer",
             "standard service templates",
@@ -2249,6 +2257,19 @@ export function pipelineSmokeTest(): boolean {
             "worker service",
             "queue polling",
             "hosted service");
+
+        if (workerSignals > 0 && workerSignals >= apiSignals)
+        {
+            return DotnetComponentProfile.Worker;
+        }
+
+        if (apiSignals > 0)
+        {
+            return DotnetComponentProfile.Api;
+        }
+
+        return null;
+    }
 
     private static BackendStackProfile? SelectBackendStackProfile(StoryMatcher matcher)
     {
@@ -2319,6 +2340,12 @@ export function pipelineSmokeTest(): boolean {
     {
         PiAutonomousEngine,
         PiLiteEngine
+    }
+
+    private enum DotnetComponentProfile
+    {
+        Api,
+        Worker
     }
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]
