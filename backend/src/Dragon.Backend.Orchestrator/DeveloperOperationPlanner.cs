@@ -131,7 +131,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/agents/dragon-agent.ts",
-                    RenderPluginTemplate(issue))
+                    RenderPluginTemplate(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/agents/dragon-agent.manifest.json",
+                    RenderPluginManifestTemplate(issue))
             ];
         }
 
@@ -142,7 +146,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/contracts/job.schema.json",
-                    RenderJobSchemaTemplate())
+                    RenderJobSchemaTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/contracts/job.example.json",
+                    RenderJobExampleTemplate())
             ];
         }
 
@@ -231,7 +239,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/observability/pipeline-monitoring.json",
-                    RenderPipelineMonitoringTemplate())
+                    RenderPipelineMonitoringTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/observability/pipeline-alert-rules.json",
+                    RenderPipelineAlertRulesTemplate())
             ];
         }
 
@@ -242,7 +254,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/observability/agent-health-metrics.json",
-                    RenderAgentMonitoringTemplate())
+                    RenderAgentMonitoringTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/observability/agent-health-alerts.json",
+                    RenderAgentMonitoringAlertsTemplate())
             ];
         }
 
@@ -253,7 +269,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/observability/cluster-observability.json",
-                    RenderClusterObservabilityTemplate())
+                    RenderClusterObservabilityTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/observability/cluster-dashboard.json",
+                    RenderClusterDashboardTemplate())
             ];
         }
 
@@ -264,7 +284,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/security/continuous-monitoring.json",
-                    RenderContinuousMonitoringTemplate())
+                    RenderContinuousMonitoringTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/security/continuous-monitoring-playbook.md",
+                    RenderContinuousMonitoringPlaybookTemplate())
             ];
         }
 
@@ -396,6 +420,24 @@ export default {{agentName}}Agent;
 """;
     }
 
+    private static string RenderPluginManifestTemplate(GithubIssue issue)
+    {
+        var agentName = InferPluginTemplateName(issue);
+        var description = issue.Heading ?? issue.Title;
+        return $$"""
+{
+  "name": "{{agentName}}",
+  "displayName": "{{description}}",
+  "entry": "./dragon-agent.ts",
+  "runtime": "node",
+  "capabilities": [
+    "execute-job",
+    "emit-artifacts"
+  ]
+}
+""";
+    }
+
     private static string RenderJobSchemaTemplate() =>
         """
 {
@@ -434,6 +476,29 @@ export default {{agentName}}Agent;
     }
   },
   "additionalProperties": true
+}
+""";
+
+    private static string RenderJobExampleTemplate() =>
+        """
+{
+  "jobId": "job-42",
+  "agent": "developer",
+  "action": "implement_issue",
+  "repo": "IdeaEngine",
+  "project": "DragonIdeaEngine",
+  "issue": 42,
+  "priority": "high",
+  "createdAt": "2026-03-23T00:00:00Z",
+  "payload": {
+    "title": "[Story] Example Job",
+    "labels": ["story"],
+    "heading": "Example Job Message Schema"
+  },
+  "metadata": {
+    "requestedBy": "system",
+    "source": "dragon-orchestrator-dotnet"
+  }
 }
 """;
 
@@ -658,6 +723,25 @@ RABBITMQ_DEFAULT_PASS=dragon
 }
 """;
 
+    private static string RenderPipelineAlertRulesTemplate() =>
+        """
+{
+  "name": "pipeline-alert-rules",
+  "rules": [
+    {
+      "name": "pipeline-failure-spike",
+      "severity": "high",
+      "condition": "failure_events_total > 0"
+    },
+    {
+      "name": "slow-generation-window",
+      "severity": "medium",
+      "condition": "generation_duration_seconds > 120"
+    }
+  ]
+}
+""";
+
     private static string RenderAgentMonitoringTemplate() =>
         """
 {
@@ -674,6 +758,25 @@ RABBITMQ_DEFAULT_PASS=dragon
     "markOfflineAfterMissedHeartbeats": 3,
     "reassignTasks": true
   }
+}
+""";
+
+    private static string RenderAgentMonitoringAlertsTemplate() =>
+        """
+{
+  "name": "agent-health-alerts",
+  "rules": [
+    {
+      "name": "missed-heartbeats",
+      "severity": "high",
+      "condition": "heartbeat_signals_total == 0"
+    },
+    {
+      "name": "agent-error-rate-spike",
+      "severity": "medium",
+      "condition": "error_rate > 0.1"
+    }
+  ]
 }
 """;
 
@@ -696,6 +799,20 @@ RABBITMQ_DEFAULT_PASS=dragon
 }
 """;
 
+    private static string RenderClusterDashboardTemplate() =>
+        """
+{
+  "name": "cluster-dashboard",
+  "panels": [
+    "cluster-health",
+    "queue-depth",
+    "node-availability",
+    "agent-success-rate"
+  ],
+  "refreshSeconds": 30
+}
+""";
+
     private static string RenderContinuousMonitoringTemplate() =>
         """
 {
@@ -711,6 +828,24 @@ RABBITMQ_DEFAULT_PASS=dragon
     "triggerAutomatedUpdates": true
   }
 }
+""";
+
+    private static string RenderContinuousMonitoringPlaybookTemplate() =>
+        """
+# Continuous Monitoring Playbook
+
+## Trigger Conditions
+
+- new vulnerability discovery
+- regulation changes
+- security patch requirements
+- technology deprecations
+
+## Response
+
+1. open or update the tracked remediation issue
+2. trigger automated updates when the risk is understood
+3. document the validation result and next retry window
 """;
 
     private static string BuildExcerpt(string? body, int maxLines, string fallback)

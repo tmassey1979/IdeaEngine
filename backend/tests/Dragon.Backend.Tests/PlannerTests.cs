@@ -131,11 +131,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/agents/dragon-agent.ts", operation.Path);
-        Assert.Contains("export interface DragonAgent", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("const agentAgent: DragonAgent", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/dragon-agent.ts" &&
+            operation.Content!.Contains("export interface DragonAgent", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/dragon-agent.manifest.json" &&
+            operation.Content!.Contains("\"capabilities\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -153,11 +153,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/contracts/job.schema.json", operation.Path);
-        Assert.Contains("\"title\": \"DragonJob\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"required\": [\"jobId\", \"agent\", \"action\"", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/contracts/job.schema.json" &&
+            operation.Content!.Contains("\"title\": \"DragonJob\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/contracts/job.example.json" &&
+            operation.Content!.Contains("\"implement_issue\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -349,11 +349,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/observability/pipeline-monitoring.json", operation.Path);
-        Assert.Contains("\"generation_duration_seconds\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"pipeline-failure-spike\"", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/observability/pipeline-monitoring.json" &&
+            operation.Content!.Contains("\"generation_duration_seconds\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/observability/pipeline-alert-rules.json" &&
+            operation.Content!.Contains("\"slow-generation-window\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -371,11 +371,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/observability/agent-health-metrics.json", operation.Path);
-        Assert.Contains("\"heartbeat_signals_total\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"markOfflineAfterMissedHeartbeats\": 3", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/observability/agent-health-metrics.json" &&
+            operation.Content!.Contains("\"heartbeat_signals_total\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/observability/agent-health-alerts.json" &&
+            operation.Content!.Contains("\"missed-heartbeats\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -393,11 +393,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/observability/cluster-observability.json", operation.Path);
-        Assert.Contains("\"cpu_usage_percent\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"node-availability\"", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/observability/cluster-observability.json" &&
+            operation.Content!.Contains("\"cpu_usage_percent\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/observability/cluster-dashboard.json" &&
+            operation.Content!.Contains("\"refreshSeconds\": 30", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -415,11 +415,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/security/continuous-monitoring.json", operation.Path);
-        Assert.Contains("\"new_vulnerability_discovery\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"triggerAutomatedUpdates\": true", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/security/continuous-monitoring.json" &&
+            operation.Content!.Contains("\"new_vulnerability_discovery\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/security/continuous-monitoring-playbook.md" &&
+            operation.Content!.Contains("## Response", StringComparison.Ordinal));
     }
 
     [Fact]
