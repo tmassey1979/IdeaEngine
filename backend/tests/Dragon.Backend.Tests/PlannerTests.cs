@@ -1311,6 +1311,37 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_PrefersDotnetSlicesAheadOfPipelineSlices()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                115,
+                "[Story] PROJECT GENERATION PIPELINE: Code Generation",
+                "OPEN",
+                ["story"],
+                "Generate runnable project slices through the task router and workflow engine.",
+                "Code Generation",
+                "codex/sections/13-project-generation-pipeline.md"),
+            new GithubIssue(
+                116,
+                "[Story] REUSABLE COMPONENT LIBRARY: API Gateway Component",
+                "OPEN",
+                ["story"],
+                "Expose health and identity routes through a minimal ASP.NET Core gateway.",
+                "API Gateway Component",
+                "codex/sections/07-reusable-component-library.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(116, job.Issue);
+        Assert.Equal("dotnet/api", job.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
     public void RunUntilIdle_TreatsValidatedOnlyStoryListAsIdle()
     {
         var root = CreateTempRoot();

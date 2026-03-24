@@ -1278,12 +1278,16 @@ public sealed class SelfBuildLoop
         var implementationProfile = DeveloperOperationPlanner.DescribeImplementationProfile(issue);
         if (string.IsNullOrWhiteSpace(implementationProfile))
         {
-            return 2;
+            return 3;
         }
 
         return implementationProfile.StartsWith("backend-stack/", StringComparison.OrdinalIgnoreCase)
             ? 0
-            : 1;
+            : implementationProfile.StartsWith("dotnet/", StringComparison.OrdinalIgnoreCase)
+                ? 1
+                : implementationProfile.StartsWith("pipeline/", StringComparison.OrdinalIgnoreCase)
+                    ? 2
+                    : 3;
     }
 
     private FailureDisposition? ApplyFailurePolicy(int issueNumber, IssueWorkflowState workflow)
