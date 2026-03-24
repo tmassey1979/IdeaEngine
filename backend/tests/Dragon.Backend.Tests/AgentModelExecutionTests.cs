@@ -1312,11 +1312,18 @@ public sealed class AgentModelExecutionTests
         var result = loop.CycleOnce([]);
 
         Assert.Equal("consume", result.Mode);
-        Assert.Contains(result.FollowUps, job => job.Agent == "review" && job.Metadata["implementationProfile"] == "backend-stack/pi-autonomous-engine");
-        Assert.Contains(result.FollowUps, job => job.Agent == "test" && job.Metadata["implementationProfile"] == "backend-stack/pi-autonomous-engine");
+        Assert.Contains(result.FollowUps, job =>
+            job.Agent == "review" &&
+            job.Metadata["implementationProfile"] == "backend-stack/pi-autonomous-engine" &&
+            job.Metadata["validationMode"] == "scaffold-validation");
+        Assert.Contains(result.FollowUps, job =>
+            job.Agent == "test" &&
+            job.Metadata["implementationProfile"] == "backend-stack/pi-autonomous-engine" &&
+            job.Metadata["validationMode"] == "scaffold-validation");
 
         var summaryFollowUp = Assert.Single(result.FollowUps, job => job.Action == "summarize_issue");
         Assert.Equal("backend-stack/pi-autonomous-engine", summaryFollowUp.Metadata["implementationProfile"]);
+        Assert.DoesNotContain("validationMode", summaryFollowUp.Metadata.Keys);
         Assert.Equal("normal", summaryFollowUp.Metadata["requestedPriority"]);
         Assert.Equal("Summarize the broader operator impact after the coordinated backend stack implementation.", summaryFollowUp.Metadata["requestedReason"]);
         Assert.Equal("Summarize the broader operator impact of the coordinated backend stack implementation.", summaryFollowUp.Metadata["targetOutcome"]);

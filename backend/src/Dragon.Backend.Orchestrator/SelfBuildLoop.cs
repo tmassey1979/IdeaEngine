@@ -132,6 +132,7 @@ public sealed class SelfBuildLoop
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"),
                 leadJob.Metadata.GetValueOrDefault("implementationProfile"),
+                leadJob.Metadata.GetValueOrDefault("validationMode") ?? InferValidationMode(leadJob.Metadata.GetValueOrDefault("implementationProfile"), leadJob.Action),
                 ReadRetryNotBeforeUtc(leadJob),
                 readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync, replayPrioritySummary));
@@ -2063,6 +2064,12 @@ public sealed class SelfBuildLoop
             metadata["implementationProfile"] = implementationProfile;
         }
 
+        var validationMode = InferValidationMode(sourceJob, action);
+        if (!string.IsNullOrWhiteSpace(validationMode))
+        {
+            metadata["validationMode"] = validationMode;
+        }
+
         var preferredAgent = InferPreferredAgent(targetArtifact);
         if (!string.IsNullOrWhiteSpace(preferredAgent))
         {
@@ -3016,9 +3023,13 @@ public sealed class SelfBuildLoop
             return null;
         }
 
+        var validationMode = FormatValidationModeLabel(leadJob.ValidationMode);
+
         return leadJob.Action.ToLowerInvariant() switch
         {
+            "review_issue" when !string.IsNullOrWhiteSpace(validationMode) => $"Reviewing {implementationProfile} work via {validationMode} for issue #{leadJob.IssueNumber}.",
             "review_issue" => $"Reviewing {implementationProfile} work for issue #{leadJob.IssueNumber}.",
+            "test_issue" when !string.IsNullOrWhiteSpace(validationMode) => $"Testing {implementationProfile} work via {validationMode} for issue #{leadJob.IssueNumber}.",
             "test_issue" => $"Testing {implementationProfile} work for issue #{leadJob.IssueNumber}.",
             _ => $"Advancing {implementationProfile} work for issue #{leadJob.IssueNumber}."
         };
@@ -3037,12 +3048,35 @@ public sealed class SelfBuildLoop
             return null;
         }
 
+        var validationMode = FormatValidationModeLabel(leadJob.ValidationMode);
+
         return leadJob.Action.ToLowerInvariant() switch
         {
+            "review_issue" when !string.IsNullOrWhiteSpace(validationMode) => $"Waiting to review {implementationProfile} work via {validationMode} on the next pass.",
             "review_issue" => $"Waiting to review {implementationProfile} work on the next pass.",
+            "test_issue" when !string.IsNullOrWhiteSpace(validationMode) => $"Waiting to test {implementationProfile} work via {validationMode} on the next pass.",
             "test_issue" => $"Waiting to test {implementationProfile} work on the next pass.",
             _ => $"Waiting to continue {implementationProfile} work on the next pass."
         };
+    }
+
+    private static string? InferValidationMode(SelfBuildJob sourceJob, string action)
+    {
+        var implementationProfile = sourceJob.Metadata.GetValueOrDefault("implementationProfile");
+        return InferValidationMode(implementationProfile, action);
+    }
+
+    private static string? InferValidationMode(string? implementationProfile, string? action)
+    {
+        if (!string.Equals(action, "review_issue", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(action, "test_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return IsBackendStackImplementationProfile(implementationProfile) || IsDotnetSliceImplementationProfile(implementationProfile)
+            ? "scaffold-validation"
+            : null;
     }
 
     private static string? FormatImplementationProfileLabel(string? implementationProfile) =>
@@ -3056,6 +3090,17 @@ public sealed class SelfBuildLoop
             "pipeline/runtime-generation" => "pipeline runtime generation",
             _ => implementationProfile
         };
+
+    private static string? FormatValidationModeLabel(string? validationMode) =>
+        validationMode?.ToLowerInvariant() switch
+        {
+            "scaffold-validation" => "scaffold validation",
+            _ => validationMode
+        };
+
+    private static bool IsDotnetSliceImplementationProfile(string? implementationProfile) =>
+        string.Equals(implementationProfile, "dotnet/api", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(implementationProfile, "dotnet/worker", StringComparison.OrdinalIgnoreCase);
 
     private static bool ReplayWasDeferred(LatestGithubReplaySnapshot? latestGithubReplay) =>
         latestGithubReplay is not null &&
@@ -3429,6 +3474,7 @@ public sealed record LeadJobSnapshot(
     bool Blocking,
     string? WorkType,
     string? ImplementationProfile = null,
+    string? ValidationMode = null,
     DateTimeOffset? RetryNotBeforeUtc = null,
     bool Delayed = false
 );

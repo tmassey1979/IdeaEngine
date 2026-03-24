@@ -1730,7 +1730,8 @@ public sealed class PlannerTests
 
         Assert.NotNull(status.LeadJob);
         Assert.Equal("backend-stack/pi-autonomous-engine", status.LeadJob!.ImplementationProfile);
-        Assert.Equal("Waiting to review Pi autonomous engine stack work on the next pass.", status.WorkerActivity);
+        Assert.Equal("scaffold-validation", status.LeadJob.ValidationMode);
+        Assert.Equal("Waiting to review Pi autonomous engine stack work via scaffold validation on the next pass.", status.WorkerActivity);
     }
 
     [Fact]

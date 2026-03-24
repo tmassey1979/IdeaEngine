@@ -176,6 +176,15 @@ function interventionTargetUrgency(snapshot) {
   return "normal";
 }
 
+function validationModeLabel(value) {
+  switch (value) {
+    case "scaffold-validation":
+      return "scaffold validation";
+    default:
+      return value || "none";
+  }
+}
+
 function delayedRetryUrgency(snapshot) {
   if (typeof snapshot.delayedRetryUrgency === "string" && snapshot.delayedRetryUrgency.length > 0) {
     return snapshot.delayedRetryUrgency;
@@ -895,6 +904,7 @@ function renderStatusSnapshot(snapshot) {
   const leadJobIssue = document.getElementById("status-lead-job-issue");
   const leadJobWorkType = document.getElementById("status-lead-job-work-type");
   const leadJobProfile = document.getElementById("status-lead-job-profile");
+  const leadJobValidationMode = document.getElementById("status-lead-job-validation-mode");
   const leadJobAgent = document.getElementById("status-lead-job-agent");
   const leadJobAction = document.getElementById("status-lead-job-action");
   const leadJobBlocking = document.getElementById("status-lead-job-blocking");
@@ -1026,6 +1036,7 @@ function renderStatusSnapshot(snapshot) {
     : "No queued work";
   leadJobWorkType.textContent = snapshot.leadJob?.workType ?? "story";
   leadJobProfile.textContent = snapshot.leadJob?.implementationProfile ?? "none";
+  leadJobValidationMode.textContent = validationModeLabel(snapshot.leadJob?.validationMode);
   leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
   leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
   leadJobBlocking.textContent = snapshot.leadJob?.blocking ? "yes" : "no";
@@ -1202,6 +1213,7 @@ async function bootStatusMock() {
     const leadJobIssue = document.getElementById("status-lead-job-issue");
     const leadJobWorkType = document.getElementById("status-lead-job-work-type");
     const leadJobProfile = document.getElementById("status-lead-job-profile");
+    const leadJobValidationMode = document.getElementById("status-lead-job-validation-mode");
     const leadJobAgent = document.getElementById("status-lead-job-agent");
     const leadJobAction = document.getElementById("status-lead-job-action");
     const leadJobBlocking = document.getElementById("status-lead-job-blocking");
@@ -1298,6 +1310,7 @@ async function bootStatusMock() {
     leadJobIssue.textContent = "No queued work";
     leadJobWorkType.textContent = "unavailable";
     leadJobProfile.textContent = "unavailable";
+    leadJobValidationMode.textContent = "unavailable";
     leadJobAgent.textContent = "unavailable";
     leadJobAction.textContent = "unavailable";
     leadJobBlocking.textContent = "unavailable";
