@@ -594,6 +594,28 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_PrefersResourceConstrainedBackendStack_WhenPiSignalsOverlap()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                140,
+                "[Story] Raspberry Pi Runtime Profile",
+                "OPEN",
+                ["story"],
+                "Shared infrastructure services must still fit a low-memory Pi deployment.",
+                "Raspberry Pi Runtime Profile",
+                "codex/sections/07-reusable-component-library.md",
+                null,
+                ["shared infrastructure services", "low memory usage", "lightweight containers", "limited CPU overhead"]
+            )
+        );
+
+        Assert.Equal(9, operations.Count);
+        Assert.All(operations, operation => Assert.StartsWith("templates/repo-templates/backend-stack/pi-lite-engine/", operation.Path, StringComparison.Ordinal));
+        Assert.DoesNotContain(operations, operation => operation.Path.Contains("pi-autonomous-engine", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_UsesGenericApiSignalsForDotnetApiBundle_WhenTitleIsGeneric()
     {
         var operations = DeveloperOperationPlanner.Plan(

@@ -48,6 +48,7 @@ public static partial class DeveloperOperationPlanner
         var heading = issue.Heading ?? string.Empty;
         var body = issue.Body ?? string.Empty;
         var rule = Rules.FirstOrDefault(candidate => candidate.Match.IsMatch($"{heading} {issue.Title}"));
+        var backendStackProfile = SelectBackendStackProfile(matcher);
 
         if (matcher.Matches("core system principles"))
         {
@@ -109,98 +110,14 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (IsResourceConstrainedBackendStackStory(matcher))
+        if (backendStackProfile is BackendStackProfile.PiLiteEngine)
         {
-            return
-            [
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/README.md",
-                    RenderResourceConstrainedBackendStackReadmeTemplate(issue)),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/docker-compose.yml",
-                    RenderResourceConstrainedBackendStackComposeTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/.env.example",
-                    RenderResourceConstrainedBackendStackEnvTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/dragon-api/appsettings.json",
-                    RenderResourceConstrainedBackendStackApiSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/dragon-worker/appsettings.json",
-                    RenderResourceConstrainedBackendStackWorkerSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/infra/resource-profile.json",
-                    RenderResourceConstrainedBackendStackProfileTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/docs/resource-tuning.md",
-                    RenderResourceConstrainedBackendStackTuningTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/tests/compose-smoke.sh",
-                    RenderResourceConstrainedBackendStackComposeSmokeTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-lite-engine/tests/stack-readiness.json",
-                    RenderResourceConstrainedBackendStackReadinessTemplate())
-            ];
+            return BuildBackendStackOperations(issue, backendStackProfile.Value);
         }
 
-        if (IsBackendStackStory(matcher))
+        if (backendStackProfile is BackendStackProfile.PiAutonomousEngine)
         {
-            return
-            [
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/README.md",
-                    RenderBackendStackReadmeTemplate(issue)),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
-                    RenderBackendStackComposeTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/.env.example",
-                    RenderBackendStackEnvTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj",
-                    RenderDotnetApiProjectTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/appsettings.json",
-                    RenderBackendStackApiSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj",
-                    RenderDotnetWorkerProjectTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/appsettings.json",
-                    RenderBackendStackWorkerSettingsTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/infra/core-services.json",
-                    RenderBackendStackCoreServicesTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/api-health.http",
-                    RenderBackendStackApiHealthContractTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh",
-                    RenderBackendStackComposeSmokeTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/stack-readiness.json",
-                    RenderBackendStackReadinessTemplate())
-            ];
+            return BuildBackendStackOperations(issue, backendStackProfile.Value);
         }
 
         if (matcher.Matches("agent runner"))
@@ -1591,6 +1508,98 @@ docker compose ps >/dev/null
 }
 """;
 
+    private static IReadOnlyList<DeveloperOperation> BuildBackendStackOperations(GithubIssue issue, BackendStackProfile profile) =>
+        profile switch
+        {
+            BackendStackProfile.PiLiteEngine =>
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/README.md",
+                    RenderResourceConstrainedBackendStackReadmeTemplate(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/docker-compose.yml",
+                    RenderResourceConstrainedBackendStackComposeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/.env.example",
+                    RenderResourceConstrainedBackendStackEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/dragon-api/appsettings.json",
+                    RenderResourceConstrainedBackendStackApiSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/dragon-worker/appsettings.json",
+                    RenderResourceConstrainedBackendStackWorkerSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/infra/resource-profile.json",
+                    RenderResourceConstrainedBackendStackProfileTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/docs/resource-tuning.md",
+                    RenderResourceConstrainedBackendStackTuningTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/tests/compose-smoke.sh",
+                    RenderResourceConstrainedBackendStackComposeSmokeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/tests/stack-readiness.json",
+                    RenderResourceConstrainedBackendStackReadinessTemplate())
+            ],
+            BackendStackProfile.PiAutonomousEngine =>
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/README.md",
+                    RenderBackendStackReadmeTemplate(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                    RenderBackendStackComposeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/.env.example",
+                    RenderBackendStackEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj",
+                    RenderDotnetApiProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/appsettings.json",
+                    RenderBackendStackApiSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj",
+                    RenderDotnetWorkerProjectTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/appsettings.json",
+                    RenderBackendStackWorkerSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/infra/core-services.json",
+                    RenderBackendStackCoreServicesTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/api-health.http",
+                    RenderBackendStackApiHealthContractTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh",
+                    RenderBackendStackComposeSmokeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/stack-readiness.json",
+                    RenderBackendStackReadinessTemplate())
+            ],
+            _ => []
+        };
+
     private static string RenderDotnetDirectoryBuildPropsTemplate() =>
         """
 <Project>
@@ -2241,8 +2250,15 @@ export function pipelineSmokeTest(): boolean {
             "queue polling",
             "hosted service");
 
-    private static bool IsBackendStackStory(StoryMatcher matcher) =>
-        matcher.Matches(
+    private static BackendStackProfile? SelectBackendStackProfile(StoryMatcher matcher)
+    {
+        var resourceConstrainedSignals = matcher.CountMatches(
+            "pi edition resource constraints",
+            "low memory usage",
+            "lightweight containers",
+            "limited cpu overhead",
+            "efficient networking");
+        var autonomousSignals = matcher.CountMatches(
             "pi edition core services",
             "phase 1 raspberry pi autonomous engine",
             "all components on a single device",
@@ -2250,13 +2266,18 @@ export function pipelineSmokeTest(): boolean {
             "object storage",
             "caching");
 
-    private static bool IsResourceConstrainedBackendStackStory(StoryMatcher matcher) =>
-        matcher.Matches(
-            "pi edition resource constraints",
-            "low memory usage",
-            "lightweight containers",
-            "limited cpu overhead",
-            "efficient networking");
+        if (resourceConstrainedSignals > 0 && resourceConstrainedSignals >= autonomousSignals)
+        {
+            return BackendStackProfile.PiLiteEngine;
+        }
+
+        if (autonomousSignals > 0)
+        {
+            return BackendStackProfile.PiAutonomousEngine;
+        }
+
+        return null;
+    }
 
     private static string InferPluginTemplateName(GithubIssue issue)
     {
@@ -2284,12 +2305,20 @@ export function pipelineSmokeTest(): boolean {
     {
         public bool Matches(params string[] terms) => terms.Any(Matches);
 
+        public int CountMatches(params string[] terms) => terms.Count(Matches);
+
         private bool Matches(string term) =>
             Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             Heading.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             Body.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             SourceFile.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             TechnicalDetails.Any(detail => detail.Contains(term, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private enum BackendStackProfile
+    {
+        PiAutonomousEngine,
+        PiLiteEngine
     }
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]
