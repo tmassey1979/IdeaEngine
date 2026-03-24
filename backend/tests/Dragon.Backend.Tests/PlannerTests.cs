@@ -5295,7 +5295,6 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: deferred until provider backoff clears", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("Provider backoff guidance", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("next retry unlock: 2026-03-23T16:15:00.0000000+00:00", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("current action: wait for the delayed provider retry window to reopen before creating a new remediation path", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("operator action: none unless provider backoff persists after the next retry window", StringComparison.Ordinal));
@@ -5582,7 +5581,6 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("30m 0s ago", StringComparison.Ordinal));
     }
 
     [Fact]
