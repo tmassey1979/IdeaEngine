@@ -336,6 +336,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesProjectFactoryBundle_ForRepositoryCreationStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                132,
+                "[Story] PROJECT GENERATION PIPELINE: Repository Creation",
+                "OPEN",
+                ["story"],
+                "The Repository Manager Agent creates the initial project repository.",
+                "Repository Creation",
+                "codex/sections/13-project-generation-pipeline.md"
+            )
+        );
+
+        Assert.Equal(3, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/package.json" &&
+            operation.Content!.Contains("\"name\": \"dragon-project-factory\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/repository-manager.ts" &&
+            operation.Content!.Contains("createRepository", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/project-bootstrap.ts" &&
+            operation.Content!.Contains("bootstrapProject", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_WritesPipelineRuntimeBundle_ForCodeGenerationStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                133,
+                "[Story] PROJECT GENERATION PIPELINE: Code Generation",
+                "OPEN",
+                ["story"],
+                "Generate runnable project slices through the task router and workflow engine.",
+                "Code Generation",
+                "codex/sections/13-project-generation-pipeline.md"
+            )
+        );
+
+        Assert.Equal(3, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/task-router.ts" &&
+            operation.Content!.Contains("routeTask", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts" &&
+            operation.Content!.Contains("buildWorkflow", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/code-generator.ts" &&
+            operation.Content!.Contains("generateProjectSlice", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_UsesHeadingMetadataForDeploymentBundle_WhenTitleIsGeneric()
     {
         var operations = DeveloperOperationPlanner.Plan(
@@ -711,6 +759,32 @@ public sealed class PlannerTests
         Assert.NotNull(job.Payload.Operations);
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/package.json");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json");
+    }
+
+    [Fact]
+    public void SeedNext_SelectsRefactorForPipelineRuntimeStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                107,
+                "[Story] PROJECT GENERATION PIPELINE: Code Generation",
+                "OPEN",
+                ["story"],
+                "Generate runnable project slices through the task router and workflow engine.",
+                "Code Generation",
+                "codex/sections/13-project-generation-pipeline.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("refactor", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/task-router.ts");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/code-generator.ts");
     }
 
     [Fact]

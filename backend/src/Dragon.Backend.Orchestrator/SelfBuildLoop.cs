@@ -2172,7 +2172,8 @@ public sealed class SelfBuildLoop
         operation.Path.StartsWith("templates/repo-templates/sdk/", StringComparison.OrdinalIgnoreCase) ||
         operation.Path.StartsWith("templates/repo-templates/runner/", StringComparison.OrdinalIgnoreCase) ||
         operation.Path.StartsWith("templates/repo-templates/agents/", StringComparison.OrdinalIgnoreCase) ||
-        operation.Path.StartsWith("templates/repo-templates/contracts/", StringComparison.OrdinalIgnoreCase);
+        operation.Path.StartsWith("templates/repo-templates/contracts/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/pipeline/", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRecoveryIssue(GithubIssue issue) =>
         issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||
