@@ -398,7 +398,7 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(10, operations.Count);
+        Assert.Equal(12, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/Directory.Build.props" &&
             operation.Content!.Contains("<TreatWarningsAsErrors>false</TreatWarningsAsErrors>", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.sln" &&
@@ -411,6 +411,10 @@ public sealed class PlannerTests
             operation.Content!.Contains("\"Authentication\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/appsettings.Development.json" &&
             operation.Content!.Contains("\"Default\": \"Debug\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/authsettings.schema.json" &&
+            operation.Content!.Contains("\"DragonApiAuthSettings\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/.env.example" &&
+            operation.Content!.Contains("DRAGON_AUTH_PROVIDER=dragon", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Properties/launchSettings.json" &&
             operation.Content!.Contains("\"applicationUrl\": \"http://localhost:5080\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dockerfile" &&
@@ -436,7 +440,7 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(10, operations.Count);
+        Assert.Equal(12, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/Directory.Build.props" &&
             operation.Content!.Contains("<TreatWarningsAsErrors>false</TreatWarningsAsErrors>", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.sln" &&
@@ -451,6 +455,10 @@ public sealed class PlannerTests
             operation.Content!.Contains("\"PollSeconds\": 10", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/appsettings.Development.json" &&
             operation.Content!.Contains("\"dragon.jobs.dev\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/queuesettings.schema.json" &&
+            operation.Content!.Contains("\"DragonWorkerQueueSettings\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/.env.example" &&
+            operation.Content!.Contains("DRAGON_QUEUE_NAME=dragon.jobs", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dockerfile" &&
             operation.Content!.Contains("ENTRYPOINT [\"dotnet\", \"Dragon.Worker.dll\"]", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj" &&
@@ -476,7 +484,7 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(10, operations.Count);
+        Assert.Equal(12, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj");
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs");
     }
@@ -498,7 +506,7 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(10, operations.Count);
+        Assert.Equal(12, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj");
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Program.cs");
     }

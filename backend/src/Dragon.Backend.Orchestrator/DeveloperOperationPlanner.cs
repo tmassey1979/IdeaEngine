@@ -358,6 +358,14 @@ public static partial class DeveloperOperationPlanner
                     RenderDotnetApiDevelopmentSettingsTemplate()),
                 new DeveloperOperation(
                     "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/authsettings.schema.json",
+                    RenderDotnetApiAuthSchemaTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/.env.example",
+                    RenderDotnetApiEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
                     "templates/repo-templates/dotnet/dragon-api/Properties/launchSettings.json",
                     RenderDotnetApiLaunchSettingsTemplate()),
                 new DeveloperOperation(
@@ -407,6 +415,14 @@ public static partial class DeveloperOperationPlanner
                     "write_file",
                     "templates/repo-templates/dotnet/dragon-worker/appsettings.Development.json",
                     RenderDotnetWorkerDevelopmentSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/queuesettings.schema.json",
+                    RenderDotnetWorkerQueueSchemaTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/.env.example",
+                    RenderDotnetWorkerEnvTemplate()),
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/dotnet/dragon-worker/Dockerfile",
@@ -1241,6 +1257,34 @@ public partial class Program;
 }
 """;
 
+    private static string RenderDotnetApiAuthSchemaTemplate() =>
+        """
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DragonApiAuthSettings",
+  "type": "object",
+  "properties": {
+    "Authentication": {
+      "type": "object",
+      "properties": {
+        "Provider": { "type": "string" },
+        "Authority": { "type": "string" },
+        "Audience": { "type": "string" }
+      },
+      "required": ["Provider"]
+    }
+  }
+}
+""";
+
+    private static string RenderDotnetApiEnvTemplate() =>
+        """
+ASPNETCORE_ENVIRONMENT=Development
+DRAGON_AUTH_PROVIDER=dragon
+DRAGON_AUTH_AUTHORITY=
+DRAGON_AUTH_AUDIENCE=
+""";
+
     private static string RenderDotnetApiLaunchSettingsTemplate() =>
         """
 {
@@ -1404,6 +1448,34 @@ public sealed class WorkerOptions
     "QueueName": "dragon.jobs.dev"
   }
 }
+""";
+
+    private static string RenderDotnetWorkerQueueSchemaTemplate() =>
+        """
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DragonWorkerQueueSettings",
+  "type": "object",
+  "properties": {
+    "Worker": {
+      "type": "object",
+      "properties": {
+        "PollSeconds": { "type": "integer", "minimum": 1 },
+        "QueueName": { "type": "string" },
+        "ConnectionString": { "type": "string" }
+      },
+      "required": ["PollSeconds", "QueueName"]
+    }
+  }
+}
+""";
+
+    private static string RenderDotnetWorkerEnvTemplate() =>
+        """
+DOTNET_ENVIRONMENT=Development
+DRAGON_QUEUE_NAME=dragon.jobs
+DRAGON_QUEUE_CONNECTION=
+DRAGON_STORAGE_CONNECTION=
 """;
 
     private static string RenderDotnetWorkerDockerfileTemplate() =>
