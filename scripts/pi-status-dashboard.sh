@@ -52,6 +52,9 @@ rollup = status.get("rollup") or {}
 latest = status.get("latestActivity") or {}
 next_wake_reason = describe_wake_reason(status.get("nextWakeReason"))
 delayed_retry_urgency = status.get("delayedRetryUrgency")
+recent_loop_signal = status.get("recentLoopSignal") or {}
+recent_loop_mode = recent_loop_signal.get("mode")
+recent_loop_summary = recent_loop_signal.get("summary")
 pending_github_sync = status.get("pendingGithubSync") or []
 pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt") or ""
 pending_github_sync_last_attempt = ""
@@ -94,6 +97,10 @@ if provider_backoff_issue_count > 0:
     print(f"  provider_backoff_issue_count: {provider_backoff_issue_count}")
 if overdue_writeback_issue_count > 0:
     print(f"  overdue_writeback_issue_count: {overdue_writeback_issue_count}")
+if recent_loop_mode:
+    print(f"  recent_loop_mode: {recent_loop_mode}")
+if recent_loop_summary:
+    print(f"  recent_loop_summary: {recent_loop_summary}")
 if next_wake_reason:
     print(f"  next_wake_reason: {next_wake_reason}")
 if status.get("nextDelayedRetryAt"):

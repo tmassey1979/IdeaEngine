@@ -18,13 +18,46 @@ Defaults:
 EOF
 }
 
+print_status_headline() {
+  local report_file="$1"
+
+  python3 - "${report_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    report = json.load(handle)
+
+status = report.get("status") or {}
+recent_loop_signal = status.get("recentLoopSignal") or {}
+health = status.get("health") or "unknown"
+wait_signal = status.get("waitSignal") or ""
+recent_loop_mode = recent_loop_signal.get("mode") or ""
+recent_loop_summary = recent_loop_signal.get("summary") or ""
+
+if wait_signal:
+    print(f"headline: {wait_signal}")
+if recent_loop_mode:
+    print(f"loop_mode: {recent_loop_mode}")
+if recent_loop_summary:
+    print(f"loop_summary: {recent_loop_summary}")
+else:
+    print(f"loop_summary: worker health={health}")
+PY
+}
+
 main() {
   local interval="${WATCH_INTERVAL_SECONDS}"
   local iterations="${ITERATIONS}"
   local count=0
+  local report_file=""
 
   [[ -x "${REPO_DIR}/scripts/pi-status-dashboard.sh" ]] || {
     echo "Status dashboard script not found at ${REPO_DIR}/scripts/pi-status-dashboard.sh" >&2
+    exit 1
+  }
+  [[ -x "${REPO_DIR}/scripts/pi-report.sh" ]] || {
+    echo "Pi report script not found at ${REPO_DIR}/scripts/pi-report.sh" >&2
     exit 1
   }
 
@@ -75,6 +108,12 @@ main() {
 
     echo "Dragon Pi Watch Status"
     echo "refresh=${count} interval=${interval}s time=$(date -Iseconds)"
+    report_file="$(mktemp)"
+    if "${REPO_DIR}/scripts/pi-report.sh" --json > "${report_file}" 2>/dev/null; then
+      print_status_headline "${report_file}"
+    fi
+    rm -f "${report_file}"
+    report_file=""
     echo
     "${REPO_DIR}/scripts/pi-status-dashboard.sh"
 
