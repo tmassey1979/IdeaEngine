@@ -277,12 +277,22 @@ public sealed class QueueStore
     {
         if (!string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
         {
-            return 1;
+            return 3;
         }
 
-        return string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("implementationProfile"))
-            ? 1
-            : 0;
+        var implementationProfile = job.Metadata.GetValueOrDefault("implementationProfile");
+        if (string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            return 3;
+        }
+
+        return implementationProfile.StartsWith("backend-stack/", StringComparison.OrdinalIgnoreCase)
+            ? 0
+            : implementationProfile.StartsWith("dotnet/", StringComparison.OrdinalIgnoreCase)
+                ? 1
+                : implementationProfile.StartsWith("pipeline/", StringComparison.OrdinalIgnoreCase)
+                    ? 2
+                    : 3;
     }
 
     private static int GetRollupBreadthRank(SelfBuildJob job)

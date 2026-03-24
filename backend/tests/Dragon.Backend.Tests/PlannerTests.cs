@@ -1464,6 +1464,43 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void QueueStore_PrioritizesBackendStackProfilesAheadOfDotnetSlices()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            26,
+            new SelfBuildJobPayload(".NET Slice", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "dotnet/api"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            27,
+            new SelfBuildJobPayload("Backend Stack", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine"
+            }));
+
+        var next = queue.Peek();
+
+        Assert.NotNull(next);
+        Assert.Equal(27, next!.Issue);
+        Assert.Equal("backend-stack/pi-autonomous-engine", next.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesQueuedCountsAndLatestExecutionNotes()
     {
         var root = CreateTempRoot();
