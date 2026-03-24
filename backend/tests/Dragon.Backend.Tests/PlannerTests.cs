@@ -688,6 +688,29 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_PrefersBackendStackProfile_WhenImplementationSignalsOverlap()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                144,
+                "[Story] Unified Platform Slice",
+                "OPEN",
+                ["story"],
+                "Shared infrastructure services should expose /health and support repository bootstrap on a single device.",
+                "Unified Platform Slice",
+                "codex/sections/03-dragon-idea-engine-infrastructure-architecture.md",
+                null,
+                ["shared infrastructure services", "object storage", "/health", "repository creation"]
+            )
+        );
+
+        Assert.Equal(11, operations.Count);
+        Assert.All(operations, operation => Assert.StartsWith("templates/repo-templates/backend-stack/pi-autonomous-engine/", operation.Path, StringComparison.Ordinal));
+        Assert.DoesNotContain(operations, operation => operation.Path.StartsWith("templates/repo-templates/dotnet/", StringComparison.Ordinal));
+        Assert.DoesNotContain(operations, operation => operation.Path.StartsWith("templates/repo-templates/pipeline/", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_WritesPipelineRuntimeBundle_ForCodeGenerationStory()
     {
         var operations = DeveloperOperationPlanner.Plan(

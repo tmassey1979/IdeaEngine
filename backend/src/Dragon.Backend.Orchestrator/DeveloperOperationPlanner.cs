@@ -48,9 +48,7 @@ public static partial class DeveloperOperationPlanner
         var heading = issue.Heading ?? string.Empty;
         var body = issue.Body ?? string.Empty;
         var rule = Rules.FirstOrDefault(candidate => candidate.Match.IsMatch($"{heading} {issue.Title}"));
-        var backendStackProfile = SelectBackendStackProfile(matcher);
-        var dotnetComponentProfile = SelectDotnetComponentProfile(matcher);
-        var pipelineProfile = SelectPipelineProfile(matcher);
+        var implementationProfile = SelectImplementationProfile(matcher);
 
         if (matcher.Matches("core system principles"))
         {
@@ -112,14 +110,9 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (backendStackProfile is BackendStackProfile.PiLiteEngine)
+        if (implementationProfile is not null)
         {
-            return BuildBackendStackOperations(issue, backendStackProfile.Value);
-        }
-
-        if (backendStackProfile is BackendStackProfile.PiAutonomousEngine)
-        {
-            return BuildBackendStackOperations(issue, backendStackProfile.Value);
+            return BuildImplementationOperations(issue, implementationProfile.Value);
         }
 
         if (matcher.Matches("agent runner"))
@@ -339,26 +332,6 @@ public static partial class DeveloperOperationPlanner
                     "templates/repo-templates/deploy/.env.example",
                     RenderDeploymentEnvTemplate())
             ];
-        }
-
-        if (dotnetComponentProfile is DotnetComponentProfile.Api)
-        {
-            return BuildDotnetComponentOperations(dotnetComponentProfile.Value);
-        }
-
-        if (dotnetComponentProfile is DotnetComponentProfile.Worker)
-        {
-            return BuildDotnetComponentOperations(dotnetComponentProfile.Value);
-        }
-
-        if (pipelineProfile is PipelineProfile.RepositoryBootstrap)
-        {
-            return BuildPipelineOperations(pipelineProfile.Value);
-        }
-
-        if (pipelineProfile is PipelineProfile.RuntimeGeneration)
-        {
-            return BuildPipelineOperations(pipelineProfile.Value);
         }
 
         if (matcher.Matches("execution monitor", "pipeline monitoring"))
@@ -1466,6 +1439,18 @@ docker compose ps >/dev/null
             _ => []
         };
 
+    private static IReadOnlyList<DeveloperOperation> BuildImplementationOperations(GithubIssue issue, ImplementationProfile profile) =>
+        profile switch
+        {
+            { Kind: ImplementationProfileKind.BackendStack, BackendStack: not null } =>
+                BuildBackendStackOperations(issue, profile.BackendStack.Value),
+            { Kind: ImplementationProfileKind.DotnetComponent, DotnetComponent: not null } =>
+                BuildDotnetComponentOperations(profile.DotnetComponent.Value),
+            { Kind: ImplementationProfileKind.Pipeline, Pipeline: not null } =>
+                BuildPipelineOperations(profile.Pipeline.Value),
+            _ => []
+        };
+
     private static IReadOnlyList<DeveloperOperation> BuildDotnetComponentOperations(DotnetComponentProfile profile) =>
         profile switch
         {
@@ -2248,6 +2233,29 @@ export function pipelineSmokeTest(): boolean {
         issue.SourceFile ?? string.Empty,
         issue.TechnicalDetails ?? []);
 
+    private static ImplementationProfile? SelectImplementationProfile(StoryMatcher matcher)
+    {
+        var backendStackProfile = SelectBackendStackProfile(matcher);
+        if (backendStackProfile is not null)
+        {
+            return new ImplementationProfile(ImplementationProfileKind.BackendStack, backendStackProfile, null, null);
+        }
+
+        var dotnetComponentProfile = SelectDotnetComponentProfile(matcher);
+        if (dotnetComponentProfile is not null)
+        {
+            return new ImplementationProfile(ImplementationProfileKind.DotnetComponent, null, dotnetComponentProfile, null);
+        }
+
+        var pipelineProfile = SelectPipelineProfile(matcher);
+        if (pipelineProfile is not null)
+        {
+            return new ImplementationProfile(ImplementationProfileKind.Pipeline, null, null, pipelineProfile);
+        }
+
+        return null;
+    }
+
     private static DotnetComponentProfile? SelectDotnetComponentProfile(StoryMatcher matcher)
     {
         var apiSignals = matcher.CountMatches(
@@ -2390,6 +2398,19 @@ export function pipelineSmokeTest(): boolean {
         RepositoryBootstrap,
         RuntimeGeneration
     }
+
+    private enum ImplementationProfileKind
+    {
+        BackendStack,
+        DotnetComponent,
+        Pipeline
+    }
+
+    private readonly record struct ImplementationProfile(
+        ImplementationProfileKind Kind,
+        BackendStackProfile? BackendStack,
+        DotnetComponentProfile? DotnetComponent,
+        PipelineProfile? Pipeline);
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]
     private static partial Regex ArchitecturePattern();
