@@ -144,7 +144,19 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/backend-stack/pi-autonomous-engine/infra/core-services.json",
-                    RenderBackendStackCoreServicesTemplate())
+                    RenderBackendStackCoreServicesTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/api-health.http",
+                    RenderBackendStackApiHealthContractTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh",
+                    RenderBackendStackComposeSmokeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/stack-readiness.json",
+                    RenderBackendStackReadinessTemplate())
             ];
         }
 
@@ -1330,6 +1342,66 @@ REDIS_CONNECTION=redis:6379
     "lightweightContainers": true,
     "limitedCpuOverhead": true
   }
+}
+""";
+
+    private static string RenderBackendStackApiHealthContractTemplate() =>
+        """
+### Dragon API Health Contract
+
+GET http://localhost:5080/health
+Accept: application/json
+
+###
+
+GET http://localhost:5080/api/identity
+Accept: application/json
+""";
+
+    private static string RenderBackendStackComposeSmokeTemplate() =>
+        """
+#!/usr/bin/env bash
+set -euo pipefail
+
+docker compose up -d
+trap 'docker compose down' EXIT
+
+curl --fail --silent http://localhost:5080/health >/dev/null
+curl --fail --silent http://localhost:5080/api/identity >/dev/null
+docker compose ps
+""";
+
+    private static string RenderBackendStackReadinessTemplate() =>
+        """
+{
+  "name": "pi-autonomous-engine-readiness",
+  "checks": [
+    {
+      "service": "dragon-api",
+      "probe": "http://localhost:5080/health",
+      "required": true
+    },
+    {
+      "service": "dragon-worker",
+      "probe": "background-loop",
+      "required": true
+    },
+    {
+      "service": "rabbitmq",
+      "probe": "tcp://localhost:5672",
+      "required": true
+    },
+    {
+      "service": "postgres",
+      "probe": "tcp://localhost:5432",
+      "required": true
+    },
+    {
+      "service": "keycloak",
+      "probe": "http://localhost:8080",
+      "required": false
+    }
+  ]
 }
 """;
 

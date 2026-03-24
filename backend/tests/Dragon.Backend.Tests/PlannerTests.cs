@@ -371,7 +371,7 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(8, operations.Count);
+        Assert.Equal(11, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/README.md" &&
             operation.Content!.Contains("PI EDITION CORE SERVICES", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml" &&
@@ -389,6 +389,12 @@ public sealed class PlannerTests
             operation.Content!.Contains("\"QueueName\": \"dragon.jobs.pi\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/infra/core-services.json" &&
             operation.Content!.Contains("\"singleDevice\": true", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/api-health.http" &&
+            operation.Content!.Contains("GET http://localhost:5080/health", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh" &&
+            operation.Content!.Contains("docker compose up -d", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/stack-readiness.json" &&
+            operation.Content!.Contains("\"dragon-api\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -519,10 +525,12 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(8, operations.Count);
+        Assert.Equal(11, operations.Count);
         Assert.All(operations, operation => Assert.StartsWith("templates/repo-templates/backend-stack/pi-autonomous-engine/", operation.Path, StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path.EndsWith("infra/core-services.json", StringComparison.Ordinal) &&
             operation.Content!.Contains("\"object-storage\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path.EndsWith("tests/compose-smoke.sh", StringComparison.Ordinal) &&
+            operation.Content!.Contains("curl --fail --silent http://localhost:5080/health", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1050,6 +1058,7 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh");
     }
 
     [Fact]
