@@ -127,6 +127,8 @@ if max_pending_github_retry_overdue_minutes > 0 and pending_github_sync_retry_ov
 
 if problems:
     print("[alert] Dragon Pi check failed")
+    print(f"triage_summary={triage_summary or 'none'}")
+    print(f"wait_signal={wait_signal or 'none'}")
     for problem in problems:
         print(f"- {problem}")
     sys.exit(1)
