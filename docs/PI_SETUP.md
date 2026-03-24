@@ -148,7 +148,7 @@ What those do:
 - `pi-status-dashboard.sh` gives a richer human-readable status page with report highlights, timer state, alert-check result, latest activity, and the next commands to run
 - `pi-watch-status.sh` refreshes the status dashboard on an interval so you can monitor the Pi from one terminal
 - `pi-service-doctor.sh` interprets the current Pi status and suggests the most likely next commands when service health, timers, or queue state need attention
-- `pi-share-status.sh` writes a lightweight support bundle with the report JSON, a plain-text loop/status snapshot, dashboard, doctor output, alert-check output, git status, and recent service logs
+- `pi-share-status.sh` writes a lightweight support bundle with the report JSON, a triage-summary snapshot, a plain-text loop/status snapshot, dashboard, doctor output, alert-check output, git status, and recent service logs
 - `pi-preflight.sh` checks whether the Pi is ready to start: Docker, Compose, core repo files, credentials, disk space, and installed systemd units
 - `pi-start.sh` runs preflight by default and then starts the main systemd service, with optional `--follow`, `--skip-preflight`, or `--compose` modes
 - `pi-start-and-wait.sh` starts the Pi service and then waits until it becomes healthy or times out
@@ -162,7 +162,7 @@ What those do:
 - `pi-report.sh` prints a concise service health view, including restart/result signals, backup/update/alert timers, worker state, queue, activity, compose, and backup summary, and supports `--json` for machine-readable output
 - `healthcheck-pi.sh` verifies Docker, the installed service, `.env`, and the backend health/status endpoints
 - `update-pi.sh` optionally backs up first, refuses dirty checkouts by default, then pulls the latest branch, refreshes the service file, restarts the stack, and runs the health check
-- `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, and backend snapshots
+- `collect-pi-diagnostics.sh` writes a timestamped diagnostics bundle with service state, compose state, logs, backend snapshots, and a summary index that includes the current triage summary
 - `backup-pi.sh` creates a timestamped backup of `.env`, `.dragon`, and Docker volumes
 - `restore-pi.sh` restores `.env`, `.dragon`, and Docker volumes from a chosen backup
 - `cleanup-pi.sh` prunes old diagnostics folders and unpacked backup directories under `.tmp`

@@ -15,6 +15,25 @@ write_command_output() {
   } > "${OUTPUT_DIR}/${filename}" 2>&1 || true
 }
 
+write_triage_summary() {
+  python3 - "${OUTPUT_DIR}/report.json" <<'PY' > "${OUTPUT_DIR}/triage-summary.txt" 2>&1 || true
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    report = json.load(handle)
+
+status = report.get("status") or {}
+triage_summary = status.get("triageSummary") or "none"
+wait_signal = status.get("waitSignal") or "none"
+recent_loop = (status.get("recentLoopSignal") or {}).get("summary") or "none"
+
+print(f"triage_summary={triage_summary}")
+print(f"wait_signal={wait_signal}")
+print(f"recent_loop_summary={recent_loop}")
+PY
+}
+
 main() {
   [[ -d "${REPO_DIR}/scripts" ]] || {
     echo "Repo scripts directory not found at ${REPO_DIR}/scripts" >&2
@@ -30,6 +49,7 @@ repo_dir=${REPO_DIR}
 
 Contents:
 - report.json: machine-readable pi-report snapshot
+- triage-summary.txt: current backend triage summary and related wait context
 - loop-status.txt: current backend wait signal and recent loop summary
 - dashboard.txt: human-readable dashboard summary
 - doctor.txt: guided next-step summary
@@ -40,6 +60,7 @@ Contents:
 EOF
 
   write_command_output "report.json" "${REPO_DIR}/scripts/pi-report.sh" --json
+  write_triage_summary
   write_command_output "loop-status.txt" "${REPO_DIR}/scripts/pi-report.sh"
   write_command_output "dashboard.txt" "${REPO_DIR}/scripts/pi-status-dashboard.sh"
   write_command_output "doctor.txt" "${REPO_DIR}/scripts/pi-service-doctor.sh"

@@ -37,6 +37,26 @@ collect_if_present() {
   fi
 }
 
+append_triage_summary() {
+  local report_path="$1"
+  python3 - "${report_path}" <<'PY' >> "${OUTPUT_DIR}/summary.txt" 2>&1 || true
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    report = json.load(handle)
+
+status = report.get("status") or {}
+triage_summary = status.get("triageSummary") or "none"
+wait_signal = status.get("waitSignal") or "none"
+recent_loop = (status.get("recentLoopSignal") or {}).get("summary") or "none"
+
+print(f"triage_summary={triage_summary}")
+print(f"wait_signal={wait_signal}")
+print(f"recent_loop_summary={recent_loop}")
+PY
+}
+
 write_text "summary.txt" \
   "Dragon Pi diagnostics bundle" \
   "timestamp=${TIMESTAMP}" \
@@ -44,6 +64,14 @@ write_text "summary.txt" \
   "service_name=${SERVICE_NAME}" \
   "status_url=${STATUS_URL}" \
   "health_url=${HEALTH_URL}"
+
+if [[ -x "${REPO_DIR}/scripts/pi-report.sh" ]]; then
+  report_summary_file="$(mktemp)"
+  if "${REPO_DIR}/scripts/pi-report.sh" --json > "${report_summary_file}" 2>/dev/null; then
+    append_triage_summary "${report_summary_file}"
+  fi
+  rm -f "${report_summary_file}"
+fi
 
 write_section "uname.txt" uname -a
 write_section "os-release.txt" cat /etc/os-release
@@ -59,6 +87,7 @@ write_section "service-journal.txt" journalctl -u "${SERVICE_NAME}.service" -n 4
 if [[ -d "${REPO_DIR}" ]]; then
   write_section "git-status.txt" git -C "${REPO_DIR}" status --short
   write_section "git-branch.txt" git -C "${REPO_DIR}" branch --show-current
+  write_section "triage-summary.txt" "${REPO_DIR}/scripts/pi-report.sh"
   write_section "loop-status.txt" "${REPO_DIR}/scripts/pi-report.sh"
   write_section "compose-ps.txt" bash -lc "cd '${REPO_DIR}' && docker compose ps"
   write_section "compose-config.txt" bash -lc "cd '${REPO_DIR}' && docker compose config"
