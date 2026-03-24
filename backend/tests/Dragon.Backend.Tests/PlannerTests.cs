@@ -460,6 +460,50 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_UsesGenericApiSignalsForDotnetApiBundle_WhenTitleIsGeneric()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                136,
+                "[Story] Backend Service Slice",
+                "OPEN",
+                ["story"],
+                "Expose /health and identity routes through a minimal ASP.NET Core web API.",
+                "Service Component",
+                "codex/sections/07-reusable-component-library.md",
+                null,
+                ["ASP.NET Core", "Web API", "/health"]
+            )
+        );
+
+        Assert.Equal(10, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj");
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs");
+    }
+
+    [Fact]
+    public void Plan_UsesGenericWorkerSignalsForDotnetWorkerBundle_WhenTitleIsGeneric()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                137,
+                "[Story] Backend Worker Slice",
+                "OPEN",
+                ["story"],
+                "Provide a background service for queue polling and hosted service execution.",
+                "Service Template",
+                "codex/sections/07-reusable-component-library.md",
+                null,
+                ["Background Service", "Queue polling", "Hosted Service"]
+            )
+        );
+
+        Assert.Equal(10, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj");
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Program.cs");
+    }
+
+    [Fact]
     public void Plan_WritesPipelineRuntimeBundle_ForCodeGenerationStory()
     {
         var operations = DeveloperOperationPlanner.Plan(

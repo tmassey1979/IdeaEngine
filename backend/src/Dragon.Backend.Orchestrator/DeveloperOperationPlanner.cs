@@ -328,7 +328,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (matcher.Matches("api gateway component", "authentication and identity"))
+        if (IsDotnetApiStory(matcher))
         {
             return
             [
@@ -375,7 +375,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (matcher.Matches("database layer", "messaging layer", "standard service templates"))
+        if (IsDotnetWorkerStory(matcher))
         {
             return
             [
@@ -1736,6 +1736,26 @@ export function pipelineSmokeTest(): boolean {
         issue.Body ?? string.Empty,
         issue.SourceFile ?? string.Empty,
         issue.TechnicalDetails ?? []);
+
+    private static bool IsDotnetApiStory(StoryMatcher matcher) =>
+        matcher.Matches(
+            "api gateway component",
+            "authentication and identity",
+            "asp.net core",
+            "minimal api",
+            "web api",
+            "/health",
+            "identity routes");
+
+    private static bool IsDotnetWorkerStory(StoryMatcher matcher) =>
+        matcher.Matches(
+            "database layer",
+            "messaging layer",
+            "standard service templates",
+            "background service",
+            "worker service",
+            "queue polling",
+            "hosted service");
 
     private static string InferPluginTemplateName(GithubIssue issue)
     {
