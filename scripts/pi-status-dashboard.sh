@@ -62,6 +62,7 @@ pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or "
 pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
 replay_priority_reason = status.get("replayPriorityReason")
 replay_priority_summary = status.get("replayPrioritySummary")
+triage_summary = status.get("triageSummary")
 provider_backoff_issue_count = int(status.get("providerBackoffIssueCount") or 0)
 overdue_writeback_issue_count = int(status.get("overdueWritebackIssueCount") or 0)
 wait_signal = status.get("waitSignal")
@@ -93,6 +94,8 @@ if replay_priority_reason:
     print(f"  replay_priority_reason: {replay_priority_reason}")
 if replay_priority_summary:
     print(f"  replay_priority_summary: {replay_priority_summary}")
+if triage_summary:
+    print(f"  triage_summary: {triage_summary}")
 if provider_backoff_issue_count > 0:
     print(f"  provider_backoff_issue_count: {provider_backoff_issue_count}")
 if overdue_writeback_issue_count > 0:

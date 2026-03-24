@@ -219,6 +219,19 @@ function nextWakeReasonLabel(snapshot) {
 }
 
 function pendingGithubRetrySignal(snapshot) {
+  if (typeof snapshot.triageSummary === "string" && snapshot.triageSummary.trim()) {
+    switch (snapshot.replayPriorityReason) {
+      case "overdue-github-writeback-retry":
+        return { label: snapshot.triageSummary, state: "alert" };
+      case "ready-github-writeback-retry":
+        return { label: snapshot.triageSummary, state: "caution" };
+      case "provider-backoff":
+        return { label: snapshot.triageSummary, state: "normal" };
+      default:
+        break;
+    }
+  }
+
   if (typeof snapshot.waitSignal === "string" && snapshot.waitSignal.trim()) {
     switch (snapshot.replayPriorityReason) {
       case "overdue-github-writeback-retry":

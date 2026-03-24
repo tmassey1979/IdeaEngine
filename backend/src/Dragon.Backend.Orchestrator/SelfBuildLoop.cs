@@ -137,6 +137,7 @@ public sealed class SelfBuildLoop
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now, providerBackoffIssueCount, overdueWritebackIssueCount);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes, providerBackoffIssueCount, overdueWritebackIssueCount);
+        var triageSummary = BuildTriageSummary(waitSignal, recentLoopSignal, attentionSummary, health, interventionTarget);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay, pendingGithubSyncRetryOverdueMinutes)
@@ -185,6 +186,7 @@ public sealed class SelfBuildLoop
             delayedRetryUrgency,
             delayedRetrySummary,
             waitSignal,
+            triageSummary,
             pendingGithubSyncNextRetryAt,
             pendingGithubSyncRetryState,
             pendingGithubSyncRetryOverdueMinutes,
@@ -2505,6 +2507,42 @@ public sealed class SelfBuildLoop
         };
     }
 
+    private static string? BuildTriageSummary(
+        string? waitSignal,
+        RecentLoopSignalSnapshot recentLoopSignal,
+        string attentionSummary,
+        string health,
+        InterventionTargetSnapshot? interventionTarget)
+    {
+        if (!string.IsNullOrWhiteSpace(waitSignal))
+        {
+            return waitSignal;
+        }
+
+        if (!string.IsNullOrWhiteSpace(recentLoopSignal.Summary) &&
+            !string.Equals(recentLoopSignal.Mode, "idle", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(recentLoopSignal.Mode, "draining", StringComparison.OrdinalIgnoreCase))
+        {
+            return recentLoopSignal.Summary;
+        }
+
+        if (!string.Equals(health, "healthy", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(attentionSummary))
+        {
+            return attentionSummary;
+        }
+
+        if (interventionTarget is not null &&
+            (string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(interventionTarget.Escalation, "warning", StringComparison.OrdinalIgnoreCase)) &&
+            !string.IsNullOrWhiteSpace(interventionTarget.Summary))
+        {
+            return interventionTarget.Summary;
+        }
+
+        return null;
+    }
+
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
@@ -3018,6 +3056,7 @@ public sealed record StatusSnapshot(
     string? DelayedRetryUrgency = null,
     string? DelayedRetrySummary = null,
     string? WaitSignal = null,
+    string? TriageSummary = null,
     DateTimeOffset? PendingGithubSyncNextRetryAt = null,
     string? PendingGithubSyncRetryState = null,
     int PendingGithubSyncRetryOverdueMinutes = 0,

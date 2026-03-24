@@ -90,6 +90,7 @@ payload = {
     "endpoints": report.get("endpoints"),
     "workerHealth": status.get("health"),
     "attentionSummary": status.get("attentionSummary"),
+    "triageSummary": status.get("triageSummary"),
     "waitSignalBackend": status.get("waitSignal"),
     "nextWakeReason": status.get("nextWakeReason"),
     "waitSignal": wait_signal,

@@ -143,6 +143,7 @@ replay_priority_reason = payload.get("replayPriorityReason") or ""
 replay_priority_summary = payload.get("replayPrioritySummary") or ""
 provider_backoff_issue_count = int(payload.get("providerBackoffIssueCount") or 0)
 overdue_writeback_issue_count = int(payload.get("overdueWritebackIssueCount") or 0)
+triage_summary = payload.get("triageSummary") or ""
 recent_loop_signal = payload.get("recentLoopSignal") or {}
 recent_loop_mode = recent_loop_signal.get("mode") or ""
 recent_loop_summary = recent_loop_signal.get("summary") or ""
@@ -175,6 +176,7 @@ fields = {
     "REPLAY_PRIORITY_SUMMARY": replay_priority_summary,
     "PROVIDER_BACKOFF_ISSUE_COUNT": str(provider_backoff_issue_count),
     "OVERDUE_WRITEBACK_ISSUE_COUNT": str(overdue_writeback_issue_count),
+    "TRIAGE_SUMMARY": triage_summary,
     "RECENT_LOOP_MODE": recent_loop_mode,
     "RECENT_LOOP_SUMMARY": recent_loop_summary,
     "PENDING_GITHUB_SYNC_NEXT_RETRY": pending_github_sync_next_retry,
@@ -674,6 +676,9 @@ main() {
     if [[ -n "${REPLAY_PRIORITY_SUMMARY:-}" && "${REPLAY_PRIORITY_SUMMARY}" != "None" ]]; then
       echo "replay_priority_summary: ${REPLAY_PRIORITY_SUMMARY}"
     fi
+    if [[ -n "${TRIAGE_SUMMARY:-}" && "${TRIAGE_SUMMARY}" != "None" ]]; then
+      echo "triage_summary: ${TRIAGE_SUMMARY}"
+    fi
     echo "provider_backoff_issue_count: ${PROVIDER_BACKOFF_ISSUE_COUNT:-0}"
     echo "overdue_writeback_issue_count: ${OVERDUE_WRITEBACK_ISSUE_COUNT:-0}"
     if [[ -n "${RECENT_LOOP_MODE:-}" && "${RECENT_LOOP_MODE}" != "None" ]]; then
@@ -738,6 +743,7 @@ main() {
     echo "wait_signal_backend: $(json_query waitSignal '')"
     echo "replay_priority_reason: $(json_query replayPriorityReason '')"
     echo "replay_priority_summary: $(json_query replayPrioritySummary '')"
+    echo "triage_summary: $(json_query triageSummary '')"
     echo "provider_backoff_issue_count: $(json_query providerBackoffIssueCount 0)"
     echo "overdue_writeback_issue_count: $(json_query overdueWritebackIssueCount 0)"
     echo "recent_loop_mode: $(json_query recentLoopSignal.mode '')"

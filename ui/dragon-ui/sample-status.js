@@ -120,6 +120,7 @@ globalThis.__DRAGON_STATUS__ = {
   "pendingGithubSyncRetryOverdueMinutes": 25,
   "replayPriorityReason": "overdue-github-writeback-retry",
   "replayPrioritySummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
+  "triageSummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
   "waitSignal": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
   "interventionEscalationNote": "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
   "interventionEscalationStreak": 3,

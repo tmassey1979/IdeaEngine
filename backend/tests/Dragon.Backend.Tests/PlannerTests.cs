@@ -1430,6 +1430,7 @@ public sealed class PlannerTests
         Assert.Equal("Waiting to replay pending GitHub updates after provider backoff clears.", status.WorkerActivity);
         Assert.Equal("waiting", status.RecentLoopSignal.Mode);
         Assert.Contains("intentionally deferring pending GitHub replay", status.RecentLoopSignal.Summary, StringComparison.Ordinal);
+        Assert.Equal("Overdue GitHub writeback replay is being prioritized before ordinary implementation.", status.TriageSummary);
         Assert.NotNull(status.LatestGithubReplay);
         Assert.Contains("Intentionally deferring replay for 1 pending GitHub update", status.LatestGithubReplay!.Summary, StringComparison.Ordinal);
     }
@@ -1631,6 +1632,7 @@ public sealed class PlannerTests
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPriorityReason").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPrioritySummary").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("waitSignal").ValueKind);
+        Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("triageSummary").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("providerBackoffIssueCount").GetInt32());
         Assert.Equal(0, rootElement.GetProperty("overdueWritebackIssueCount").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("latestGithubReplay").ValueKind);
