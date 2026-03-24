@@ -2865,6 +2865,57 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_PrunesLowerTierStructuredImplementationWhenSameArtifactBackendStackJobIsQueued()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            620,
+            new SelfBuildJobPayload("[Story] API Slice", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "templates/repo-templates/backend-stack/shared/docker-compose.yml",
+                ["targetOutcome"] = "Wire the shared backend compose stack.",
+                ["implementationProfile"] = "dotnet/api",
+                ["workType"] = "story"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            621,
+            new SelfBuildJobPayload("[Story] Backend Stack", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "templates/repo-templates/backend-stack/shared/docker-compose.yml",
+                ["targetOutcome"] = "Wire the shared backend compose stack.",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine",
+                ["workType"] = "story"
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var result = loop.CycleOnce([]);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.NotNull(result.Job);
+        Assert.Equal(621, result.Job!.Issue);
+
+        var remaining = queue.ReadAll();
+        Assert.DoesNotContain(remaining, job => job.Issue == 620);
+        Assert.All(remaining, job => Assert.Equal(621, job.Issue));
+
+        var records = new ExecutionRecordStore(root).Read(621);
+        var record = Assert.Single(records);
+        Assert.Contains("Kept newer or higher-specificity same-artifact implementation; pruned weaker duplicates.", record.Notes, StringComparison.Ordinal);
+        Assert.Contains("Superseded implementation issues: 620.", record.Notes, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_ServesLiveStatusSnapshot()
     {
         var root = CreateTempRoot();

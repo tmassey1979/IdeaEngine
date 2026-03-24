@@ -1942,17 +1942,34 @@ public sealed class SelfBuildLoop
             return 0;
         }
 
-        if (!string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("implementationProfile")))
+        var implementationProfilePriorityRank = GetImplementationProfilePriorityRank(job.Metadata.GetValueOrDefault("implementationProfile"));
+        if (implementationProfilePriorityRank < 3)
         {
-            return 1;
+            return 1 + implementationProfilePriorityRank;
         }
 
         if (string.Equals(priority, "low", StringComparison.OrdinalIgnoreCase))
         {
+            return 5;
+        }
+
+        return 4;
+    }
+
+    private static int GetImplementationProfilePriorityRank(string? implementationProfile)
+    {
+        if (string.IsNullOrWhiteSpace(implementationProfile))
+        {
             return 3;
         }
 
-        return 2;
+        return implementationProfile.StartsWith("backend-stack/", StringComparison.OrdinalIgnoreCase)
+            ? 0
+            : implementationProfile.StartsWith("dotnet/", StringComparison.OrdinalIgnoreCase)
+                ? 1
+                : implementationProfile.StartsWith("pipeline/", StringComparison.OrdinalIgnoreCase)
+                    ? 2
+                    : 3;
     }
 
     private static int GetImplementationSpecificityRank(SelfBuildJob job)
@@ -1970,6 +1987,7 @@ public sealed class SelfBuildLoop
         string.Equals(left.Agent, right.Agent, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(left.Action, right.Action, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(left.Metadata.GetValueOrDefault("requestedPriority"), right.Metadata.GetValueOrDefault("requestedPriority"), StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("implementationProfile"), right.Metadata.GetValueOrDefault("implementationProfile"), StringComparison.OrdinalIgnoreCase) &&
         string.Equals(left.Metadata.GetValueOrDefault("targetArtifact"), right.Metadata.GetValueOrDefault("targetArtifact"), StringComparison.OrdinalIgnoreCase) &&
         string.Equals(left.Metadata.GetValueOrDefault("targetOutcome"), right.Metadata.GetValueOrDefault("targetOutcome"), StringComparison.OrdinalIgnoreCase);
 
