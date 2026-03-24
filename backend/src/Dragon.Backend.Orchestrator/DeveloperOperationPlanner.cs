@@ -146,12 +146,24 @@ public static partial class DeveloperOperationPlanner
             [
                 new DeveloperOperation(
                     "write_file",
+                    "templates/repo-templates/agents/package.json",
+                    RenderPluginPackageTemplate()),
+                new DeveloperOperation(
+                    "write_file",
                     "templates/repo-templates/agents/dragon-agent.ts",
                     RenderPluginTemplate(issue)),
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/agents/dragon-agent.manifest.json",
-                    RenderPluginManifestTemplate(issue))
+                    RenderPluginManifestTemplate(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/agents/tsconfig.json",
+                    RenderPluginTsConfigTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/agents/tests/dragon-agent.test.ts",
+                    RenderPluginTestTemplate())
             ];
         }
 
@@ -254,12 +266,24 @@ public static partial class DeveloperOperationPlanner
             [
                 new DeveloperOperation(
                     "write_file",
+                    "templates/repo-templates/sdk/examples/package.json",
+                    RenderSdkExamplePackageTemplate()),
+                new DeveloperOperation(
+                    "write_file",
                     "templates/repo-templates/sdk/examples/developer-agent.ts",
                     RenderSdkExampleAgentTemplate()),
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/sdk/examples/developer-agent.manifest.json",
-                    RenderSdkExampleAgentManifestTemplate())
+                    RenderSdkExampleAgentManifestTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/examples/tsconfig.json",
+                    RenderSdkExampleTsConfigTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/examples/tests/developer-agent.test.ts",
+                    RenderSdkExampleTestTemplate())
             ];
         }
 
@@ -556,6 +580,45 @@ export default {{agentName}}Agent;
 """;
     }
 
+    private static string RenderPluginPackageTemplate() =>
+        """
+{
+  "name": "dragon-agent-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/dragon-agent.test.js')\""
+  }
+}
+""";
+
+    private static string RenderPluginTsConfigTemplate() =>
+        """
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["*.ts", "tests/**/*.ts"]
+}
+""";
+
+    private static string RenderPluginTestTemplate() =>
+        """
+import agent from "../dragon-agent";
+
+export async function pluginSmokeTest(): Promise<boolean> {
+  const result = await agent.execute({ mode: "cli" });
+  return result.success;
+}
+""";
+
     private static string RenderJobSchemaTemplate() =>
         """
 {
@@ -797,6 +860,45 @@ export const developerAgent = {
     "implement-issue",
     "emit-summary"
   ]
+}
+""";
+
+    private static string RenderSdkExamplePackageTemplate() =>
+        """
+{
+  "name": "dragon-agent-sdk-examples",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/developer-agent.test.js')\""
+  }
+}
+""";
+
+    private static string RenderSdkExampleTsConfigTemplate() =>
+        """
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["*.ts", "tests/**/*.ts"]
+}
+""";
+
+    private static string RenderSdkExampleTestTemplate() =>
+        """
+import { developerAgent } from "../developer-agent";
+
+export async function exampleAgentSmokeTest(): Promise<boolean> {
+  const result = await developerAgent.execute({ mode: "cli" });
+  return result.success;
 }
 """;
 

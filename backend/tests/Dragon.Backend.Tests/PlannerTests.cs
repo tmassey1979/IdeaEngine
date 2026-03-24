@@ -139,11 +139,17 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(2, operations.Count);
+        Assert.Equal(5, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/package.json" &&
+            operation.Content!.Contains("\"test\": \"node --input-type=module -e", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/dragon-agent.ts" &&
             operation.Content!.Contains("export interface DragonAgent", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/dragon-agent.manifest.json" &&
             operation.Content!.Contains("\"capabilities\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/tsconfig.json" &&
+            operation.Content!.Contains("\"include\": [\"*.ts\", \"tests/**/*.ts\"]", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/agents/tests/dragon-agent.test.ts" &&
+            operation.Content!.Contains("pluginSmokeTest", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -270,12 +276,18 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(2, operations.Count);
+        Assert.Equal(5, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/package.json" &&
+            operation.Content!.Contains("\"test\": \"node --input-type=module -e", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/developer-agent.ts" &&
             operation.Content!.Contains("name: \"developer\"", StringComparison.Ordinal) &&
             operation.Content!.Contains("../dragon-agent-sdk/src/types", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/developer-agent.manifest.json" &&
             operation.Content!.Contains("\"sdk\": \"dragon-agent-sdk\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/tsconfig.json" &&
+            operation.Content!.Contains("\"include\": [\"*.ts\", \"tests/**/*.ts\"]", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/tests/developer-agent.test.ts" &&
+            operation.Content!.Contains("exampleAgentSmokeTest", StringComparison.Ordinal));
     }
 
     [Fact]
