@@ -334,6 +334,14 @@ public static partial class DeveloperOperationPlanner
             [
                 new DeveloperOperation(
                     "write_file",
+                    "templates/repo-templates/dotnet/Directory.Build.props",
+                    RenderDotnetDirectoryBuildPropsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Dragon.Api.sln",
+                    RenderDotnetApiSolutionTemplate()),
+                new DeveloperOperation(
+                    "write_file",
                     "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj",
                     RenderDotnetApiProjectTemplate()),
                 new DeveloperOperation(
@@ -371,6 +379,14 @@ public static partial class DeveloperOperationPlanner
         {
             return
             [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/Directory.Build.props",
+                    RenderDotnetDirectoryBuildPropsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.sln",
+                    RenderDotnetWorkerSolutionTemplate()),
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj",
@@ -1147,6 +1163,35 @@ RABBITMQ_DEFAULT_USER=dragon
 RABBITMQ_DEFAULT_PASS=dragon
 """;
 
+    private static string RenderDotnetDirectoryBuildPropsTemplate() =>
+        """
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
+""";
+
+    private static string RenderDotnetApiSolutionTemplate() =>
+        """
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dragon.Api", "Dragon.Api.csproj", "{11111111-1111-1111-1111-111111111111}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dragon.Api.Tests", "tests\Dragon.Api.Tests.csproj", "{22222222-2222-2222-2222-222222222222}"
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Any CPU = Debug|Any CPU
+        Release|Any CPU = Release|Any CPU
+    EndGlobalSection
+EndGlobal
+""";
+
     private static string RenderDotnetApiProjectTemplate() =>
         """
 <Project Sdk="Microsoft.NET.Sdk.Web">
@@ -1281,6 +1326,24 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 </Project>
+""";
+
+    private static string RenderDotnetWorkerSolutionTemplate() =>
+        """
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dragon.Worker", "Dragon.Worker.csproj", "{33333333-3333-3333-3333-333333333333}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dragon.Worker.Tests", "tests\Dragon.Worker.Tests.csproj", "{44444444-4444-4444-4444-444444444444}"
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Any CPU = Debug|Any CPU
+        Release|Any CPU = Release|Any CPU
+    EndGlobalSection
+EndGlobal
 """;
 
     private static string RenderDotnetWorkerProgramTemplate() =>

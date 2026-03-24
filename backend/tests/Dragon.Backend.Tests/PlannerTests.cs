@@ -398,7 +398,11 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(8, operations.Count);
+        Assert.Equal(10, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/Directory.Build.props" &&
+            operation.Content!.Contains("<TreatWarningsAsErrors>false</TreatWarningsAsErrors>", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.sln" &&
+            operation.Content!.Contains("Dragon.Api.Tests", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj" &&
             operation.Content!.Contains("Microsoft.NET.Sdk.Web", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs" &&
@@ -432,7 +436,11 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(8, operations.Count);
+        Assert.Equal(10, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/Directory.Build.props" &&
+            operation.Content!.Contains("<TreatWarningsAsErrors>false</TreatWarningsAsErrors>", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.sln" &&
+            operation.Content!.Contains("Dragon.Worker.Tests", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj" &&
             operation.Content!.Contains("Microsoft.NET.Sdk.Worker", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Program.cs" &&
