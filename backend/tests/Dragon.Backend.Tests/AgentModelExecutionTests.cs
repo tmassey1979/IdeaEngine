@@ -2195,9 +2195,10 @@ public sealed class AgentModelExecutionTests
         var result = executor.Execute(root, job);
 
         Assert.Equal("success", result.Status);
-        Assert.Contains("Applied 2 planned refactor operation", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("Applied 3 planned refactor operation", result.Summary, StringComparison.Ordinal);
         Assert.Contains("templates/repo-templates/sdk/dragon-agent-sdk/package.json", result.ChangedPaths!);
         Assert.Contains("templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json", result.ChangedPaths!);
+        Assert.Contains("templates/repo-templates/sdk/dragon-agent-sdk/tests/sdk-smoke.test.ts", result.ChangedPaths!);
         Assert.True(File.Exists(Path.Combine(root, "templates", "repo-templates", "sdk", "dragon-agent-sdk", "package.json")));
     }
 

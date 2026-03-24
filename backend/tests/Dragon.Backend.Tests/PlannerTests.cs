@@ -109,9 +109,11 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(5, operations.Count);
+        Assert.Equal(6, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/README.md" &&
             operation.Content!.Contains("load agent plugins", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/package.json" &&
+            operation.Content!.Contains("\"test\": \"node --input-type=module -e", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/service-mode.json" &&
             operation.Content!.Contains("\"mode\": \"service\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/src/index.ts" &&
@@ -181,11 +183,14 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(2, operations.Count);
+        Assert.Equal(3, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/package.json" &&
-            operation.Content!.Contains("\"name\": \"dragon-agent-sdk\"", StringComparison.Ordinal));
+            operation.Content!.Contains("\"name\": \"dragon-agent-sdk\"", StringComparison.Ordinal) &&
+            operation.Content!.Contains("\"test\": \"node --input-type=module -e", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json" &&
-            operation.Content!.Contains("\"include\": [\"src/**/*.ts\"]", StringComparison.Ordinal));
+            operation.Content!.Contains("\"include\": [\"src/**/*.ts\", \"tests/**/*.ts\"]", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/tests/sdk-smoke.test.ts" &&
+            operation.Content!.Contains("sdkSmokeTest", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -356,7 +361,8 @@ public sealed class PlannerTests
 
         Assert.Equal(4, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/package.json" &&
-            operation.Content!.Contains("\"name\": \"dragon-project-factory\"", StringComparison.Ordinal));
+            operation.Content!.Contains("\"name\": \"dragon-project-factory\"", StringComparison.Ordinal) &&
+            operation.Content!.Contains("\"test\": \"node --input-type=module -e", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/repository-manager.ts" &&
             operation.Content!.Contains("createRepository", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/project-bootstrap.ts" &&

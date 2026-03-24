@@ -119,6 +119,10 @@ public static partial class DeveloperOperationPlanner
                     RenderRunnerTemplateReadme(issue)),
                 new DeveloperOperation(
                     "write_file",
+                    "templates/repo-templates/runner/dragon-agent-runner/package.json",
+                    RenderRunnerPackageTemplate()),
+                new DeveloperOperation(
+                    "write_file",
                     "templates/repo-templates/runner/dragon-agent-runner/service-mode.json",
                     RenderRunnerServiceTemplate()),
                 new DeveloperOperation(
@@ -177,7 +181,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json",
-                    RenderSdkTsConfigTemplate())
+                    RenderSdkTsConfigTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/tests/sdk-smoke.test.ts",
+                    RenderSdkSmokeTestTemplate())
             ];
         }
 
@@ -622,7 +630,8 @@ export default {{agentName}}Agent;
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/sdk-smoke.test.js')\""
   }
 }
 """;
@@ -639,7 +648,16 @@ export default {{agentName}}Agent;
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}
+""";
+
+    private static string RenderSdkSmokeTestTemplate() =>
+        """
+import type { DragonAgentSdk } from "../src/index";
+
+export function sdkSmokeTest(_sdk?: DragonAgentSdk): boolean {
+  return true;
 }
 """;
 
@@ -871,6 +889,20 @@ export function createGitUtilities(): DragonGit {
 }
 """;
 
+    private static string RenderRunnerPackageTemplate() =>
+        """
+{
+  "name": "dragon-agent-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/runner.test.js')\""
+  }
+}
+""";
+
     private static string RenderRunnerEntryPointTemplate() =>
         """
 export async function runAgentRunner(mode: "cli" | "service"): Promise<void> {
@@ -944,7 +976,8 @@ RABBITMQ_DEFAULT_PASS=dragon
   "type": "module",
   "scripts": {
     "start": "node dist/project-bootstrap.js",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/pipeline.test.js')\""
   }
 }
 """;
