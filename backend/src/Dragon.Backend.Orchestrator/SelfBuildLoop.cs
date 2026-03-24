@@ -1273,10 +1273,18 @@ public sealed class SelfBuildLoop
             .First();
     }
 
-    private static int GetSeedStoryPriorityRank(GithubIssue issue) =>
-        string.IsNullOrWhiteSpace(DeveloperOperationPlanner.DescribeImplementationProfile(issue))
-            ? 1
-            : 0;
+    private static int GetSeedStoryPriorityRank(GithubIssue issue)
+    {
+        var implementationProfile = DeveloperOperationPlanner.DescribeImplementationProfile(issue);
+        if (string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            return 2;
+        }
+
+        return implementationProfile.StartsWith("backend-stack/", StringComparison.OrdinalIgnoreCase)
+            ? 0
+            : 1;
+    }
 
     private FailureDisposition? ApplyFailurePolicy(int issueNumber, IssueWorkflowState workflow)
     {

@@ -1280,6 +1280,37 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_PrefersBackendStackProfilesAheadOfSmallerStructuredSlices()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                113,
+                "[Story] REUSABLE COMPONENT LIBRARY: API Gateway Component",
+                "OPEN",
+                ["story"],
+                "Expose health and identity routes through a minimal ASP.NET Core gateway.",
+                "API Gateway Component",
+                "codex/sections/07-reusable-component-library.md"),
+            new GithubIssue(
+                114,
+                "[Story] REUSABLE COMPONENT LIBRARY: PI EDITION CORE SERVICES",
+                "OPEN",
+                ["story"],
+                "Shared infrastructure services running locally for the Raspberry Pi edition.",
+                "PI EDITION CORE SERVICES",
+                "codex/sections/07-reusable-component-library.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(114, job.Issue);
+        Assert.Equal("backend-stack/pi-autonomous-engine", job.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
     public void RunUntilIdle_TreatsValidatedOnlyStoryListAsIdle()
     {
         var root = CreateTempRoot();
