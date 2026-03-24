@@ -8094,6 +8094,101 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReviewExecutor_ValidatesDotnetApiAssetsForProfiledWork()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-api", "tests"));
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-api", "Dragon.Api.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk.Web\"></Project>");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-api", "Program.cs"),
+            "var builder = WebApplication.CreateBuilder(args);\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-api", "appsettings.json"),
+            "{\n  \"Logging\": {}\n}\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-api", "tests", "Dragon.Api.Tests.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(303, "Dragon Api", "refactor", new JobExecutionResult("job-refactor", "refactor", "success", "done", DateTimeOffset.UtcNow));
+
+        var executor = new LocalJobExecutor((fileName, arguments, _) => new CommandResult(0, "ok", string.Empty));
+
+        var reviewResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "review",
+                "review_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                303,
+                new SelfBuildJobPayload("Dragon Api", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["implementationProfile"] = "dotnet/api",
+                    ["targetArtifact"] = "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj",
+                    ["targetOutcome"] = "Review the .NET API slice."
+                })
+        );
+
+        Assert.Equal("success", reviewResult.Status);
+        Assert.Contains("Reviewed .NET API slice assets", reviewResult.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TestExecutor_ValidatesDotnetWorkerAssetsForProfiledWork()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-worker", "tests"));
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-worker", "Dragon.Worker.sln"),
+            "Microsoft Visual Studio Solution File, Format Version 12.00\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-worker", "Dragon.Worker.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk.Worker\"></Project>");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-worker", "tests", "Dragon.Worker.Tests.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "dotnet", "dragon-worker", "tests", "WorkerOptionsTests.cs"),
+            "namespace Dragon.Worker.Tests;\npublic class WorkerOptionsTests { }\n");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(304, "Dragon Worker", "refactor", new JobExecutionResult("job-refactor", "refactor", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(304, "Dragon Worker", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+
+        var executed = new List<string>();
+        var executor = new LocalJobExecutor((fileName, arguments, _) =>
+        {
+            executed.Add($"{fileName} {arguments}");
+            return new CommandResult(0, "ok", string.Empty);
+        });
+
+        var testResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "test",
+                "test_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                304,
+                new SelfBuildJobPayload("Dragon Worker", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["implementationProfile"] = "dotnet/worker",
+                    ["targetArtifact"] = "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj",
+                    ["targetOutcome"] = "Validate the .NET worker slice."
+                })
+        );
+
+        Assert.Equal("success", testResult.Status);
+        Assert.Contains("Validated .NET worker slice test assets", testResult.Summary, StringComparison.Ordinal);
+        Assert.Empty(executed);
+    }
+
+    [Fact]
     public void WorkflowStateStore_ValidatesSuccessfulArchitectReviewAndTestStages()
     {
         var root = CreateTempRoot();

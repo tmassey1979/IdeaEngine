@@ -233,26 +233,51 @@ public sealed class LocalJobExecutor
 
     private static string? TryExecuteProfileAwareReview(string rootDirectory, SelfBuildJob job)
     {
-        if (!IsBackendStackImplementationProfile(job))
+        if (IsBackendStackImplementationProfile(job))
+        {
+            var profileRoot = ResolveBackendStackProfileRoot(rootDirectory, job);
+            if (profileRoot is null)
+            {
+                return null;
+            }
+
+            var composePath = Path.Combine(profileRoot, "docker-compose.yml");
+            var envExamplePath = Path.Combine(profileRoot, ".env.example");
+            var readmePath = Path.Combine(profileRoot, "README.md");
+
+            ValidateRequiredNonEmptyFile(rootDirectory, composePath, "Backend stack review failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, envExamplePath, "Backend stack review failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, readmePath, "Backend stack review failed because");
+
+            return $"Reviewed coordinated backend stack assets in {Path.GetRelativePath(rootDirectory, profileRoot)}.";
+        }
+
+        if (!IsDotnetSliceImplementationProfile(job))
         {
             return null;
         }
 
-        var profileRoot = ResolveImplementationProfileRoot(rootDirectory, job);
-        if (profileRoot is null)
+        var dotnetProfileRoot = ResolveDotnetProfileRoot(rootDirectory, job);
+        if (dotnetProfileRoot is null)
         {
             return null;
         }
 
-        var composePath = Path.Combine(profileRoot, "docker-compose.yml");
-        var envExamplePath = Path.Combine(profileRoot, ".env.example");
-        var readmePath = Path.Combine(profileRoot, "README.md");
+        var implementationProfile = job.Metadata.GetValueOrDefault("implementationProfile");
+        if (string.Equals(implementationProfile, "dotnet/api", StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "Dragon.Api.csproj"), ".NET API review failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "Program.cs"), ".NET API review failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "appsettings.json"), ".NET API review failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "tests", "Dragon.Api.Tests.csproj"), ".NET API review failed because");
+            return $"Reviewed .NET API slice assets in {Path.GetRelativePath(rootDirectory, dotnetProfileRoot)}.";
+        }
 
-        ValidateRequiredNonEmptyFile(rootDirectory, composePath, "Backend stack review failed because");
-        ValidateRequiredNonEmptyFile(rootDirectory, envExamplePath, "Backend stack review failed because");
-        ValidateRequiredNonEmptyFile(rootDirectory, readmePath, "Backend stack review failed because");
-
-        return $"Reviewed coordinated backend stack assets in {Path.GetRelativePath(rootDirectory, profileRoot)}.";
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "Dragon.Worker.csproj"), ".NET worker review failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "Program.cs"), ".NET worker review failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "WorkerOptions.cs"), ".NET worker review failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "tests", "Dragon.Worker.Tests.csproj"), ".NET worker review failed because");
+        return $"Reviewed .NET worker slice assets in {Path.GetRelativePath(rootDirectory, dotnetProfileRoot)}.";
     }
 
     private string ExecuteTest(string rootDirectory, SelfBuildJob job)
@@ -300,50 +325,77 @@ public sealed class LocalJobExecutor
 
     private static string? TryExecuteProfileAwareTest(string rootDirectory, SelfBuildJob job)
     {
-        if (!IsBackendStackImplementationProfile(job))
+        if (IsBackendStackImplementationProfile(job))
+        {
+            var profileRoot = ResolveBackendStackProfileRoot(rootDirectory, job);
+            if (profileRoot is null)
+            {
+                return null;
+            }
+
+            var composePath = Path.Combine(profileRoot, "docker-compose.yml");
+            var smokePath = Path.Combine(profileRoot, "tests", "compose-smoke.sh");
+            var readinessPath = Path.Combine(profileRoot, "tests", "stack-readiness.json");
+
+            if (!File.Exists(composePath))
+            {
+                throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, composePath)} does not exist.");
+            }
+
+            if (!File.Exists(smokePath))
+            {
+                throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, smokePath)} does not exist.");
+            }
+
+            if (!File.Exists(readinessPath))
+            {
+                throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, readinessPath)} does not exist.");
+            }
+
+            using var readinessDocument = JsonDocument.Parse(File.ReadAllText(readinessPath));
+            if (readinessDocument.RootElement.ValueKind != JsonValueKind.Object ||
+                !readinessDocument.RootElement.TryGetProperty("status", out var statusProperty) ||
+                string.IsNullOrWhiteSpace(statusProperty.GetString()))
+            {
+                throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, readinessPath)} has no status field.");
+            }
+
+            return $"Validated backend stack smoke assets in {Path.GetRelativePath(rootDirectory, profileRoot)}.";
+        }
+
+        if (!IsDotnetSliceImplementationProfile(job))
         {
             return null;
         }
 
-        var profileRoot = ResolveImplementationProfileRoot(rootDirectory, job);
-        if (profileRoot is null)
+        var dotnetProfileRoot = ResolveDotnetProfileRoot(rootDirectory, job);
+        if (dotnetProfileRoot is null)
         {
             return null;
         }
 
-        var composePath = Path.Combine(profileRoot, "docker-compose.yml");
-        var smokePath = Path.Combine(profileRoot, "tests", "compose-smoke.sh");
-        var readinessPath = Path.Combine(profileRoot, "tests", "stack-readiness.json");
-
-        if (!File.Exists(composePath))
+        var implementationProfile = job.Metadata.GetValueOrDefault("implementationProfile");
+        if (string.Equals(implementationProfile, "dotnet/api", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, composePath)} does not exist.");
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "Dragon.Api.sln"), ".NET API validation failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "tests", "Dragon.Api.Tests.csproj"), ".NET API validation failed because");
+            ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "tests", "HealthEndpointTests.cs"), ".NET API validation failed because");
+            return $"Validated .NET API slice test assets in {Path.GetRelativePath(rootDirectory, dotnetProfileRoot)}.";
         }
 
-        if (!File.Exists(smokePath))
-        {
-            throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, smokePath)} does not exist.");
-        }
-
-        if (!File.Exists(readinessPath))
-        {
-            throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, readinessPath)} does not exist.");
-        }
-
-        using var readinessDocument = JsonDocument.Parse(File.ReadAllText(readinessPath));
-        if (readinessDocument.RootElement.ValueKind != JsonValueKind.Object ||
-            !readinessDocument.RootElement.TryGetProperty("status", out var statusProperty) ||
-            string.IsNullOrWhiteSpace(statusProperty.GetString()))
-        {
-            throw new InvalidOperationException($"Backend stack validation failed because {Path.GetRelativePath(rootDirectory, readinessPath)} has no status field.");
-        }
-
-        return $"Validated backend stack smoke assets in {Path.GetRelativePath(rootDirectory, profileRoot)}.";
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "Dragon.Worker.sln"), ".NET worker validation failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "tests", "Dragon.Worker.Tests.csproj"), ".NET worker validation failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, Path.Combine(dotnetProfileRoot, "tests", "WorkerOptionsTests.cs"), ".NET worker validation failed because");
+        return $"Validated .NET worker slice test assets in {Path.GetRelativePath(rootDirectory, dotnetProfileRoot)}.";
     }
 
     private static bool IsBackendStackImplementationProfile(SelfBuildJob job) =>
         string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "backend-stack/pi-autonomous-engine", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "backend-stack/pi-lite-engine", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsDotnetSliceImplementationProfile(SelfBuildJob job) =>
+        string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "dotnet/api", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "dotnet/worker", StringComparison.OrdinalIgnoreCase);
 
     private static void ValidateRequiredNonEmptyFile(string rootDirectory, string fullPath, string messagePrefix)
     {
@@ -358,7 +410,13 @@ public sealed class LocalJobExecutor
         }
     }
 
-    private static string? ResolveImplementationProfileRoot(string rootDirectory, SelfBuildJob job)
+    private static string? ResolveBackendStackProfileRoot(string rootDirectory, SelfBuildJob job) =>
+        ResolveProfileRoot(rootDirectory, job, "templates/repo-templates/backend-stack/", 4);
+
+    private static string? ResolveDotnetProfileRoot(string rootDirectory, SelfBuildJob job) =>
+        ResolveProfileRoot(rootDirectory, job, "templates/repo-templates/dotnet/", 4);
+
+    private static string? ResolveProfileRoot(string rootDirectory, SelfBuildJob job, string prefix, int segmentsToKeep)
     {
         var targetArtifact = job.Metadata.GetValueOrDefault("targetArtifact");
         if (string.IsNullOrWhiteSpace(targetArtifact))
@@ -367,8 +425,7 @@ public sealed class LocalJobExecutor
         }
 
         var normalizedArtifact = targetArtifact.Replace('\\', '/');
-        const string backendStackPrefix = "templates/repo-templates/backend-stack/";
-        var prefixIndex = normalizedArtifact.IndexOf(backendStackPrefix, StringComparison.OrdinalIgnoreCase);
+        var prefixIndex = normalizedArtifact.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
         if (prefixIndex < 0)
         {
             return null;
@@ -376,12 +433,12 @@ public sealed class LocalJobExecutor
 
         var relativeArtifact = normalizedArtifact[prefixIndex..];
         var segments = relativeArtifact.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length < 4)
+        if (segments.Length < segmentsToKeep)
         {
             return null;
         }
 
-        var profileRootRelative = string.Join(Path.DirectorySeparatorChar, segments.Take(4));
+        var profileRootRelative = string.Join(Path.DirectorySeparatorChar, segments.Take(segmentsToKeep));
         return Path.Combine(rootDirectory, profileRootRelative);
     }
 
