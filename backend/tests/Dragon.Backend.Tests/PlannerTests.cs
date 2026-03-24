@@ -668,6 +668,7 @@ public sealed class PlannerTests
         Assert.Equal("ready now", status.PendingGithubSyncRetryState);
         Assert.Equal(30, status.PendingGithubSyncRetryOverdueMinutes);
         Assert.Contains("GitHub writeback retry has been overdue", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("across 1 issue(s)", status.AttentionSummary, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -5471,7 +5472,7 @@ public sealed class PlannerTests
               "queueDelta": -2,
               "queueComparedAt": "2026-03-23T11:59:00Z",
               "health": "healthy",
-              "attentionSummary": "Provider backoff is delaying GitHub replay for the oldest queued writeback drift.",
+              "attentionSummary": "Provider retry remains delayed for 1m 0s before the next execution window across 1 issue(s).",
               "latestPass": {
                 "passNumber": 4,
                 "cycleCount": 0,
@@ -5576,7 +5577,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("latest pass: pass 4: 0 cycles, 0 seed, 0 consume", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("latest pass outcome: active", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker attention: Provider backoff is delaying GitHub replay for the oldest queued writeback drift.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker attention: Provider retry remains delayed for 1m 0s before the next execution window across 1 issue(s).", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: waiting", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is intentionally deferring pending GitHub replay while provider backoff remains active.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));

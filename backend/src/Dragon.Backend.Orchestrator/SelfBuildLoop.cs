@@ -135,7 +135,7 @@ public sealed class SelfBuildLoop
                 readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync, replayPrioritySummary));
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
-        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
+        var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now, providerBackoffIssueCount, overdueWritebackIssueCount);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
@@ -2246,7 +2246,9 @@ public sealed class SelfBuildLoop
         InterventionTargetSnapshot? interventionTarget,
         DateTimeOffset? nextDelayedRetryAt,
         DateTimeOffset? pendingGithubSyncNextRetryAt,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        int providerBackoffIssueCount,
+        int overdueWritebackIssueCount)
     {
         var rollup = BuildStatusRollupFromIssues(issues);
         var leadRecoveryAge = FormatLeadQuarantineAge(leadQuarantine);
@@ -2269,9 +2271,13 @@ public sealed class SelfBuildLoop
                 string.Equals(interventionTarget.Escalation, "critical", StringComparison.OrdinalIgnoreCase) =>
                 $"Critical intervention target remains acknowledged but unresolved. {interventionTarget.Summary}",
             "attention" when delayedRetryAge is not null =>
-                $"Provider retry remains delayed for {FormatElapsed(delayedRetryAge.Value)} before the next execution window.",
+                providerBackoffIssueCount > 0
+                    ? $"Provider retry remains delayed for {FormatElapsed(delayedRetryAge.Value)} before the next execution window across {providerBackoffIssueCount} issue(s)."
+                    : $"Provider retry remains delayed for {FormatElapsed(delayedRetryAge.Value)} before the next execution window.",
             "attention" when pendingGithubRetryAge is not null =>
-                $"GitHub writeback retry has been overdue for {FormatElapsed(pendingGithubRetryAge.Value)} and still has not drained.",
+                overdueWritebackIssueCount > 0
+                    ? $"GitHub writeback retry has been overdue for {FormatElapsed(pendingGithubRetryAge.Value)} and still has not drained across {overdueWritebackIssueCount} issue(s)."
+                    : $"GitHub writeback retry has been overdue for {FormatElapsed(pendingGithubRetryAge.Value)} and still has not drained.",
             "attention" when rollup.QuarantinedIssues > 0 => $"{rollup.InactiveQuarantinedIssues} quarantined issue(s) need intervention, {rollup.ActionableQuarantinedIssues} currently actionable.",
             "attention" => $"{rollup.FailedIssues} failed issue(s) need review.",
             "healthy" when queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay) =>
