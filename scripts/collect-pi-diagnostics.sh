@@ -59,6 +59,7 @@ write_section "service-journal.txt" journalctl -u "${SERVICE_NAME}.service" -n 4
 if [[ -d "${REPO_DIR}" ]]; then
   write_section "git-status.txt" git -C "${REPO_DIR}" status --short
   write_section "git-branch.txt" git -C "${REPO_DIR}" branch --show-current
+  write_section "loop-status.txt" "${REPO_DIR}/scripts/pi-report.sh"
   write_section "compose-ps.txt" bash -lc "cd '${REPO_DIR}' && docker compose ps"
   write_section "compose-config.txt" bash -lc "cd '${REPO_DIR}' && docker compose config"
   write_section "compose-logs.txt" bash -lc "cd '${REPO_DIR}' && docker compose logs --tail 300"

@@ -61,6 +61,7 @@ with open(report_file, "r", encoding="utf-8") as handle:
 
 status = report.get("status") or {}
 latest = status.get("latestActivity") or {}
+recent_loop_signal = status.get("recentLoopSignal") or {}
 wait_signal = describe_wait_signal(status)
 pending_github_sync = status.get("pendingGithubSync") or []
 pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt")
@@ -92,6 +93,10 @@ payload = {
     "waitSignalBackend": status.get("waitSignal"),
     "nextWakeReason": status.get("nextWakeReason"),
     "waitSignal": wait_signal,
+    "recentLoopSignal": {
+        "mode": recent_loop_signal.get("mode"),
+        "summary": recent_loop_signal.get("summary"),
+    },
     "nextDelayedRetryAt": status.get("nextDelayedRetryAt"),
     "pendingGithubSyncNextRetryAt": pending_github_sync_next_retry,
     "pendingGithubSyncLastAttemptAt": pending_github_sync_last_attempt,
