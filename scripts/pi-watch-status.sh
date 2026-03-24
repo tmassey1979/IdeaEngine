@@ -31,11 +31,14 @@ with open(sys.argv[1], "r", encoding="utf-8") as handle:
 status = report.get("status") or {}
 recent_loop_signal = status.get("recentLoopSignal") or {}
 health = status.get("health") or "unknown"
+triage_summary = status.get("triageSummary") or ""
 wait_signal = status.get("waitSignal") or ""
 recent_loop_mode = recent_loop_signal.get("mode") or ""
 recent_loop_summary = recent_loop_signal.get("summary") or ""
 
-if wait_signal:
+if triage_summary:
+    print(f"headline: {triage_summary}")
+elif wait_signal:
     print(f"headline: {wait_signal}")
 if recent_loop_mode:
     print(f"loop_mode: {recent_loop_mode}")

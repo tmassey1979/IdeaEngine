@@ -99,6 +99,7 @@ if actionable_quarantined > max_actionable_quarantined:
 next_delayed_retry_at = status.get("nextDelayedRetryAt")
 next_wake_reason = status.get("nextWakeReason")
 wait_signal = status.get("waitSignal") or ""
+triage_summary = status.get("triageSummary") or ""
 delayed_retry_minutes = 0
 if next_wake_reason == "delayed-provider-retry" and next_delayed_retry_at:
     try:
@@ -136,6 +137,7 @@ print(f"worker_health={worker_health}")
 print(f"failed_issues={failed_issues}")
 print(f"actionable_quarantined={actionable_quarantined}")
 print(f"delayed_retry_minutes={int(delayed_retry_minutes)}")
+print(f"triage_summary={triage_summary or 'none'}")
 print(f"wait_signal={wait_signal or 'none'}")
 print(f"provider_backoff_issue_count={provider_backoff_issue_count}")
 print(f"overdue_writeback_issue_count={overdue_writeback_issue_count}")

@@ -63,6 +63,7 @@ overdue_writeback_issue_count = int(status.get("overdueWritebackIssueCount") or 
 next_wake_reason = status.get("nextWakeReason")
 next_delayed_retry_at = status.get("nextDelayedRetryAt")
 delayed_retry_urgency = status.get("delayedRetryUrgency")
+triage_summary = status.get("triageSummary")
 wait_signal = status.get("waitSignal")
 
 if service_active not in {"active", "inactive"}:
@@ -78,6 +79,9 @@ if isinstance(restart_count, int) and restart_count > 0:
 
 if worker_health not in {"healthy", "idle"}:
     issues.append(f"worker health is {worker_health}")
+
+if triage_summary:
+    issues.append(f"triage summary: {triage_summary}")
 
 if wait_signal:
     if "provider backoff" in wait_signal.lower():
@@ -148,6 +152,8 @@ print(f"Status: {severity}")
 print(f"Service: {service_active} ({service_result})")
 print(f"Worker: {worker_health}")
 print(f"Alert check: {alert_status}")
+if triage_summary:
+    print(f"Triage summary: {triage_summary}")
 if next_wake_reason:
     print(f"Next wake reason: {next_wake_reason}")
 if wait_signal:
