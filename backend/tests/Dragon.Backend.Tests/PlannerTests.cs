@@ -8004,6 +8004,12 @@ public sealed class PlannerTests
         var root = CreateTempRoot();
         Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "tests"));
         File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "README.md"),
+            "# Pi Autonomous Engine\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", ".env.example"),
+            "DRAGON_MODE=pi\n");
+        File.WriteAllText(
             Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "docker-compose.yml"),
             "services:\n  api:\n    image: dragon-api\n");
         File.WriteAllText(
@@ -8044,6 +8050,47 @@ public sealed class PlannerTests
         Assert.Equal("success", testResult.Status);
         Assert.Contains("Validated backend stack smoke assets", testResult.Summary, StringComparison.Ordinal);
         Assert.Empty(executed);
+    }
+
+    [Fact]
+    public void ReviewExecutor_ValidatesBackendStackCoreAssetsForProfiledWork()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine"));
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "README.md"),
+            "# Pi Autonomous Engine\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", ".env.example"),
+            "DRAGON_MODE=pi\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "docker-compose.yml"),
+            "services:\n  api:\n    image: dragon-api\n");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(301, "Pi Autonomous Engine", "refactor", new JobExecutionResult("job-refactor", "refactor", "success", "done", DateTimeOffset.UtcNow));
+
+        var executor = new LocalJobExecutor((fileName, arguments, _) => new CommandResult(0, "ok", string.Empty));
+
+        var reviewResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "review",
+                "review_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                301,
+                new SelfBuildJobPayload("Pi Autonomous Engine", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["implementationProfile"] = "backend-stack/pi-autonomous-engine",
+                    ["targetArtifact"] = "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                    ["targetOutcome"] = "Review the coordinated Pi backend stack."
+                })
+        );
+
+        Assert.Equal("success", reviewResult.Status);
+        Assert.Contains("Reviewed coordinated backend stack assets", reviewResult.Summary, StringComparison.Ordinal);
     }
 
     [Fact]

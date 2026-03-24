@@ -201,6 +201,12 @@ public sealed class LocalJobExecutor
             throw new InvalidOperationException("Review failed because no implementation stage has completed successfully.");
         }
 
+        var profileAwareResult = TryExecuteProfileAwareReview(rootDirectory, job);
+        if (!string.IsNullOrWhiteSpace(profileAwareResult))
+        {
+            return profileAwareResult;
+        }
+
         var changedPaths = ReadChangedPaths(job);
         if (changedPaths.Count == 0)
         {
@@ -223,6 +229,30 @@ public sealed class LocalJobExecutor
         }
 
         return $"Review completed for {changedPaths.Count} changed file(s): {string.Join(", ", changedPaths)}";
+    }
+
+    private static string? TryExecuteProfileAwareReview(string rootDirectory, SelfBuildJob job)
+    {
+        if (!IsBackendStackImplementationProfile(job))
+        {
+            return null;
+        }
+
+        var profileRoot = ResolveImplementationProfileRoot(rootDirectory, job);
+        if (profileRoot is null)
+        {
+            return null;
+        }
+
+        var composePath = Path.Combine(profileRoot, "docker-compose.yml");
+        var envExamplePath = Path.Combine(profileRoot, ".env.example");
+        var readmePath = Path.Combine(profileRoot, "README.md");
+
+        ValidateRequiredNonEmptyFile(rootDirectory, composePath, "Backend stack review failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, envExamplePath, "Backend stack review failed because");
+        ValidateRequiredNonEmptyFile(rootDirectory, readmePath, "Backend stack review failed because");
+
+        return $"Reviewed coordinated backend stack assets in {Path.GetRelativePath(rootDirectory, profileRoot)}.";
     }
 
     private string ExecuteTest(string rootDirectory, SelfBuildJob job)
@@ -270,8 +300,7 @@ public sealed class LocalJobExecutor
 
     private static string? TryExecuteProfileAwareTest(string rootDirectory, SelfBuildJob job)
     {
-        if (!string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "backend-stack/pi-autonomous-engine", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "backend-stack/pi-lite-engine", StringComparison.OrdinalIgnoreCase))
+        if (!IsBackendStackImplementationProfile(job))
         {
             return null;
         }
@@ -310,6 +339,23 @@ public sealed class LocalJobExecutor
         }
 
         return $"Validated backend stack smoke assets in {Path.GetRelativePath(rootDirectory, profileRoot)}.";
+    }
+
+    private static bool IsBackendStackImplementationProfile(SelfBuildJob job) =>
+        string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "backend-stack/pi-autonomous-engine", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(job.Metadata.GetValueOrDefault("implementationProfile"), "backend-stack/pi-lite-engine", StringComparison.OrdinalIgnoreCase);
+
+    private static void ValidateRequiredNonEmptyFile(string rootDirectory, string fullPath, string messagePrefix)
+    {
+        if (!File.Exists(fullPath))
+        {
+            throw new InvalidOperationException($"{messagePrefix} {Path.GetRelativePath(rootDirectory, fullPath)} does not exist.");
+        }
+
+        if (string.IsNullOrWhiteSpace(File.ReadAllText(fullPath)))
+        {
+            throw new InvalidOperationException($"{messagePrefix} {Path.GetRelativePath(rootDirectory, fullPath)} is empty.");
+        }
     }
 
     private static string? ResolveImplementationProfileRoot(string rootDirectory, SelfBuildJob job)
