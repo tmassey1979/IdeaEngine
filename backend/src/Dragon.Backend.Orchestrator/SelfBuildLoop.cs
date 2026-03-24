@@ -3252,7 +3252,7 @@ public static class StatusSnapshotTrend
         var interventionTarget = current.InterventionTarget is null
             ? null
             : current.InterventionTarget with { AcknowledgedStreak = interventionAcknowledgedStreak };
-        var interventionEscalationNote = BuildPersistedInterventionEscalationNote(current.InterventionEscalationNote, interventionTarget, interventionEscalationStreak);
+        var interventionEscalationNote = BuildPersistedInterventionEscalationNote(current.InterventionEscalationNote, interventionTarget, interventionEscalationStreak, current.TriageSummary);
 
         if (previous is null)
         {
@@ -3347,9 +3347,10 @@ public static class StatusSnapshotTrend
     private static string? BuildPersistedInterventionEscalationNote(
         string? currentNote,
         InterventionTargetSnapshot? interventionTarget,
-        int interventionEscalationStreak)
+        int interventionEscalationStreak,
+        string? triageSummary)
     {
-        var baseNote = SelfBuildLoop.BuildInterventionEscalationNote(interventionTarget) ?? currentNote;
+        var baseNote = SelfBuildLoop.BuildInterventionEscalationNote(interventionTarget, triageSummary) ?? currentNote;
 
         if (string.IsNullOrWhiteSpace(baseNote))
         {
