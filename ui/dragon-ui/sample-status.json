@@ -28,6 +28,40 @@
     "inProgressIssues": 1,
     "validatedIssues": 4
   },
+  "hostTelemetry": {
+    "status": "available",
+    "processorCount": 4,
+    "processorLoadPercent": 61,
+    "memoryTotalMb": 7988,
+    "memoryAvailableMb": 2842,
+    "memoryUsedPercent": 64,
+    "diskTotalGb": 236,
+    "diskFreeGb": 82,
+    "diskUsedPercent": 65,
+    "summary": "4 core(s), load 61%, memory 64% used (2842 MB free of 7988 MB), disk 65% used (82 GB free of 236 GB)"
+  },
+  "services": [
+    {
+      "name": "orchestrator",
+      "status": "attention",
+      "summary": "Waiting for provider retry window on issue #23 until 2026-03-23T16:15:00.0000000+00:00."
+    },
+    {
+      "name": "queue",
+      "status": "healthy",
+      "summary": "1 queued job(s) waiting to run."
+    },
+    {
+      "name": "github-sync",
+      "status": "attention",
+      "summary": "2 GitHub updates are waiting for retry. Oldest: issue #147 (42m 44s old)."
+    },
+    {
+      "name": "provider",
+      "status": "attention",
+      "summary": "Next delayed provider retry unlocks at 2026-03-23T16:15:00.0000000+00:00."
+    }
+  ],
   "providerBackoffIssueCount": 0,
   "overdueWritebackIssueCount": 1,
   "leadJob": {

@@ -2978,6 +2978,82 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_IncludesInjectedHostTelemetryAndDerivedServiceHealth()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            611,
+            new SelfBuildJobPayload("[Story] Telemetry", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "ui/dragon-ui/index.html",
+                ["targetOutcome"] = "refresh dashboard shell",
+                ["implementationProfile"] = "pipeline/runtime-generation"
+            }));
+
+        var loop = new SelfBuildLoop(
+            root,
+            hostTelemetryProvider: _ => new HostTelemetrySnapshot(
+                "available",
+                ProcessorCount: 4,
+                ProcessorLoadPercent: 52,
+                MemoryTotalMb: 8192,
+                MemoryAvailableMb: 3072,
+                MemoryUsedPercent: 63,
+                DiskTotalGb: 256,
+                DiskFreeGb: 96,
+                DiskUsedPercent: 63,
+                Summary: "synthetic telemetry"));
+
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.NotNull(status.HostTelemetry);
+        Assert.Equal("available", status.HostTelemetry!.Status);
+        Assert.Equal(4, status.HostTelemetry.ProcessorCount);
+        Assert.Equal(52, status.HostTelemetry.ProcessorLoadPercent);
+        Assert.Equal(4, status.Services!.Count);
+        Assert.Contains(status.Services, service => service.Name == "orchestrator");
+        Assert.Contains(status.Services, service => service.Name == "queue" && service.Status == "healthy");
+        Assert.Contains(status.Services, service => service.Name == "github-sync" && service.Status == "healthy");
+    }
+
+    [Fact]
+    public void WriteStatus_SerializesHostTelemetryAndServices()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(
+            root,
+            hostTelemetryProvider: _ => new HostTelemetrySnapshot(
+                "partial",
+                ProcessorCount: 4,
+                ProcessorLoadPercent: null,
+                MemoryTotalMb: 8192,
+                MemoryAvailableMb: 2048,
+                MemoryUsedPercent: 75,
+                DiskTotalGb: 128,
+                DiskFreeGb: 32,
+                DiskUsedPercent: 75,
+                Summary: "partial telemetry"));
+
+        var outputPath = Path.Combine(root, ".dragon", "status", "runtime-status.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+
+        loop.WriteStatus(outputPath);
+
+        using var document = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var rootElement = document.RootElement;
+        Assert.Equal("partial", rootElement.GetProperty("hostTelemetry").GetProperty("status").GetString());
+        Assert.Equal(4, rootElement.GetProperty("hostTelemetry").GetProperty("processorCount").GetInt32());
+        Assert.Equal(4, rootElement.GetProperty("services").GetArrayLength());
+        Assert.Equal("orchestrator", rootElement.GetProperty("services")[0].GetProperty("name").GetString());
+    }
+
+    [Fact]
     public void CycleOnce_PrunesLowerTierStructuredImplementationWhenSameArtifactBackendStackJobIsQueued()
     {
         var root = CreateTempRoot();

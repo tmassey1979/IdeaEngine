@@ -20,6 +20,7 @@ public sealed class SelfBuildLoop
     private readonly LocalJobExecutor jobExecutor;
     private readonly GithubIssueService githubIssueService;
     private readonly Func<DateTimeOffset> nowProvider;
+    private readonly Func<string, HostTelemetrySnapshot> hostTelemetryProvider;
 
     public SelfBuildLoop(
         string rootDirectory,
@@ -27,10 +28,12 @@ public sealed class SelfBuildLoop
         GithubIssueService? githubIssueService = null,
         LocalJobExecutor? jobExecutor = null,
         Func<string, string?>? environmentReader = null,
-        Func<DateTimeOffset>? nowProvider = null)
+        Func<DateTimeOffset>? nowProvider = null,
+        Func<string, HostTelemetrySnapshot>? hostTelemetryProvider = null)
     {
         RootDirectory = rootDirectory;
         this.nowProvider = nowProvider ?? (() => DateTimeOffset.UtcNow);
+        this.hostTelemetryProvider = hostTelemetryProvider ?? RuntimeTelemetryCollector.Collect;
         queueStore = new QueueStore(rootDirectory, queueName, this.nowProvider);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
@@ -144,6 +147,15 @@ public sealed class SelfBuildLoop
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay, pendingGithubSyncRetryOverdueMinutes)
             : workerActivity;
+        var hostTelemetry = hostTelemetryProvider(RootDirectory);
+        var services = BuildServiceHealthSnapshots(
+            health,
+            effectiveWorkerActivity,
+            queuedJobs.Count,
+            pendingGithubSyncSummary,
+            pendingGithubSync.Count,
+            nextDelayedRetryAt,
+            delayedRetrySummary);
 
         return new StatusSnapshot(
             now,
@@ -195,7 +207,9 @@ public sealed class SelfBuildLoop
             replayPriorityReason,
             replayPrioritySummary,
             providerBackoffIssueCount,
-            overdueWritebackIssueCount
+            overdueWritebackIssueCount,
+            hostTelemetry,
+            services
         );
     }
 
@@ -2793,6 +2807,40 @@ public sealed class SelfBuildLoop
         return null;
     }
 
+    private static IReadOnlyList<ServiceHealthSnapshot> BuildServiceHealthSnapshots(
+        string health,
+        string? effectiveWorkerActivity,
+        int queuedJobs,
+        string? pendingGithubSyncSummary,
+        int pendingGithubSyncCount,
+        DateTimeOffset? nextDelayedRetryAt,
+        string? delayedRetrySummary)
+    {
+        return
+        [
+            new ServiceHealthSnapshot(
+                "orchestrator",
+                string.Equals(health, "healthy", StringComparison.OrdinalIgnoreCase) ? "healthy" : "attention",
+                string.IsNullOrWhiteSpace(effectiveWorkerActivity) ? "Worker activity not recorded." : effectiveWorkerActivity),
+            new ServiceHealthSnapshot(
+                "queue",
+                queuedJobs > 0 ? "healthy" : "idle",
+                queuedJobs > 0 ? $"{queuedJobs} queued job(s) waiting to run." : "No queued jobs right now."),
+            new ServiceHealthSnapshot(
+                "github-sync",
+                pendingGithubSyncCount > 0 ? "attention" : "healthy",
+                pendingGithubSyncCount > 0
+                    ? pendingGithubSyncSummary ?? $"{pendingGithubSyncCount} GitHub sync update(s) pending retry."
+                    : "No pending GitHub sync retry work."),
+            new ServiceHealthSnapshot(
+                "provider",
+                nextDelayedRetryAt is not null ? "attention" : "healthy",
+                nextDelayedRetryAt is not null
+                    ? delayedRetrySummary ?? $"Provider retry waiting until {nextDelayedRetryAt.Value:O}."
+                    : "No delayed provider retry is scheduled.")
+        ];
+    }
+
     private static InterventionTargetSnapshot BuildInterventionTarget(
         LeadQuarantineSnapshot? leadQuarantine,
         LeadJobSnapshot? leadJob,
@@ -3429,7 +3477,9 @@ public sealed record StatusSnapshot(
     string? ReplayPriorityReason = null,
     string? ReplayPrioritySummary = null,
     int ProviderBackoffIssueCount = 0,
-    int OverdueWritebackIssueCount = 0
+    int OverdueWritebackIssueCount = 0,
+    HostTelemetrySnapshot? HostTelemetry = null,
+    IReadOnlyList<ServiceHealthSnapshot>? Services = null
 );
 
 public sealed record LatestPassSummary(
@@ -3461,6 +3511,25 @@ public sealed record StatusRollupDelta(
     int QuarantinedIssues,
     int InProgressIssues,
     int ValidatedIssues
+);
+
+public sealed record HostTelemetrySnapshot(
+    string Status,
+    int? ProcessorCount = null,
+    double? ProcessorLoadPercent = null,
+    long? MemoryTotalMb = null,
+    long? MemoryAvailableMb = null,
+    double? MemoryUsedPercent = null,
+    long? DiskTotalGb = null,
+    long? DiskFreeGb = null,
+    double? DiskUsedPercent = null,
+    string? Summary = null
+);
+
+public sealed record ServiceHealthSnapshot(
+    string Name,
+    string Status,
+    string Summary
 );
 
 public sealed record LeadJobSnapshot(

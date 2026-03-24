@@ -91,7 +91,7 @@
           <article class="metric-card">
             <p class="metric-label">Memory</p>
             <p class="metric-value" id="status-memory">Pending</p>
-            <p class="metric-meta">Tracked under story #354</p>
+            <p class="metric-meta" id="status-memory-note">Tracked under story #354</p>
           </article>
         </section>
 
@@ -202,47 +202,59 @@
           <div class="wizard-grid">
             <label>
               <span>Idea name</span>
-              <input type="text" value="Field Service Ops Assistant" readonly />
+              <input type="text" placeholder="Enter idea name" />
             </label>
             <label>
               <span>Primary platform</span>
-              <select disabled>
-                <option selected>Web application</option>
+              <select>
+                <option selected>Select platform</option>
+                <option>Web application</option>
+                <option>Worker / automation</option>
+                <option>API / service</option>
               </select>
             </label>
             <label class="wide">
               <span>Problem to solve</span>
-              <textarea readonly>Help service teams dispatch jobs, capture notes, and track invoice-ready work with a lightweight operator dashboard.</textarea>
+              <textarea placeholder="Describe the problem, target users, and the MVP outcome you want."></textarea>
             </label>
             <label>
               <span>Frontend stack</span>
-              <select disabled>
-                <option selected>React + TypeScript</option>
+              <select>
+                <option selected>Select frontend preference</option>
+                <option>React + TypeScript</option>
+                <option>Next.js</option>
+                <option>None / backend only</option>
               </select>
             </label>
             <label>
               <span>Backend stack</span>
-              <select disabled>
-                <option selected>ASP.NET Core + PostgreSQL</option>
+              <select>
+                <option selected>Select backend preference</option>
+                <option>ASP.NET Core + PostgreSQL</option>
+                <option>Node.js + PostgreSQL</option>
+                <option>Python worker</option>
               </select>
             </label>
             <label>
               <span>Deployment target</span>
-              <select disabled>
-                <option selected>Pi-hosted Docker stack</option>
+              <select>
+                <option selected>Select deployment target</option>
+                <option>Pi-hosted Docker stack</option>
+                <option>Cloud container host</option>
+                <option>Undecided</option>
               </select>
             </label>
             <label>
               <span>Languages</span>
-              <input type="text" value="TypeScript, C#" readonly />
+              <input type="text" placeholder="TypeScript, C#, Python..." />
             </label>
             <label>
               <span>Integrations</span>
-              <input type="text" value="Email, Auth, Stripe later" readonly />
+              <input type="text" placeholder="Auth, payments, email, webhooks..." />
             </label>
             <label class="wide">
               <span>MVP must-have scope</span>
-              <textarea readonly>Dispatch board, technician notes, customer records, simple invoice-ready workflow, and admin approval queue.</textarea>
+              <textarea placeholder="List only the must-have capabilities for MVP."></textarea>
             </label>
           </div>
         </section>
