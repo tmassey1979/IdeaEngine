@@ -285,6 +285,7 @@ Notes:
 - `dragon-report`, `dragon-status-dashboard`, `dragon-alert-check`, and `dragon-doctor` now surface the backend-owned `waitSignal`, so provider backoff and writeback replay waits use the same wording across UI, Pi tooling, alerts, and GitHub summaries.
 - `dragon-report` and `dragon-status-dashboard` also show top-level replay-pressure counts from backend status: `providerBackoffIssueCount` and `overdueWritebackIssueCount`.
 - `dragon-alert-check` prints those replay-pressure counts too, and webhook notifications now include them so external monitoring can tell whether replay pressure is isolated or affecting multiple issues.
+- `dragon-doctor` uses the same counts in its findings, so provider backoff and overdue writeback diagnoses now say how many issues are affected when that scope is known.
 - `update-pi.sh` creates a backup before updating by default and exits if the checkout is dirty unless `ALLOW_DIRTY_WORKTREE=true`.
 - `backup-pi.sh` keeps the newest `7` backup archives by default; override with `BACKUP_RETENTION_COUNT`.
 - `backup-pi.sh` runs `cleanup-pi.sh` by default after successful backup creation.

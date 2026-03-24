@@ -108,8 +108,9 @@ if next_wake_reason == "delayed-provider-retry" and next_delayed_retry_at:
         delayed_retry_minutes = 0
 
 if max_delayed_retry_minutes > 0 and delayed_retry_minutes > max_delayed_retry_minutes:
+    scope_suffix = f" across {provider_backoff_issue_count} issue(s)" if provider_backoff_issue_count > 0 else ""
     problems.append(
-        f"delayed retry wait {int(delayed_retry_minutes)}m exceeds {max_delayed_retry_minutes}m"
+        f"delayed retry wait {int(delayed_retry_minutes)}m exceeds {max_delayed_retry_minutes}m{scope_suffix}"
     )
 
 pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or "none"
@@ -118,8 +119,9 @@ provider_backoff_issue_count = int(status.get("providerBackoffIssueCount") or 0)
 overdue_writeback_issue_count = int(status.get("overdueWritebackIssueCount") or 0)
 
 if max_pending_github_retry_overdue_minutes > 0 and pending_github_sync_retry_overdue_minutes > max_pending_github_retry_overdue_minutes:
+    scope_suffix = f" across {overdue_writeback_issue_count} issue(s)" if overdue_writeback_issue_count > 0 else ""
     problems.append(
-        f"pending GitHub retry overdue {pending_github_sync_retry_overdue_minutes}m exceeds {max_pending_github_retry_overdue_minutes}m"
+        f"pending GitHub retry overdue {pending_github_sync_retry_overdue_minutes}m exceeds {max_pending_github_retry_overdue_minutes}m{scope_suffix}"
     )
 
 if problems:

@@ -58,6 +58,8 @@ worker_health = status.get("health", "unknown")
 queued_jobs = status.get("queuedJobs", 0)
 failed_issues = rollup.get("failedIssues", 0)
 quarantined_issues = rollup.get("quarantinedIssues", 0)
+provider_backoff_issue_count = int(status.get("providerBackoffIssueCount") or 0)
+overdue_writeback_issue_count = int(status.get("overdueWritebackIssueCount") or 0)
 next_wake_reason = status.get("nextWakeReason")
 next_delayed_retry_at = status.get("nextDelayedRetryAt")
 delayed_retry_urgency = status.get("delayedRetryUrgency")
@@ -80,6 +82,8 @@ if worker_health not in {"healthy", "idle"}:
 if wait_signal:
     if "provider backoff" in wait_signal.lower():
         delayed_retry_issue = f"worker wait signal: {wait_signal}"
+        if provider_backoff_issue_count > 0:
+            delayed_retry_issue += f" across {provider_backoff_issue_count} issue(s)"
         if delayed_retry_urgency == "alert":
             issues.append(f"{delayed_retry_issue} (long backoff)")
             actions.append("dragon-status-dashboard")
@@ -88,7 +92,10 @@ if wait_signal:
             issues.append(delayed_retry_issue)
             actions.append("dragon-report")
     elif "writeback replay" in wait_signal.lower():
-        issues.append(f"worker wait signal: {wait_signal}")
+        replay_issue = f"worker wait signal: {wait_signal}"
+        if overdue_writeback_issue_count > 0:
+            replay_issue += f" across {overdue_writeback_issue_count} issue(s)"
+        issues.append(replay_issue)
         actions.append("dragon-status-dashboard")
         if "overdue" in wait_signal.lower() or "prioritized" in wait_signal.lower():
             actions.append("dragon-tail-logs --all")
@@ -145,6 +152,10 @@ if next_wake_reason:
     print(f"Next wake reason: {next_wake_reason}")
 if wait_signal:
     print(f"Wait signal: {wait_signal}")
+if provider_backoff_issue_count > 0:
+    print(f"Provider backoff issues: {provider_backoff_issue_count}")
+if overdue_writeback_issue_count > 0:
+    print(f"Overdue writeback issues: {overdue_writeback_issue_count}")
 if next_delayed_retry_at:
     print(f"Next delayed retry: {next_delayed_retry_at}")
 print()
