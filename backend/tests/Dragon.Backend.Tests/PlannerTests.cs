@@ -292,6 +292,26 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_UsesHeadingMetadataForDeploymentBundle_WhenTitleIsGeneric()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                130,
+                "[Story] Infrastructure Slice",
+                "OPEN",
+                ["story"],
+                "The Pi runs a Docker stack containing dragon-ui and dragon-agent-runner.",
+                "Containers on the Pi",
+                "codex/sections/03-dragon-idea-engine-infrastructure-architecture.md"
+            )
+        );
+
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/deploy/docker-compose.yml");
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/deploy/.env.example");
+    }
+
+    [Fact]
     public void Plan_WritesPipelineMonitoringTemplate_ForExecutionMonitorStory()
     {
         var operations = DeveloperOperationPlanner.Plan(

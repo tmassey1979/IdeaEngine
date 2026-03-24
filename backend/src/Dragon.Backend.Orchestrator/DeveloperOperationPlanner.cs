@@ -44,12 +44,12 @@ public static partial class DeveloperOperationPlanner
 
     public static IReadOnlyList<DeveloperOperation> Plan(GithubIssue issue)
     {
-        var title = issue.Title.ToLowerInvariant();
+        var matcher = BuildStoryMatcher(issue);
         var heading = issue.Heading ?? string.Empty;
         var body = issue.Body ?? string.Empty;
         var rule = Rules.FirstOrDefault(candidate => candidate.Match.IsMatch($"{heading} {issue.Title}"));
 
-        if (title.Contains("core system principles", StringComparison.Ordinal))
+        if (matcher.Matches("core system principles"))
         {
             return
             [
@@ -68,7 +68,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("registry architecture", StringComparison.Ordinal) || title.Contains("capability catalog", StringComparison.Ordinal))
+        if (matcher.Matches("registry architecture", "capability catalog"))
         {
             return
             [
@@ -92,7 +92,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("developer agent", StringComparison.Ordinal))
+        if (matcher.Matches("developer agent"))
         {
             return
             [
@@ -109,7 +109,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("agent runner", StringComparison.Ordinal))
+        if (matcher.Matches("agent runner"))
         {
             return
             [
@@ -124,8 +124,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("plugin system", StringComparison.Ordinal) ||
-            title.Contains("agent interface", StringComparison.Ordinal))
+        if (matcher.Matches("plugin system", "agent interface"))
         {
             return
             [
@@ -136,7 +135,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("job message schema", StringComparison.Ordinal))
+        if (matcher.Matches("job message schema"))
         {
             return
             [
@@ -147,8 +146,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("dragon agent sdk", StringComparison.Ordinal) ||
-            title.Contains("sdk package", StringComparison.Ordinal))
+        if (matcher.Matches("dragon agent sdk", "sdk package"))
         {
             return
             [
@@ -163,7 +161,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("sdk responsibilities", StringComparison.Ordinal))
+        if (matcher.Matches("sdk responsibilities"))
         {
             return
             [
@@ -174,7 +172,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("example agent using sdk", StringComparison.Ordinal))
+        if (matcher.Matches("example agent using sdk"))
         {
             return
             [
@@ -185,8 +183,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("credentials system", StringComparison.Ordinal) ||
-            title.Contains("credentials", StringComparison.Ordinal))
+        if (matcher.Matches("credentials system", "credentials"))
         {
             return
             [
@@ -197,8 +194,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("supported git providers", StringComparison.Ordinal) ||
-            title.Contains("git utilities", StringComparison.Ordinal))
+        if (matcher.Matches("supported git providers", "git utilities"))
         {
             return
             [
@@ -213,8 +209,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("docker deployment", StringComparison.Ordinal) ||
-            title.Contains("containers on the pi", StringComparison.Ordinal))
+        if (matcher.Matches("docker deployment", "containers on the pi"))
         {
             return
             [
@@ -229,8 +224,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("execution monitor", StringComparison.Ordinal) ||
-            title.Contains("pipeline monitoring", StringComparison.Ordinal))
+        if (matcher.Matches("execution monitor", "pipeline monitoring"))
         {
             return
             [
@@ -241,8 +235,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("agent health monitoring", StringComparison.Ordinal) ||
-            title.Contains("agent performance monitoring", StringComparison.Ordinal))
+        if (matcher.Matches("agent health monitoring", "agent performance monitoring"))
         {
             return
             [
@@ -253,7 +246,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("monitoring and observability", StringComparison.Ordinal))
+        if (matcher.Matches("monitoring and observability"))
         {
             return
             [
@@ -264,7 +257,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (title.Contains("continuous monitoring", StringComparison.Ordinal))
+        if (matcher.Matches("continuous monitoring"))
         {
             return
             [
@@ -735,6 +728,12 @@ RABBITMQ_DEFAULT_PASS=dragon
         return string.Join(Environment.NewLine, lines);
     }
 
+    private static StoryMatcher BuildStoryMatcher(GithubIssue issue) => new(
+        issue.Title,
+        issue.Heading ?? string.Empty,
+        issue.Body ?? string.Empty,
+        issue.SourceFile ?? string.Empty);
+
     private static string InferPluginTemplateName(GithubIssue issue)
     {
         var source = issue.Heading ?? issue.Title;
@@ -755,6 +754,17 @@ RABBITMQ_DEFAULT_PASS=dragon
         }
 
         return "agent";
+    }
+
+    private sealed record StoryMatcher(string Title, string Heading, string Body, string SourceFile)
+    {
+        public bool Matches(params string[] terms) => terms.Any(Matches);
+
+        private bool Matches(string term) =>
+            Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            Heading.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            Body.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            SourceFile.Contains(term, StringComparison.OrdinalIgnoreCase);
     }
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]
