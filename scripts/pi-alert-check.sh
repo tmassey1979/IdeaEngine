@@ -114,6 +114,8 @@ if max_delayed_retry_minutes > 0 and delayed_retry_minutes > max_delayed_retry_m
 
 pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState") or "none"
 pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
+provider_backoff_issue_count = int(status.get("providerBackoffIssueCount") or 0)
+overdue_writeback_issue_count = int(status.get("overdueWritebackIssueCount") or 0)
 
 if max_pending_github_retry_overdue_minutes > 0 and pending_github_sync_retry_overdue_minutes > max_pending_github_retry_overdue_minutes:
     problems.append(
@@ -133,6 +135,8 @@ print(f"failed_issues={failed_issues}")
 print(f"actionable_quarantined={actionable_quarantined}")
 print(f"delayed_retry_minutes={int(delayed_retry_minutes)}")
 print(f"wait_signal={wait_signal or 'none'}")
+print(f"provider_backoff_issue_count={provider_backoff_issue_count}")
+print(f"overdue_writeback_issue_count={overdue_writeback_issue_count}")
 print(f"pending_github_sync_retry_state={pending_github_sync_retry_state}")
 print(f"pending_github_sync_retry_overdue_minutes={pending_github_sync_retry_overdue_minutes}")
 PY

@@ -67,6 +67,8 @@ pending_github_sync_next_retry = status.get("pendingGithubSyncNextRetryAt")
 pending_github_sync_last_attempt = pending_github_sync[0].get("lastAttemptedAt") if pending_github_sync else None
 pending_github_sync_retry_state = status.get("pendingGithubSyncRetryState")
 pending_github_sync_retry_overdue_minutes = int(status.get("pendingGithubSyncRetryOverdueMinutes") or 0)
+provider_backoff_issue_count = int(status.get("providerBackoffIssueCount") or 0)
+overdue_writeback_issue_count = int(status.get("overdueWritebackIssueCount") or 0)
 alert_cause = status.get("replayPriorityReason")
 if not alert_cause:
     if pending_github_sync_retry_overdue_minutes >= 15:
@@ -95,6 +97,8 @@ payload = {
     "pendingGithubSyncLastAttemptAt": pending_github_sync_last_attempt,
     "pendingGithubSyncRetryState": pending_github_sync_retry_state,
     "pendingGithubSyncRetryOverdueMinutes": pending_github_sync_retry_overdue_minutes,
+    "providerBackoffIssueCount": provider_backoff_issue_count,
+    "overdueWritebackIssueCount": overdue_writeback_issue_count,
     "latestActivity": {
         "issueNumber": latest.get("issueNumber"),
         "issueTitle": latest.get("issueTitle"),
