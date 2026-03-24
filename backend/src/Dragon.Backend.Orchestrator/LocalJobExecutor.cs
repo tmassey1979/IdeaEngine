@@ -83,6 +83,17 @@ public sealed class LocalJobExecutor
     {
         if (modelProvider is null)
         {
+            if (job.Payload.Operations?.Count > 0)
+            {
+                var changedPaths = ApplyOperations(rootDirectory, job.Payload.Operations);
+                return new ExecutionOutcome(
+                    changedPaths.Count > 0
+                        ? $"Applied {changedPaths.Count} planned {job.Agent} operation(s): {string.Join(", ", changedPaths)}"
+                        : $"{job.Agent} planned operations were already up to date.",
+                    changedPaths,
+                    []);
+            }
+
             return ExecutionOutcome.FromSummary($"No model provider configured for {job.Agent}; marked complete for bootstrap flow.");
         }
 

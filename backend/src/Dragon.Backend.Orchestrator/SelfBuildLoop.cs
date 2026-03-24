@@ -2124,8 +2124,18 @@ public sealed class SelfBuildLoop
             return "refactor";
         }
 
+        var plannedOperations = DeveloperOperationPlanner.Plan(issue);
+        if (plannedOperations.Count > 0 && plannedOperations.All(IsDocumentationOperation))
+        {
+            return "documentation";
+        }
+
         return "developer";
     }
+
+    private static bool IsDocumentationOperation(DeveloperOperation operation) =>
+        operation.Path.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRecoveryIssue(GithubIssue issue) =>
         issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||

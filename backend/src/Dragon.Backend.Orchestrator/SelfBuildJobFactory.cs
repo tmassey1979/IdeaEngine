@@ -20,7 +20,7 @@ public static class SelfBuildJobFactory
             issue.Title.Contains("[Recovery]", StringComparison.OrdinalIgnoreCase);
         IReadOnlyList<DeveloperOperation>? operations = null;
 
-        if (string.Equals(agent, "developer", StringComparison.OrdinalIgnoreCase))
+        if (SupportsPlannedOperations(agent))
         {
             operations = DeveloperOperationPlanner.Plan(issue);
         }
@@ -59,6 +59,10 @@ public static class SelfBuildJobFactory
             metadata
         );
     }
+
+    private static bool SupportsPlannedOperations(string agent) =>
+        string.Equals(agent, "developer", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase);
 
     private static string ResolveAction(string agent, bool isRecovery)
     {

@@ -2066,6 +2066,50 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CreateDocumentationJob_IncludesPlannedOperationsForDocumentationStories()
+    {
+        var issue = new GithubIssue(
+            104,
+            "[Story] Dragon Idea Engine Master Codex: Repository Structure",
+            "OPEN",
+            ["story"],
+            "Dragon Idea Engine should use a multi-repo workspace structure.",
+            "Repository Structure",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+
+        var job = SelfBuildJobFactory.Create(issue, "documentation", "IdeaEngine", "DragonIdeaEngine");
+
+        Assert.Equal("documentation", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "docs/generated/repository-structure-notes.md");
+    }
+
+    [Fact]
+    public void Execute_AppliesPlannedOperationsForDocumentationAgentWithoutModelProvider()
+    {
+        var root = CreateTempRoot();
+        var issue = new GithubIssue(
+            104,
+            "[Story] Dragon Idea Engine Master Codex: Repository Structure",
+            "OPEN",
+            ["story"],
+            "Dragon Idea Engine should use a multi-repo workspace structure.",
+            "Repository Structure",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+        var job = SelfBuildJobFactory.Create(issue, "documentation", "IdeaEngine", "DragonIdeaEngine");
+        var executor = LocalJobExecutor.CreateDefault(_ => null, (_, _, _) => new CommandResult(0, "ok", string.Empty));
+
+        var result = executor.Execute(root, job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Contains("Applied 1 planned documentation operation", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("docs/generated/repository-structure-notes.md", result.ChangedPaths!);
+        Assert.True(File.Exists(Path.Combine(root, "docs", "generated", "repository-structure-notes.md")));
+    }
+
+    [Fact]
     public void CreateDefault_LeavesModelBackedAgentsInBootstrapModeWithoutApiKey()
     {
         var issue = new GithubIssue(

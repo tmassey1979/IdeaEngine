@@ -597,6 +597,30 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_SelectsDocumentationAgentForDocumentationPlannedStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                104,
+                "[Story] Dragon Idea Engine Master Codex: Repository Structure",
+                "OPEN",
+                ["story"],
+                "Dragon Idea Engine should use a multi-repo workspace structure.",
+                "Repository Structure",
+                "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("documentation", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "docs/generated/repository-structure-notes.md");
+    }
+
+    [Fact]
     public void RunUntilIdle_TreatsValidatedOnlyStoryListAsIdle()
     {
         var root = CreateTempRoot();
