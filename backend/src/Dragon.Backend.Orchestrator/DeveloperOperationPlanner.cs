@@ -143,6 +143,64 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
+        if (title.Contains("dragon agent sdk", StringComparison.Ordinal) ||
+            title.Contains("sdk package", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/package.json",
+                    RenderSdkPackageTemplate())
+            ];
+        }
+
+        if (title.Contains("sdk responsibilities", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/index.ts",
+                    RenderSdkIndexTemplate())
+            ];
+        }
+
+        if (title.Contains("example agent using sdk", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/examples/developer-agent.ts",
+                    RenderSdkExampleAgentTemplate())
+            ];
+        }
+
+        if (title.Contains("credentials system", StringComparison.Ordinal) ||
+            title.Contains("credentials", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/config/credentials.schema.json",
+                    RenderCredentialsSchemaTemplate())
+            ];
+        }
+
+        if (title.Contains("supported git providers", StringComparison.Ordinal) ||
+            title.Contains("git utilities", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/config/git-providers.json",
+                    RenderGitProvidersTemplate())
+            ];
+        }
+
         if (rule is not null)
         {
             return
@@ -309,6 +367,125 @@ export default {{agentName}}Agent;
     }
   },
   "additionalProperties": true
+}
+""";
+
+    private static string RenderSdkPackageTemplate() =>
+        """
+{
+  "name": "dragon-agent-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}
+""";
+
+    private static string RenderSdkIndexTemplate() =>
+        """
+export interface DragonJobContext {
+  job: unknown;
+  payload: unknown;
+  metadata: Record<string, string>;
+}
+
+export interface DragonWorkspace {
+  cloneRepo(repo: string): Promise<string>;
+}
+
+export interface DragonGit {
+  createBranch(name: string): Promise<void>;
+  commit(message: string): Promise<void>;
+  push(): Promise<void>;
+}
+
+export interface DragonCredentials {
+  resolve(scope: string): Promise<Record<string, string>>;
+}
+
+export interface DragonAgentSdk {
+  parseJob(input: string): DragonJobContext;
+  publishMessage(queue: string, message: unknown): Promise<void>;
+  workspace: DragonWorkspace;
+  git: DragonGit;
+  credentials: DragonCredentials;
+}
+""";
+
+    private static string RenderSdkExampleAgentTemplate() =>
+        """
+import type { DragonAgentContext, DragonAgentResult } from "../dragon-agent-sdk/src/index";
+
+export const developerAgent = {
+  name: "developer",
+  description: "implements repository issues",
+  version: "1.0",
+  async execute(context: DragonAgentContext): Promise<DragonAgentResult> {
+    void context;
+
+    return {
+      success: true,
+      message: "Bootstrap developer agent completed."
+    };
+  }
+};
+""";
+
+    private static string RenderCredentialsSchemaTemplate() =>
+        """
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DragonCredentials",
+  "type": "object",
+  "properties": {
+    "system": {
+      "$ref": "#/$defs/credentialSet"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/credentialSet"
+      }
+    }
+  },
+  "$defs": {
+    "credentialSet": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
+""";
+
+    private static string RenderGitProvidersTemplate() =>
+        """
+{
+  "defaultProvider": "github",
+  "providers": [
+    {
+      "name": "github",
+      "enabled": true
+    },
+    {
+      "name": "gitlab",
+      "enabled": true
+    },
+    {
+      "name": "gitea",
+      "enabled": true
+    },
+    {
+      "name": "bitbucket",
+      "enabled": false
+    }
+  ]
 }
 """;
 

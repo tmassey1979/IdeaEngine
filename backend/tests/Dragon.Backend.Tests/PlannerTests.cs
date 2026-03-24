@@ -160,6 +160,116 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesSdkPackageTemplate_ForSdkPackageStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                210,
+                "[Story] Dragon Idea Engine Master Codex Addendum: SDK Package",
+                "OPEN",
+                ["story"],
+                "dragon-agent-sdk\nNode / TypeScript\nPython",
+                "SDK Package",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/sdk/dragon-agent-sdk/package.json", operation.Path);
+        Assert.Contains("\"name\": \"dragon-agent-sdk\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"build\": \"tsc -p tsconfig.json\"", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesSdkIndexTemplate_ForSdkResponsibilitiesStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                211,
+                "[Story] Dragon Idea Engine Master Codex Addendum: SDK Responsibilities",
+                "OPEN",
+                ["story"],
+                "job parsing\nmessage publishing\nworkspace management",
+                "SDK Responsibilities",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/sdk/dragon-agent-sdk/src/index.ts", operation.Path);
+        Assert.Contains("export interface DragonAgentSdk", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("publishMessage", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesSdkExampleAgentTemplate_ForExampleAgentStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                220,
+                "[Story] Dragon Idea Engine Master Codex Addendum: Example Agent Using SDK",
+                "OPEN",
+                ["story"],
+                "name: \"developer\"\ndescription: \"implements repository issues\"",
+                "Example Agent Using SDK",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/sdk/examples/developer-agent.ts", operation.Path);
+        Assert.Contains("name: \"developer\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("Bootstrap developer agent completed.", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesCredentialsSchemaTemplate_ForCredentialsStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                121,
+                "[Story] Dragon Idea Engine Master Codex: Credentials System",
+                "OPEN",
+                ["story"],
+                "Dragon Idea Engine supports hierarchical credentials.",
+                "Credentials System",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/config/credentials.schema.json", operation.Path);
+        Assert.Contains("\"title\": \"DragonCredentials\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"project\"", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesGitProviderTemplate_ForSupportedGitProvidersStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                122,
+                "[Story] Dragon Idea Engine Master Codex: Supported Git Providers",
+                "OPEN",
+                ["story"],
+                "GitHub\nGitLab\nGitea",
+                "Supported Git Providers",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/config/git-providers.json", operation.Path);
+        Assert.Contains("\"name\": \"github\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"name\": \"gitea\"", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ExecuteDeveloper_DoesNotDuplicateIdenticalAppendTextOperations()
     {
         var root = CreateTempRoot();
