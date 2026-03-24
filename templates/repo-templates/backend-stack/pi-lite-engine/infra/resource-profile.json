@@ -1,0 +1,13 @@
+{
+  "profile": "pi-lite",
+  "constraints": {
+    "lowMemoryUsage": true,
+    "lightweightContainers": true,
+    "limitedCpuOverhead": true,
+    "efficientNetworking": true
+  },
+  "disabledServices": [
+    "object-storage",
+    "keycloak"
+  ]
+}

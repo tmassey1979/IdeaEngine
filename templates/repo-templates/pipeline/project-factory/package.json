@@ -1,0 +1,11 @@
+{
+  "name": "dragon-project-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node dist/project-bootstrap.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/pipeline.test.js')\""
+  }
+}

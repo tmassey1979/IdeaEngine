@@ -84,6 +84,14 @@ Useful environment overrides:
 - `OPENAI_API_KEY`
 - `GITHUB_TOKEN` / `GH_TOKEN`
 
+Configuration direction:
+
+- current environment variables are bootstrap-only
+- production agent/provider configuration should move into the database
+- provider credentials and sensitive agent settings should be encrypted at rest
+- the runtime should read decrypted values only at execution time through the backend configuration layer
+- CLI options can override database-backed configuration for a single invocation without writing those overrides back
+
 Provider direction:
 
 - `IAgentModelProvider` is the backend abstraction boundary

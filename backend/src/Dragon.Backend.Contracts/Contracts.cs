@@ -147,3 +147,131 @@ public sealed record AgentModelProviderDescriptor(
     string ApiKeyEnvironmentVariable,
     string Notes
 );
+
+public sealed record BackendDashboardReadModel(
+    string Health,
+    string AttentionSummary,
+    string WorkerMode,
+    string WorkerState,
+    int QueuedJobs,
+    IReadOnlyDictionary<string, int> Rollup,
+    string? WaitSignal,
+    string? RecentLoopSummary,
+    BackendLeadJobReadModel? LeadJob,
+    BackendTelemetryReadModel? HostTelemetry,
+    IReadOnlyList<BackendServiceReadModel> Services,
+    string SourceStatus
+);
+
+public sealed record BackendLeadJobReadModel(
+    int IssueNumber,
+    string IssueTitle,
+    string Agent,
+    string Action,
+    string? TargetArtifact,
+    string? ImplementationProfile
+);
+
+public sealed record BackendTelemetryReadModel(
+    string Status,
+    int? ProcessorCount,
+    double? ProcessorLoadPercent,
+    long? MemoryTotalMb,
+    long? MemoryAvailableMb,
+    double? MemoryUsedPercent,
+    string? Summary
+);
+
+public sealed record BackendServiceReadModel(
+    string Name,
+    string Status,
+    string Summary
+);
+
+public sealed record BackendIssueReadModel(
+    string Id,
+    string Title,
+    string OverallStatus,
+    string CurrentStage,
+    int QueuedJobCount,
+    string? WorkflowNote,
+    string? LatestExecutionSummary,
+    DateTimeOffset? LatestExecutionRecordedAt
+);
+
+public sealed record BackendIssueDetailReadModel(
+    string Id,
+    string Title,
+    string OverallStatus,
+    string CurrentStage,
+    int QueuedJobCount,
+    string? WorkflowNote,
+    string? LatestExecutionSummary,
+    DateTimeOffset? LatestExecutionRecordedAt,
+    IReadOnlyList<string> Blockers,
+    string PreferredStackLabel,
+    IReadOnlyList<BackendStageActivityReadModel> Activity,
+    BackendListPanelReadModel BacklogPanel,
+    BackendBoardPanelReadModel BoardPanel,
+    BackendActivityPanelReadModel ActivityPanel
+);
+
+public sealed record BackendIssueFixRequest(
+    string? OperatorInput
+);
+
+public sealed record BackendIssueFixResponse(
+    string Id,
+    string Title,
+    string Agent,
+    string Action,
+    bool Queued,
+    string Message,
+    string? OperatorInput
+);
+
+public sealed record BackendStageActivityReadModel(
+    string Stage,
+    string Status,
+    DateTimeOffset? ObservedAt,
+    string? Summary
+);
+
+public sealed record BackendListPanelReadModel(
+    string State,
+    string Summary,
+    IReadOnlyList<BackendPanelItemReadModel> Items
+);
+
+public sealed record BackendBoardPanelReadModel(
+    string State,
+    string Summary,
+    IReadOnlyList<BackendBoardColumnReadModel> Columns
+);
+
+public sealed record BackendBoardColumnReadModel(
+    string Id,
+    string Title,
+    IReadOnlyList<BackendPanelItemReadModel> Cards
+);
+
+public sealed record BackendPanelItemReadModel(
+    string Id,
+    string Title,
+    string Status,
+    string? Summary
+);
+
+public sealed record BackendActivityPanelReadModel(
+    string State,
+    string Summary,
+    IReadOnlyList<BackendActivityEntryReadModel> Entries
+);
+
+public sealed record BackendActivityEntryReadModel(
+    string Id,
+    string Title,
+    string Status,
+    string Summary,
+    DateTimeOffset? RecordedAt
+);

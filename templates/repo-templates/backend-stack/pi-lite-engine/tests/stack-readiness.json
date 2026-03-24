@@ -1,0 +1,20 @@
+{
+  "name": "pi-lite-readiness",
+  "checks": [
+    {
+      "service": "dragon-api",
+      "probe": "http://localhost:5080/health",
+      "required": true
+    },
+    {
+      "service": "dragon-worker",
+      "probe": "single-concurrency-loop",
+      "required": true
+    },
+    {
+      "service": "rabbitmq",
+      "probe": "tcp://localhost:5672",
+      "required": true
+    }
+  ]
+}

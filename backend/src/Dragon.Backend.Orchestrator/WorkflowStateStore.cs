@@ -19,17 +19,32 @@ public sealed class WorkflowStateStore
     public string RootDirectory { get; }
 
     public string StatePath => Path.Combine(RootDirectory, ".dragon", "state", "issues.json");
+    public string BackupPath => Path.Combine(RootDirectory, ".dragon", "state", "issues.backup.json");
 
     public IReadOnlyDictionary<int, IssueWorkflowState> ReadAll()
     {
-        if (!File.Exists(StatePath))
+        var snapshots = TryReadSnapshots(StatePath, out var stateError);
+        if (snapshots is not null)
+        {
+            return snapshots.ToDictionary(item => item.IssueNumber);
+        }
+
+        snapshots = TryReadSnapshots(BackupPath, out var backupError);
+        if (snapshots is not null)
+        {
+            WriteState(snapshots);
+            return snapshots.ToDictionary(item => item.IssueNumber);
+        }
+
+        if (!File.Exists(StatePath) && !File.Exists(BackupPath))
         {
             return new Dictionary<int, IssueWorkflowState>();
         }
 
-        var json = File.ReadAllText(StatePath);
-        var snapshots = JsonSerializer.Deserialize<List<IssueWorkflowState>>(json, serializerOptions) ?? [];
-        return snapshots.ToDictionary(item => item.IssueNumber);
+        throw new InvalidOperationException(
+            $"Unable to read workflow state from '{StatePath}' or backup '{BackupPath}'. " +
+            $"Primary error: {stateError?.Message ?? "missing"}. " +
+            $"Backup error: {backupError?.Message ?? "missing"}.");
     }
 
     public IssueWorkflowState Update(SelfBuildJob job, JobExecutionResult execution)
@@ -77,11 +92,7 @@ public sealed class WorkflowStateStore
         snapshots[issueNumber] = updated;
         ReconcileRecoveryLinkage(snapshots, issueNumber);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
-        File.WriteAllText(
-            StatePath,
-            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
-        );
+        WriteState(snapshots.Values);
 
         return updated;
     }
@@ -103,11 +114,7 @@ public sealed class WorkflowStateStore
 
         snapshots[existing.IssueNumber] = updated;
         ReconcileRecoveryLinkage(snapshots, issueNumber);
-        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
-        File.WriteAllText(
-            StatePath,
-            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
-        );
+        WriteState(snapshots.Values);
 
         return updated;
     }
@@ -127,11 +134,7 @@ public sealed class WorkflowStateStore
         };
 
         snapshots[existing.IssueNumber] = updated;
-        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
-        File.WriteAllText(
-            StatePath,
-            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
-        );
+        WriteState(snapshots.Values);
 
         return updated;
     }
@@ -149,7 +152,7 @@ public sealed class WorkflowStateStore
             throw new InvalidOperationException($"Cannot release issue #{issueNumber} while recovery children are still active.");
         }
 
-        var retryStage = FailurePolicy.InferCurrentStage(existing);
+        var retryStage = InferRetryStage(existing);
         return ResetStageForRetryInternal(snapshots, existing, retryStage, note);
     }
 
@@ -187,13 +190,23 @@ public sealed class WorkflowStateStore
         };
 
         snapshots[existing.IssueNumber] = updated;
-        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
-        File.WriteAllText(
-            StatePath,
-            JsonSerializer.Serialize(snapshots.Values.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions)
-        );
+        WriteState(snapshots.Values);
 
         return updated;
+    }
+
+    public static string? InferRetryStage(IssueWorkflowState workflow)
+    {
+        var latestFailedStage = workflow.Stages
+            .Where(stage => string.Equals(stage.Value.Status, "failed", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(stage => stage.Value.ObservedAt)
+            .ThenBy(stage => stage.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(stage => stage.Key)
+            .FirstOrDefault();
+
+        return !string.IsNullOrWhiteSpace(latestFailedStage)
+            ? latestFailedStage
+            : FailurePolicy.InferCurrentStage(workflow);
     }
 
     private static void ReconcileRecoveryLinkage(IDictionary<int, IssueWorkflowState> snapshots, int issueNumber)
@@ -257,5 +270,50 @@ public sealed class WorkflowStateStore
         }
 
         return "in_progress";
+    }
+
+    private List<IssueWorkflowState>? TryReadSnapshots(string path, out Exception? error)
+    {
+        error = null;
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                throw new InvalidOperationException($"Workflow state file '{path}' is empty.");
+            }
+
+            return JsonSerializer.Deserialize<List<IssueWorkflowState>>(json, serializerOptions) ?? [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+        {
+            error = ex;
+            return null;
+        }
+    }
+
+    private void WriteState(IEnumerable<IssueWorkflowState> snapshots)
+    {
+        var directory = Path.GetDirectoryName(StatePath)!;
+        Directory.CreateDirectory(directory);
+
+        var payload = JsonSerializer.Serialize(snapshots.OrderBy(item => item.IssueNumber).ToArray(), serializerOptions);
+        var tempPath = Path.Combine(directory, $"issues.{Guid.NewGuid():N}.tmp");
+        File.WriteAllText(tempPath, payload);
+
+        if (File.Exists(StatePath))
+        {
+            File.Replace(tempPath, StatePath, BackupPath, true);
+            File.Copy(StatePath, BackupPath, true);
+            return;
+        }
+
+        File.Move(tempPath, StatePath);
+        File.WriteAllText(BackupPath, payload);
     }
 }

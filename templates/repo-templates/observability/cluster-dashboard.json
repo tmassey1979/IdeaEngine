@@ -1,0 +1,10 @@
+{
+  "name": "cluster-dashboard",
+  "panels": [
+    "cluster-health",
+    "queue-depth",
+    "node-availability",
+    "agent-success-rate"
+  ],
+  "refreshSeconds": 30
+}

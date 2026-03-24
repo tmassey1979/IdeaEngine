@@ -3,5 +3,7 @@ node_modules/
 .dragon/
 .env
 .env.local
+playwright-report/
+test-results/
 **/bin/
 **/obj/

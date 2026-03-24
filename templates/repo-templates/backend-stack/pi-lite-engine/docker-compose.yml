@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  dragon-api:
+    image: dragon-api:lite
+    env_file: .env.example
+    restart: unless-stopped
+  dragon-worker:
+    image: dragon-worker:lite
+    env_file: .env.example
+    restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+  redis:
+    image: redis:7-alpine
+
+x-resource-hints:
+  default:
+    memory: "256m"
+    cpus: "0.50"

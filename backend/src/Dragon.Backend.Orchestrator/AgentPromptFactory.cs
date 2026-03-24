@@ -151,6 +151,11 @@ public static class AgentPromptFactory
             builder.AppendLine($"Changed artifact rollup: {rollup}");
         }
 
+        if (job.Metadata.TryGetValue("operatorFixNotes", out var operatorFixNotes) && !string.IsNullOrWhiteSpace(operatorFixNotes))
+        {
+            builder.AppendLine($"Operator fix notes: {operatorFixNotes}");
+        }
+
         builder.AppendLine();
         builder.AppendLine(IsImplementationAction(job.Action)
             ? "Return the best concise result for this agent role. Include bounded operations whenever you can safely advance the repository directly."

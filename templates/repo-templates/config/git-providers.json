@@ -1,0 +1,21 @@
+{
+  "defaultProvider": "github",
+  "providers": [
+    {
+      "name": "github",
+      "enabled": true
+    },
+    {
+      "name": "gitlab",
+      "enabled": true
+    },
+    {
+      "name": "gitea",
+      "enabled": true
+    },
+    {
+      "name": "bitbucket",
+      "enabled": false
+    }
+  ]
+}

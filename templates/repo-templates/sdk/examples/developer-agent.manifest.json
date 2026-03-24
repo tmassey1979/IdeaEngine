@@ -1,0 +1,9 @@
+{
+  "name": "developer",
+  "entry": "./developer-agent.ts",
+  "sdk": "dragon-agent-sdk",
+  "capabilities": [
+    "implement-issue",
+    "emit-summary"
+  ]
+}

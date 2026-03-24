@@ -1,0 +1,9 @@
+### Dragon API Health Contract
+
+GET http://localhost:5080/health
+Accept: application/json
+
+###
+
+GET http://localhost:5080/api/identity
+Accept: application/json

@@ -1,0 +1,15 @@
+{
+  "name": "cluster-observability",
+  "metrics": [
+    "cpu_usage_percent",
+    "memory_usage_percent",
+    "task_queue_depth",
+    "agent_success_rate",
+    "node_availability"
+  ],
+  "visualizations": [
+    "cluster-health",
+    "queue-depth",
+    "node-availability"
+  ]
+}

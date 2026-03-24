@@ -493,6 +493,10 @@ public sealed class SelfBuildLoop
             {
                 retryAgent = RecommendAgent(issue);
             }
+            else if (ShouldFallbackToRecommendedAgent(workflow, retryAgent))
+            {
+                retryAgent = RecommendAgent(issue);
+            }
 
             var changedPaths = retryAgent.Equals("review", StringComparison.OrdinalIgnoreCase)
                 ? ReadLatestSuccessfulChangedPaths(workflow.IssueNumber)
@@ -518,6 +522,37 @@ public sealed class SelfBuildLoop
         return new QuarantineReleaseResult(released);
     }
 
+    private static bool ShouldFallbackToRecommendedAgent(IssueWorkflowState workflow, string retryAgent)
+    {
+        if (string.Equals(retryAgent, "review", StringComparison.OrdinalIgnoreCase))
+        {
+            return !HasSuccessfulImplementationStage(workflow);
+        }
+
+        if (string.Equals(retryAgent, "test", StringComparison.OrdinalIgnoreCase))
+        {
+            return !HasSuccessfulStage(workflow, "review");
+        }
+
+        return false;
+    }
+
+    private static bool HasSuccessfulImplementationStage(IssueWorkflowState workflow) =>
+        HasSuccessfulStage(
+            workflow,
+            "architect",
+            "developer",
+            "documentation",
+            "feedback",
+            "idea",
+            "repository-manager",
+            "refactor");
+
+    private static bool HasSuccessfulStage(IssueWorkflowState workflow, params string[] stages) =>
+        stages.Any(stageName =>
+            workflow.Stages.TryGetValue(stageName, out var stage) &&
+            string.Equals(stage.Status, "success", StringComparison.OrdinalIgnoreCase));
+
     public QuarantineReleaseResult ReleaseQuarantinedIssuesFromGithub(
         string owner,
         string repo,
@@ -526,6 +561,80 @@ public sealed class SelfBuildLoop
     {
         var issues = LoadGithubIssues(owner, repo);
         return ReleaseQuarantinedIssues(issues, repo, project, owner, syncValidatedWorkflows);
+    }
+
+    public BackendIssueFixResponse RequestIssueFix(
+        int issueNumber,
+        string? operatorInput,
+        string repo = "IdeaEngine",
+        string project = "DragonIdeaEngine")
+    {
+        var workflows = workflowStateStore.ReadAll();
+        if (!workflows.TryGetValue(issueNumber, out var workflow))
+        {
+            throw new KeyNotFoundException($"Issue #{issueNumber} was not found in workflow state.");
+        }
+
+        if (queueStore.ReadAll().Any(job => job.Issue == issueNumber))
+        {
+            return new BackendIssueFixResponse(
+                issueNumber.ToString(),
+                workflow.IssueTitle,
+                "queued",
+                "implement_issue",
+                false,
+                $"Issue #{issueNumber} already has queued work.",
+                NormalizeOperatorInput(operatorInput));
+        }
+
+        var issue = LoadRetryIssue(issueNumber, workflow);
+        var agent = RecommendAgent(issue);
+        var failedStage = WorkflowStateStore.InferRetryStage(workflow);
+        var normalizedOperatorInput = NormalizeOperatorInput(operatorInput);
+        var note = BuildOperatorFixNote(agent, normalizedOperatorInput);
+
+        if (string.Equals(workflow.OverallStatus, "quarantined", StringComparison.OrdinalIgnoreCase))
+        {
+            workflowStateStore.ReleaseQuarantineForRetry(issueNumber, note);
+        }
+        else if (!string.IsNullOrWhiteSpace(failedStage) &&
+                 !string.Equals(failedStage, "complete", StringComparison.OrdinalIgnoreCase) &&
+                 !string.Equals(failedStage, "unknown", StringComparison.OrdinalIgnoreCase))
+        {
+            workflowStateStore.ResetStageForRetry(issueNumber, failedStage, note);
+        }
+        else
+        {
+            workflowStateStore.UpdateNote(issueNumber, note);
+        }
+
+        var job = SelfBuildJobFactory.CreateRetry(issue, agent, repo, project);
+        var metadata = new Dictionary<string, string>(job.Metadata, StringComparer.Ordinal)
+        {
+            ["requestedBy"] = "operator-ui",
+            ["operatorFixRequestedAt"] = nowProvider().ToString("O")
+        };
+
+        if (!string.IsNullOrWhiteSpace(normalizedOperatorInput))
+        {
+            metadata["operatorFixNotes"] = normalizedOperatorInput;
+        }
+
+        queueStore.Enqueue(job with
+        {
+            Metadata = metadata
+        });
+
+        return new BackendIssueFixResponse(
+            issueNumber.ToString(),
+            issue.Title,
+            agent,
+            job.Action,
+            true,
+            string.IsNullOrWhiteSpace(normalizedOperatorInput)
+                ? $"Queued {agent} to work issue #{issueNumber}."
+                : $"Queued {agent} to work issue #{issueNumber} with operator guidance.",
+            normalizedOperatorInput);
     }
 
     public SelfBuildJob SeedNext(IReadOnlyList<GithubIssue> issues, string repo = "IdeaEngine", string project = "DragonIdeaEngine")
@@ -2172,16 +2281,6 @@ public sealed class SelfBuildLoop
 
         var title = issue.Title.ToLowerInvariant();
 
-        if (title.Contains("review", StringComparison.Ordinal))
-        {
-            return "review";
-        }
-
-        if (title.Contains("test", StringComparison.Ordinal))
-        {
-            return "test";
-        }
-
         if (title.Contains("architect agent", StringComparison.Ordinal))
         {
             return "architect";
@@ -2220,6 +2319,40 @@ public sealed class SelfBuildLoop
 
         return "developer";
     }
+
+    private GithubIssue LoadRetryIssue(int issueNumber, IssueWorkflowState workflow)
+    {
+        try
+        {
+            var story = BacklogStoryCatalog.LoadStories(RootDirectory)
+                .FirstOrDefault(candidate => candidate.Number == issueNumber);
+            if (story is not null)
+            {
+                return story;
+            }
+        }
+        catch (FileNotFoundException)
+        {
+        }
+
+        return new GithubIssue(
+            issueNumber,
+            workflow.IssueTitle,
+            "OPEN",
+            ["story"],
+            workflow.Note ?? string.Empty);
+    }
+
+    private static string BuildOperatorFixNote(string agent, string? operatorInput)
+    {
+        var prefix = $"Operator requested a {agent} fix pass from the UI.";
+        return string.IsNullOrWhiteSpace(operatorInput)
+            ? prefix
+            : $"{prefix} Guidance: {operatorInput}";
+    }
+
+    private static string? NormalizeOperatorInput(string? operatorInput) =>
+        string.IsNullOrWhiteSpace(operatorInput) ? null : operatorInput.Trim();
 
     private static string? RecommendPlannedOperationsAgent(IReadOnlyList<DeveloperOperation> operations)
     {

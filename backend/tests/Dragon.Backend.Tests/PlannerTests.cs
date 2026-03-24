@@ -995,6 +995,39 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReleaseQuarantinedIssues_FallsBackToRecommendedAgent_WhenReviewHasNoImplementationPrerequisite()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var now = DateTimeOffset.UtcNow;
+
+        store.Update(35, "Review Agent", "review", new JobExecutionResult("job-review", "review", "failed", "missing implementation", now));
+        store.OverrideOverallStatus(35, "quarantined", "Quarantined after repeated failed review executions.");
+
+        var loop = new SelfBuildLoop(root);
+        var result = loop.ReleaseQuarantinedIssues(
+            [
+                new GithubIssue(
+                    35,
+                    "[Story] Dragon Idea Engine Master Codex: Review Agent",
+                    "OPEN",
+                    ["story"],
+                    "",
+                    "Review Agent",
+                    "codex/sections/01-dragon-idea-engine-master-codex.md")
+            ]);
+
+        Assert.Equal(1, result.ReleasedCount);
+        var released = Assert.Single(result.ReleasedIssues);
+        Assert.NotEqual("review", released.Agent);
+        Assert.Equal("implement_issue", released.Action);
+
+        var queued = Assert.Single(loop.ReadQueue());
+        Assert.NotEqual("review", queued.Agent);
+        Assert.Equal("implement_issue", queued.Action);
+    }
+
+    [Fact]
     public void CreateDeveloperJob_IncludesPlannedOperations()
     {
         var index = BacklogIndexLoader.Load(FindRepoRoot());
@@ -1087,6 +1120,52 @@ public sealed class PlannerTests
         Assert.Equal("documentation", job.Agent);
         Assert.NotNull(job.Payload.Operations);
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "docs/generated/repository-structure-notes.md");
+    }
+
+    [Fact]
+    public void SeedNext_DoesNotRouteReviewAgentStoryDirectlyToReview()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                135,
+                "[Story] Dragon Idea Engine Master Codex: Review Agent",
+                "OPEN",
+                ["story"],
+                "",
+                "Review Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.NotEqual("review", job.Agent);
+        Assert.Equal("implement_issue", job.Action);
+    }
+
+    [Fact]
+    public void SeedNext_DoesNotRouteTestAgentStoryDirectlyToTest()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                136,
+                "[Story] Dragon Idea Engine Master Codex: Test Agent",
+                "OPEN",
+                ["story"],
+                "",
+                "Test Agent",
+                "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.NotEqual("test", job.Agent);
+        Assert.Equal("implement_issue", job.Action);
     }
 
     [Fact]
@@ -3224,6 +3303,57 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public async Task StatusHttpServer_UsesLiveIssueStateWhenRuntimeSnapshotIsStale()
+    {
+        var root = CreateTempRoot();
+        var snapshotPath = Path.Combine(root, ".dragon", "status", "runtime-status.json");
+        var store = new WorkflowStateStore(root);
+        var observedAt = new DateTimeOffset(2026, 3, 24, 18, 0, 0, TimeSpan.Zero);
+
+        store.Update(
+            35,
+            "[Story] Dragon Idea Engine Master Codex: Review Agent",
+            "review",
+            new JobExecutionResult("job-review", "review", "failed", "missing implementation", observedAt));
+        store.OverrideOverallStatus(35, "quarantined", "Quarantined after repeated failed review executions.");
+
+        var loop = new SelfBuildLoop(root);
+        loop.WriteStatus(
+            snapshotPath,
+            "run-watch",
+            "watch",
+            "waiting",
+            null,
+            DateTimeOffset.UtcNow.AddSeconds(30),
+            30,
+            1,
+            2,
+            1,
+            4,
+            SelfBuildLoop.BuildLatestPassSummary(1, new RunUntilIdleResult([], true, false)),
+            1,
+            4);
+
+        Thread.Sleep(25);
+        store.ReleaseQuarantineForRetry(35, "Operator requested a documentation fix pass from the UI.");
+
+        var server = new StatusHttpServer(loop, snapshotPath);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var snapshot = await client.GetFromJsonAsync<StatusSnapshot>($"{prefix}status");
+        await serveTask;
+
+        Assert.NotNull(snapshot);
+        Assert.Equal("status-http", snapshot!.Source);
+        Assert.Equal("run-watch", snapshot.LastCommand);
+        Assert.Equal("watch", snapshot.WorkerMode);
+        Assert.Equal("waiting", snapshot.WorkerState);
+        Assert.Contains(snapshot.Issues, issue => issue.IssueNumber == 35 && issue.OverallStatus == "in_progress");
+    }
+
+    [Fact]
     public async Task StatusHttpServer_IncludesCorsHeadersOnStatusResponses()
     {
         var root = CreateTempRoot();
@@ -3254,6 +3384,174 @@ public sealed class PlannerTests
         await serveTask;
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_ServesDashboardReadEndpoint()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            801,
+            new SelfBuildJobPayload("[Story] Dashboard Read Model", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "ui/react-dashboard/src/App.tsx",
+                ["implementationProfile"] = "ui/react-dashboard"
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var dashboard = await client.GetFromJsonAsync<BackendDashboardReadModel>($"{prefix}api/read/dashboard");
+        await serveTask;
+
+        Assert.NotNull(dashboard);
+        Assert.Equal("status-http", dashboard!.SourceStatus);
+        Assert.Equal(1, dashboard.QueuedJobs);
+        Assert.NotNull(dashboard.LeadJob);
+        Assert.Equal(801, dashboard.LeadJob!.IssueNumber);
+        Assert.True(dashboard.Rollup.ContainsKey("inProgressIssues"));
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_ServesIssueReadEndpoint()
+    {
+        var root = CreateTempRoot();
+        var observedAt = new DateTimeOffset(2026, 3, 24, 16, 0, 0, TimeSpan.Zero);
+        var store = new WorkflowStateStore(root);
+        store.Update(
+            44,
+            "[Story] Dragon Idea Engine Master Codex: UI Dashboard",
+            "developer",
+            new JobExecutionResult("job-44-dev", "developer", "success", "React dashboard shell was updated.", observedAt));
+
+        var executionStore = new ExecutionRecordStore(root);
+        executionStore.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                44,
+                new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: UI Dashboard", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "ui/react-dashboard/src/App.tsx|ui/react-dashboard/src/styles.css"
+                }),
+            new JobExecutionResult("job-44-dev", "developer", "success", "React dashboard shell was updated.", observedAt),
+            []);
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var issues = await client.GetFromJsonAsync<BackendIssueReadModel[]>($"{prefix}api/read/issues");
+        await serveTask;
+
+        var issue = Assert.Single(issues!);
+        Assert.Equal("44", issue.Id);
+        Assert.Equal("[Story] Dragon Idea Engine Master Codex: UI Dashboard", issue.Title);
+        Assert.Equal("React dashboard shell was updated.", issue.LatestExecutionSummary);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_ServesWorkflowBackedIssueDetailEndpoint()
+    {
+        var root = CreateTempRoot();
+        var observedAt = new DateTimeOffset(2026, 3, 24, 16, 0, 0, TimeSpan.Zero);
+        var store = new WorkflowStateStore(root);
+        store.Update(
+            45,
+            "[Story] Dragon Idea Engine Master Codex: Ideas",
+            "developer",
+            new JobExecutionResult("job-45-dev", "developer", "success", "Idea queue rendering was added.", observedAt));
+        store.Update(
+            45,
+            "[Story] Dragon Idea Engine Master Codex: Ideas",
+            "review",
+            new JobExecutionResult("job-45-review", "review", "failed", "Review rejected the first queue pass.", observedAt.AddMinutes(10)));
+        store.UpdateNote(45, "Review findings still need fixes before validation.");
+
+        var executionStore = new ExecutionRecordStore(root);
+        executionStore.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                45,
+                new SelfBuildJobPayload("[Story] Dragon Idea Engine Master Codex: Ideas", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "ui/react-dashboard/src/App.tsx|ui/react-dashboard/src/styles.css"
+                }),
+            new JobExecutionResult("job-45-dev", "developer", "success", "Idea queue rendering was added.", observedAt),
+            []);
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var detail = await client.GetFromJsonAsync<BackendIssueDetailReadModel>($"{prefix}api/read/issues/45");
+        await serveTask;
+
+        Assert.NotNull(detail);
+        Assert.Equal("45", detail!.Id);
+        Assert.Equal("React + TypeScript", detail.PreferredStackLabel);
+        Assert.Contains("Review findings still need fixes before validation.", detail.Blockers);
+        Assert.Contains(detail.Activity, entry => entry.Stage == "Review" && entry.Status == "failed");
+        Assert.Contains(detail.BoardPanel.Columns, column => column.Id == "blocked" && column.Cards.Any(card => card.Title == "Review"));
+        Assert.NotEmpty(detail.ActivityPanel.Entries);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_QueuesIssueFixRequestWithOperatorInput()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var now = new DateTimeOffset(2026, 3, 24, 18, 0, 0, TimeSpan.Zero);
+
+        store.Update(35, "[Story] Dragon Idea Engine Master Codex: Review Agent", "review", new JobExecutionResult("job-review", "review", "failed", "missing implementation", now));
+        store.OverrideOverallStatus(35, "quarantined", "Quarantined after repeated failed review executions.");
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var response = await client.PostAsJsonAsync($"{prefix}api/control/issues/35/fix", new BackendIssueFixRequest("Rebuild this as implementation work first."));
+        var payload = await response.Content.ReadFromJsonAsync<BackendIssueFixResponse>();
+        await serveTask;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.True(payload!.Queued);
+        Assert.Equal("implement_issue", payload.Action);
+        Assert.Equal("35", payload.Id);
+        Assert.Equal("Rebuild this as implementation work first.", payload.OperatorInput);
+
+        var queued = Assert.Single(loop.ReadQueue());
+        Assert.Equal(35, queued.Issue);
+        Assert.Equal("implement_issue", queued.Action);
+        Assert.Equal("operator-ui", queued.Metadata["requestedBy"]);
+        Assert.Equal("Rebuild this as implementation work first.", queued.Metadata["operatorFixNotes"]);
+
+        var workflow = store.ReadAll()[35];
+        Assert.Equal("in_progress", workflow.OverallStatus);
+        Assert.Contains("Operator requested a", workflow.Note, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -8230,6 +8528,79 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void TestExecutor_IncludesStdoutWhenDotnetTestFailsWithoutStderr()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "backend"));
+        File.WriteAllText(Path.Combine(root, "backend", "Dragon.Backend.slnx"), "Microsoft Visual Studio Solution File, Format Version 12.00");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(103, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+
+        var executor = new LocalJobExecutor((fileName, arguments, _) =>
+        {
+            if (fileName.Contains("dotnet", StringComparison.OrdinalIgnoreCase) &&
+                arguments.Contains("test", StringComparison.OrdinalIgnoreCase))
+            {
+                return new CommandResult(1, "Failed tests: WidgetTests", string.Empty);
+            }
+
+            return new CommandResult(0, "ok", string.Empty);
+        });
+
+        var result = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "test",
+                "test_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                103,
+                new SelfBuildJobPayload("Core", ["story"], "Core", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string>())
+        );
+
+        Assert.Equal("failed", result.Status);
+        Assert.Contains("dotnet test failed: Failed tests: WidgetTests", result.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TestExecutor_UsesIsolatedDotnetArtifactPaths()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "backend"));
+        File.WriteAllText(Path.Combine(root, "backend", "Dragon.Backend.slnx"), "Microsoft Visual Studio Solution File, Format Version 12.00");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(104, "Core", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+
+        var executed = new List<(string fileName, string arguments)>();
+        var executor = new LocalJobExecutor((fileName, arguments, _) =>
+        {
+            executed.Add((fileName, arguments));
+            return new CommandResult(0, "ok", string.Empty);
+        });
+
+        var result = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "test",
+                "test_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                104,
+                new SelfBuildJobPayload("Core", ["story"], "Core", "docs/ARCHITECTURE.md", null),
+                new Dictionary<string, string>()));
+
+        Assert.Equal("success", result.Status);
+        var invocation = Assert.Single(executed);
+        Assert.Contains("dotnet", invocation.fileName, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("--property:BaseOutputPath=", invocation.arguments, StringComparison.Ordinal);
+        Assert.Contains("--property:BaseIntermediateOutputPath=", invocation.arguments, StringComparison.Ordinal);
+        Assert.Contains("--property:UseSharedCompilation=false", invocation.arguments, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TestExecutor_ValidatesBackendStackSmokeAssetsForProfiledWork()
     {
         var root = CreateTempRoot();
@@ -8962,6 +9333,29 @@ public sealed class PlannerTests
         Assert.NotNull(quarantineCycle.FailureDisposition);
         Assert.True(quarantineCycle.FailureDisposition!.Quarantined);
         Assert.Contains(commands, command => command.Contains("issues/22/comments", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void WorkflowStateStore_FallsBackToBackupWhenPrimaryStateIsCorrupt()
+    {
+        var root = CreateTempRoot();
+        var store = new WorkflowStateStore(root);
+        var observedAt = DateTimeOffset.UtcNow;
+
+        store.Update(22, "Core", "developer", new JobExecutionResult("job-1", "developer", "success", "done", observedAt));
+        store.Update(23, "Review", "review", new JobExecutionResult("job-2", "review", "failed", "blocked", observedAt));
+
+        Assert.True(File.Exists(store.BackupPath));
+
+        File.WriteAllText(store.StatePath, "[\n  {");
+
+        var recovered = store.ReadAll();
+
+        Assert.Equal(2, recovered.Count);
+        Assert.Equal("Core", recovered[22].IssueTitle);
+        Assert.Equal("failed", recovered[23].OverallStatus);
+        Assert.StartsWith("[", File.ReadAllText(store.StatePath), StringComparison.Ordinal);
+        Assert.DoesNotContain("[\n  {", File.ReadAllText(store.StatePath), StringComparison.Ordinal);
     }
 
     private static string FindRepoRoot()

@@ -1,0 +1,15 @@
+{
+  "name": "agent-health-alerts",
+  "rules": [
+    {
+      "name": "missed-heartbeats",
+      "severity": "high",
+      "condition": "heartbeat_signals_total == 0"
+    },
+    {
+      "name": "agent-error-rate-spike",
+      "severity": "medium",
+      "condition": "error_rate > 0.1"
+    }
+  ]
+}

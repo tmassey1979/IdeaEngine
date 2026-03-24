@@ -7,6 +7,10 @@
 **/.idea
 **/.vscode
 node_modules
+ui/react-dashboard/node_modules
+ui/react-dashboard/dist
+ui/react-dashboard/playwright-report
+ui/react-dashboard/test-results
 npm-debug.log
 ui/dragon-ui/sample-status.json
 ui/dragon-ui/sample-status.js

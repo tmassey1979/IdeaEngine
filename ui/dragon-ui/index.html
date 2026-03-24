@@ -19,20 +19,43 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true">D</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="presentation">
+              <defs>
+                <linearGradient id="brand-dragon-fill" x1="15" y1="10" x2="50" y2="55" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#ff9c86" />
+                  <stop offset="0.58" stop-color="#f03a24" />
+                  <stop offset="1" stop-color="#8b0000" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M49 15c-5-2-11-2-16 1-5 2-8 7-11 11l-8-1 5 5-4 6 8-1c1 6 5 11 11 13 4 1 10 1 15-1-3-1-5-3-6-6l7 1-4-6 5-4-8-1c1-6-1-12-4-17z"
+                fill="url(#brand-dragon-fill)"
+              />
+              <path
+                d="M41 19c-6 1-11 5-14 11l6 1-5 5 7-1c0 5 3 9 7 12-1-4 0-8 3-10 3-3 4-7 4-12 0-2-1-4-2-6l-4 2-2-2z"
+                fill="#180303"
+                fill-opacity="0.82"
+              />
+              <circle cx="40" cy="25" r="2.2" fill="#fff3ef" />
+            </svg>
+          </div>
           <div>
             <p class="eyebrow">Dragon Idea Engine</p>
             <h1>Idea Foundry</h1>
           </div>
         </div>
 
-        <nav class="nav">
-          <a class="nav-link active" href="#dashboard">Dashboard</a>
-          <a class="nav-link" href="#submit-idea">Submit Idea</a>
-          <a class="nav-link" href="#idea-queue">Idea Queue</a>
-          <a class="nav-link" href="#projects">Projects</a>
-          <a class="nav-link" href="#idea-detail">Idea Detail</a>
-        </nav>
+        <div class="nav-shell">
+          <p class="panel-label nav-label">Workspace tabs</p>
+          <nav class="nav" aria-label="Primary">
+            <a class="nav-link active" href="#dashboard">Dashboard</a>
+            <a class="nav-link" href="#submit-idea">Submit Idea</a>
+            <a class="nav-link" href="#idea-queue">Idea Queue</a>
+            <a class="nav-link" href="#projects">Projects</a>
+            <a class="nav-link" href="#idea-detail">Idea Detail</a>
+          </nav>
+        </div>
 
         <section class="sidebar-card">
           <p class="panel-label">What this view should answer</p>
@@ -41,11 +64,13 @@
             <li>Which ideas are approved and waiting?</li>
             <li>When should each idea reach MVP?</li>
             <li>Is the system healthy enough to trust?</li>
+            <li>Which build lane should this idea follow?</li>
+            <li>Which agent microservice needs attention or scale?</li>
           </ul>
         </section>
 
         <section class="sidebar-card">
-          <p class="panel-label">Current UI stories</p>
+          <p class="panel-label">Current UI work</p>
           <ul class="sidebar-list compact">
             <li>#349 Dashboard-first shell</li>
             <li>#352 Idea queue with approval + ETA</li>
@@ -57,14 +82,44 @@
       </aside>
 
       <main class="main-content">
-        <section class="hero panel" id="dashboard">
+        <section class="hero panel workspace-panel active" id="dashboard" data-workspace-panel="dashboard">
           <div class="hero-copy">
             <p class="eyebrow">Dashboard</p>
-            <h2>Ideas come in, approved work enters the queue, and MVP progress stays visible.</h2>
+            <h2>Ideas come in, route into the right build lane, and move toward MVP in full view.</h2>
             <p>
-              The homepage is now a calm control panel: active builds, queued ideas, MVP forecasts,
-              and only the system health signals that matter.
+              Phase one stays focused on the self-building loop, but the intake flow can already tag
+              each project for the software lane now and future domain packs later while every agent
+              runs as its own containerized microservice.
             </p>
+          </div>
+          <div class="hero-emblem" aria-hidden="true">
+            <div class="hero-emblem-ring"></div>
+            <svg viewBox="0 0 220 220" role="presentation">
+              <defs>
+                <linearGradient id="hero-dragon-sigil" x1="48" y1="34" x2="170" y2="187" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#ffbaa9" />
+                  <stop offset="0.55" stop-color="#f03a24" />
+                  <stop offset="1" stop-color="#870000" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M166 58c-16-8-36-9-54-2-17 7-30 21-40 37l-27-4 18 18-13 20 24-4c3 21 17 39 37 48 16 6 35 7 54 0-11-4-19-12-24-23l24 3-14-18 18-14-26-4c6-18 4-38-3-57z"
+                fill="url(#hero-dragon-sigil)"
+              />
+              <path
+                d="M132 70c-19 3-35 15-45 33l20 3-15 15 21-3c0 15 8 29 19 39-3-13 1-26 10-34 9-10 14-22 14-38 0-7-2-13-5-19l-12 6-7-5z"
+                fill="#180303"
+                fill-opacity="0.84"
+              />
+              <path
+                d="M83 89c7-14 17-25 31-31"
+                stroke="#ffd1c7"
+                stroke-opacity="0.4"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+              <circle cx="131" cy="86" r="5.5" fill="#fff2ef" />
+            </svg>
           </div>
           <div class="hero-actions">
             <a class="button primary" href="#submit-idea">Submit Idea</a>
@@ -72,7 +127,7 @@
           </div>
         </section>
 
-        <section class="health-strip">
+        <section class="health-strip workspace-panel active" data-workspace-panel="dashboard">
           <article class="metric-card emphasis">
             <p class="metric-label">Loop health</p>
             <p class="metric-value" id="status-loop-health">Loading</p>
@@ -91,11 +146,11 @@
           <article class="metric-card">
             <p class="metric-label">Memory</p>
             <p class="metric-value" id="status-memory">Pending</p>
-            <p class="metric-meta" id="status-memory-note">Tracked under story #354</p>
+            <p class="metric-meta" id="status-memory-note">Tracked under UI work #354</p>
           </article>
         </section>
 
-        <section class="dashboard-grid">
+        <section class="dashboard-grid workspace-panel active" data-workspace-panel="dashboard">
           <article class="panel">
             <div class="panel-head">
               <div>
@@ -134,12 +189,20 @@
           <article class="panel">
             <div class="panel-head">
               <div>
-                <p class="panel-label">System health</p>
+                <p class="panel-label">Agent fabric</p>
                 <h3>Operational signals</h3>
               </div>
               <span class="chip" id="status-queue-depth">Queue loading</span>
             </div>
             <div class="signal-list">
+              <div class="signal-row">
+                <span>Agent topology</span>
+                <strong>Independent containerized services</strong>
+              </div>
+              <div class="signal-row">
+                <span>Scale mode</span>
+                <strong>Ingress can fan out more agents</strong>
+              </div>
               <div class="signal-row">
                 <span>Worker wait signal</span>
                 <strong id="status-wait-signal">Waiting for snapshot</strong>
@@ -168,13 +231,13 @@
           </article>
         </section>
 
-        <section class="panel wizard-panel" id="submit-idea">
+        <section class="panel wizard-panel workspace-panel" id="submit-idea" data-workspace-panel="submit-idea">
           <div class="panel-head">
             <div>
               <p class="panel-label">Submit Idea</p>
-              <h3>Guided intake wizard</h3>
+              <h3>Guided intake with future pack routing</h3>
             </div>
-            <span class="chip">Story #353</span>
+            <span class="chip">UI work #353</span>
           </div>
           <div class="wizard-steps">
             <div class="wizard-step active">
@@ -187,22 +250,57 @@
             <div class="wizard-step">
               <span>2</span>
               <div>
-                <strong>Choose technical preferences</strong>
-                <p>Stack, languages, deployment target, and core integrations.</p>
+                <strong>Choose build lane</strong>
+                <p>Route this project to core software now and leave room for future packs.</p>
               </div>
             </div>
             <div class="wizard-step">
               <span>3</span>
               <div>
                 <strong>Set constraints</strong>
-                <p>Must-haves, nice-to-haves, timing, and approval notes.</p>
+                <p>Must-haves, timing, stack preferences, and approval notes.</p>
               </div>
             </div>
+          </div>
+          <div class="lane-intro">
+            <div>
+              <p class="panel-label">Build lanes</p>
+              <h4>Submit once, route cleanly</h4>
+            </div>
+            <p class="subtle">
+              Packs ship later, but the intake should already know whether a project belongs in the
+              standard software lane or a future specialist lane like game dev or hardware.
+            </p>
+          </div>
+          <div class="lane-grid">
+            <article class="lane-card active">
+              <span class="lane-state">Phase 1 default</span>
+              <h4>Core Software</h4>
+              <p>Best for apps, APIs, workers, dashboards, internal tools, and the self-building loop.</p>
+            </article>
+            <article class="lane-card">
+              <span class="lane-state">Future pack</span>
+              <h4>Game Dev</h4>
+              <p>For projects that will eventually need gameplay systems, content pipelines, and engine-specific agents.</p>
+            </article>
+            <article class="lane-card">
+              <span class="lane-state">Future pack</span>
+              <h4>Hardware Design</h4>
+              <p>For ideas that will later need component selection, schematic capture, board layout, and routing specialists.</p>
+            </article>
           </div>
           <div class="wizard-grid">
             <label>
               <span>Idea name</span>
               <input type="text" placeholder="Enter idea name" />
+            </label>
+            <label>
+              <span>Build lane</span>
+              <select>
+                <option selected>Core software</option>
+                <option>Game dev lane (future pack)</option>
+                <option>Hardware design lane (future pack)</option>
+              </select>
             </label>
             <label>
               <span>Primary platform</span>
@@ -218,7 +316,7 @@
               <textarea placeholder="Describe the problem, target users, and the MVP outcome you want."></textarea>
             </label>
             <label>
-              <span>Frontend stack</span>
+              <span>Frontend preference</span>
               <select>
                 <option selected>Select frontend preference</option>
                 <option>React + TypeScript</option>
@@ -249,6 +347,10 @@
               <input type="text" placeholder="TypeScript, C#, Python..." />
             </label>
             <label>
+              <span>Pack signals</span>
+              <input type="text" placeholder="Gameplay, sensors, pcb, realtime, ai art..." />
+            </label>
+            <label>
               <span>Integrations</span>
               <input type="text" placeholder="Auth, payments, email, webhooks..." />
             </label>
@@ -259,13 +361,13 @@
           </div>
         </section>
 
-        <section class="panel" id="idea-queue">
+        <section class="panel workspace-panel" id="idea-queue" data-workspace-panel="idea-queue">
           <div class="panel-head">
             <div>
               <p class="panel-label">Idea Queue</p>
               <h3>Submitted ideas, approvals, and build order</h3>
             </div>
-            <span class="chip">Story #352</span>
+            <span class="chip">UI work #352</span>
           </div>
           <div class="queue-table-wrap">
             <table class="queue-table">
@@ -283,7 +385,7 @@
           </div>
         </section>
 
-        <section class="panel" id="projects">
+        <section class="panel workspace-panel" id="projects" data-workspace-panel="projects">
           <div class="panel-head">
             <div>
               <p class="panel-label">Projects</p>
@@ -294,13 +396,13 @@
           <div id="project-grid" class="project-grid"></div>
         </section>
 
-        <section class="panel detail-panel" id="idea-detail">
+        <section class="panel detail-panel workspace-panel" id="idea-detail" data-workspace-panel="idea-detail">
           <div class="panel-head">
             <div>
               <p class="panel-label">Idea Detail</p>
               <h3 id="idea-detail-title">Select an idea</h3>
             </div>
-            <span class="chip" id="idea-detail-chip">Story #350</span>
+            <span class="chip" id="idea-detail-chip">UI work #350</span>
           </div>
 
           <div class="detail-summary">
@@ -326,7 +428,7 @@
             <div class="detail-sidebar">
               <div class="detail-card">
                 <p class="panel-label">Summary</p>
-                <p id="idea-detail-summary">Pick a project or queued idea to explore its backlog and delivery board.</p>
+                <p id="idea-detail-summary">Pick an idea to explore its current delivery plan and execution board.</p>
               </div>
               <div class="detail-card">
                 <p class="panel-label">Preferred stack</p>

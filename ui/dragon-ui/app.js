@@ -1,9 +1,11 @@
 const LIVE_STATUS_ENDPOINTS = buildLiveStatusEndpoints();
 const TAB_IDS = ["backlog", "board", "activity"];
+const WORKSPACE_TABS = ["dashboard", "submit-idea", "idea-queue", "projects", "idea-detail"];
 
 let selectedIdeaId = null;
 let currentSnapshot = null;
 let currentIdeas = [];
+let activeWorkspaceTab = "dashboard";
 
 function buildLiveStatusEndpoints() {
   const endpoints = [];
@@ -257,7 +259,7 @@ function buildRealIdeas(snapshot) {
       phase: phaseLabel(issue),
       eta: "Not exposed yet",
       stack: "Not exposed yet",
-      summary: issue.latestExecutionSummary || issue.workflowNote || "No idea-level summary is available yet.",
+      summary: issue.latestExecutionSummary || issue.workflowNote || "No project summary is available yet.",
       blockers,
       latestExecutionRecordedAt: issue.latestExecutionRecordedAt || null,
       latestExecutionSummary: issue.latestExecutionSummary || null,
@@ -312,6 +314,7 @@ function renderEmptyState(containerId, message) {
 
 function renderDashboard(snapshot) {
   currentIdeas = buildRealIdeas(snapshot);
+  currentSnapshot = snapshot;
   const activeIdeas = currentIdeas.filter((idea) => ["printing", "blocked", "review"].includes(idea.status));
 
   text("status-loop-health", healthLabel(snapshot));
@@ -335,7 +338,7 @@ function renderDashboard(snapshot) {
   if (activeIdeas.length > 0) {
     document.getElementById("active-projects-list").innerHTML = activeIdeas.map(buildProjectCard).join("");
   } else {
-    renderEmptyState("active-projects-list", "No active idea/project data is available in the current status payload.");
+    renderEmptyState("active-projects-list", "No active project data is available in the current status payload.");
   }
 
   renderEmptyState(
@@ -391,12 +394,12 @@ function renderIdeaDetail() {
     text("idea-detail-queue", "Unavailable");
     text("idea-detail-phase", "Unavailable");
     text("idea-detail-eta", "Unavailable");
-    text("idea-detail-summary", "Idea detail requires idea/project data from the backend.");
+    text("idea-detail-summary", "Idea detail requires project data from the backend.");
     text("idea-detail-stack", "Not exposed yet");
     renderEmptyState("idea-backlog-list", "Backlog data is not exposed yet.");
     renderEmptyState("idea-board", "Agile board data is not exposed yet.");
     renderEmptyState("idea-activity-list", "Activity data is not exposed yet.");
-    document.getElementById("idea-detail-blockers").innerHTML = "<li>No idea/project selected.</li>";
+    document.getElementById("idea-detail-blockers").innerHTML = "<li>No idea selected.</li>";
     return;
   }
 
@@ -410,16 +413,16 @@ function renderIdeaDetail() {
 
   document.getElementById("idea-detail-blockers").innerHTML = (idea.blockers.length > 0
     ? idea.blockers
-    : ["Idea-level blockers are not explicitly exposed yet."]).map((blocker) => `<li>${blocker}</li>`).join("");
+    : ["Project blockers are not explicitly exposed yet."]).map((blocker) => `<li>${blocker}</li>`).join("");
 
   renderEmptyState(
     "idea-backlog-list",
-    "Backlog items are not exposed yet. We need idea-to-story grouping and idea-level backlog data from the backend."
+    "Project backlog data is not exposed yet. We need project-scoped work items from the backend."
   );
 
   renderEmptyState(
     "idea-board",
-    "Agile board data is not exposed yet. We need story states grouped under a parent idea/project."
+    "Execution board data is not exposed yet. We need project-scoped work states from the backend."
   );
 
   const activityEntries = [];
@@ -441,20 +444,65 @@ function renderIdeaDetail() {
         <strong>Missing data</strong>
         <span class="subtle">Needs backend work</span>
       </div>
-      <p class="subtle">Queue position, MVP ETA, stack preferences, backlog grouping, and agile board state are not yet modeled as idea-level data.</p>
+      <p class="subtle">Queue position, MVP ETA, stack preferences, project backlog, and execution board state are not yet modeled as project-level data.</p>
     </article>
   `);
 
   document.getElementById("idea-activity-list").innerHTML = activityEntries.join("");
 }
 
+function setWorkspaceTab(nextTab, options = {}) {
+  if (!WORKSPACE_TABS.includes(nextTab)) {
+    return;
+  }
+
+  activeWorkspaceTab = nextTab;
+
+  for (const navLink of document.querySelectorAll(".nav-link")) {
+    const href = navLink.getAttribute("href") || "";
+    navLink.classList.toggle("active", href === `#${nextTab}`);
+  }
+
+  for (const panel of document.querySelectorAll("[data-workspace-panel]")) {
+    panel.classList.toggle("active", panel.getAttribute("data-workspace-panel") === nextTab);
+  }
+
+  if (!options.skipScroll) {
+    document.querySelector(".main-content")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function setDetailTab(nextTab) {
+  if (!TAB_IDS.includes(nextTab)) {
+    return;
+  }
+
+  for (const tabButton of document.querySelectorAll(".tab")) {
+    tabButton.classList.toggle("active", tabButton.getAttribute("data-tab") === nextTab);
+  }
+
+  for (const panel of document.querySelectorAll(".tab-panel")) {
+    panel.classList.toggle("active", panel.getAttribute("data-panel") === nextTab);
+  }
+}
+
 function bindIdeaSelection() {
   document.addEventListener("click", (event) => {
+    const navTarget = event.target.closest(".nav-link, .button[href^='#']");
+    if (navTarget) {
+      const targetId = (navTarget.getAttribute("href") || "").replace(/^#/, "");
+      if (WORKSPACE_TABS.includes(targetId)) {
+        event.preventDefault();
+        setWorkspaceTab(targetId);
+        return;
+      }
+    }
+
     const selectionTarget = event.target.closest("[data-idea-id]");
     if (selectionTarget) {
       selectedIdeaId = selectionTarget.getAttribute("data-idea-id");
       renderIdeaDetail();
-      document.getElementById("idea-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+      setWorkspaceTab("idea-detail");
       return;
     }
 
@@ -463,18 +511,16 @@ function bindIdeaSelection() {
       return;
     }
 
-    const nextTab = tab.getAttribute("data-tab");
-    for (const tabButton of document.querySelectorAll(".tab")) {
-      tabButton.classList.toggle("active", tabButton === tab);
-    }
-
-    for (const panel of document.querySelectorAll(".tab-panel")) {
-      panel.classList.toggle("active", panel.getAttribute("data-panel") === nextTab);
-    }
+    setDetailTab(tab.getAttribute("data-tab"));
   });
 }
 
 async function bootstrap() {
+  const requestedTab = globalThis.location?.hash?.replace(/^#/, "");
+  if (WORKSPACE_TABS.includes(requestedTab)) {
+    activeWorkspaceTab = requestedTab;
+  }
+
   currentSnapshot = await loadStatusSnapshot();
   currentIdeas = buildRealIdeas(currentSnapshot);
   selectedIdeaId = currentIdeas[0]?.id ?? null;
@@ -482,13 +528,19 @@ async function bootstrap() {
   renderQueueAndProjects();
   renderIdeaDetail();
   bindIdeaSelection();
+  setWorkspaceTab(activeWorkspaceTab, { skipScroll: true });
 }
 
-bootstrap().catch((error) => {
+function handleBootstrapError(error) {
   text("status-loop-health", "Unavailable");
   text("status-triage", error instanceof Error ? error.message : "Unable to load status");
   currentIdeas = [];
   renderQueueAndProjects();
   renderIdeaDetail();
   bindIdeaSelection();
+  setWorkspaceTab(activeWorkspaceTab, { skipScroll: true });
+}
+
+bootstrap().catch((error) => {
+  handleBootstrapError(error);
 });

@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  dragon-ui:
+    image: dragon-ui:latest
+  dragon-api:
+    image: dragon-api:latest
+  dragon-orchestrator:
+    image: dragon-orchestrator:latest
+  dragon-agent-runner:
+    image: dragon-agent-runner:latest
+  rabbitmq:
+    image: rabbitmq:3-management
+  postgres:
+    image: postgres:16

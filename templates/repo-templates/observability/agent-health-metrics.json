@@ -1,0 +1,15 @@
+{
+  "name": "agent-health-monitoring",
+  "metrics": [
+    "heartbeat_signals_total",
+    "task_completion_success_rate",
+    "execution_duration_seconds",
+    "error_rate",
+    "quality_score",
+    "resource_consumption_percent"
+  ],
+  "offlinePolicy": {
+    "markOfflineAfterMissedHeartbeats": 3,
+    "reassignTasks": true
+  }
+}

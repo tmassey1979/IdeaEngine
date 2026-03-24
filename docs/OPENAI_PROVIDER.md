@@ -51,9 +51,18 @@ Official references:
 - OpenAI Responses API: https://platform.openai.com/docs/api-reference/responses
 - OpenAI developer docs overview: https://developers.openai.com/
 
-## Environment
+## Configuration Storage
 
-Initial environment variables:
+Production agent/provider configuration should not live in `.env` files.
+
+Required direction:
+
+- store agent/provider configuration in the database
+- encrypt provider credentials and sensitive agent settings at rest
+- use environment variables only for bootstrap, local development, or one-time migration flows
+- allow CLI flags to override database-backed values for the current process without mutating the stored configuration
+
+Bootstrap environment variables:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` with a backend default of `gpt-5`

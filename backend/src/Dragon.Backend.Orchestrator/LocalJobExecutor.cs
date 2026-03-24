@@ -12,11 +12,6 @@ public sealed record ModelExecutionRetryOptions(int MaxAttempts = 3, int BaseDel
 
 public sealed class LocalJobExecutor
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     private readonly LocalCommandRunner commandRunner;
     private readonly IAgentModelProvider? modelProvider;
     private readonly ModelExecutionRetryOptions modelRetryOptions;
@@ -301,7 +296,7 @@ public sealed class LocalJobExecutor
 
         if (File.Exists(solution))
         {
-            var result = commandRunner(ResolveCommand("dotnet"), $"test \"{solution}\"", rootDirectory);
+            var result = commandRunner(ResolveCommand("dotnet"), BuildDotnetTestArguments(rootDirectory, job, solution), rootDirectory);
             EnsureSuccess(result, "dotnet test");
             return "Executed dotnet test against backend/Dragon.Backend.slnx.";
         }
@@ -321,6 +316,40 @@ public sealed class LocalJobExecutor
         }
 
         throw new InvalidOperationException("Test stage found no recognizable project entrypoint.");
+    }
+
+    private static string BuildDotnetTestArguments(string rootDirectory, SelfBuildJob job, string solution)
+    {
+        var artifactRoot = Path.Combine(
+            rootDirectory,
+            ".dragon",
+            "artifacts",
+            "dotnet-test",
+            $"{job.Issue}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
+        var outputRoot = EnsureTrailingDirectorySeparator(Path.Combine(artifactRoot, "bin"));
+        var intermediateRoot = EnsureTrailingDirectorySeparator(Path.Combine(artifactRoot, "obj"));
+
+        Directory.CreateDirectory(outputRoot);
+        Directory.CreateDirectory(intermediateRoot);
+
+        return string.Join(
+            " ",
+            [
+                "test",
+                QuoteArgument(solution),
+                $"--property:BaseOutputPath={QuoteArgument(outputRoot)}",
+                $"--property:BaseIntermediateOutputPath={QuoteArgument(intermediateRoot)}",
+                "--property:UseSharedCompilation=false"
+            ]);
+    }
+
+    private static string QuoteArgument(string value) => $"\"{value}\"";
+
+    private static string EnsureTrailingDirectorySeparator(string path)
+    {
+        return path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)
+            ? path
+            : path + Path.DirectorySeparatorChar;
     }
 
     private static string? TryExecuteProfileAwareTest(string rootDirectory, SelfBuildJob job)
@@ -444,14 +473,8 @@ public sealed class LocalJobExecutor
 
     private static IssueWorkflowState? LoadWorkflowState(string rootDirectory, int issueNumber)
     {
-        var statePath = Path.Combine(rootDirectory, ".dragon", "state", "issues.json");
-        if (!File.Exists(statePath))
-        {
-            return null;
-        }
-
-        var snapshots = JsonSerializer.Deserialize<List<IssueWorkflowState>>(File.ReadAllText(statePath), JsonOptions);
-        return snapshots?.FirstOrDefault(item => item.IssueNumber == issueNumber);
+        var store = new WorkflowStateStore(rootDirectory);
+        return store.ReadAll().TryGetValue(issueNumber, out var workflow) ? workflow : null;
     }
 
     private static IReadOnlyList<string> ReadChangedPaths(SelfBuildJob job)
@@ -504,8 +527,31 @@ public sealed class LocalJobExecutor
     {
         if (result.ExitCode != 0)
         {
-            throw new InvalidOperationException($"{commandDescription} failed: {result.StandardError}".Trim());
+            var details = BuildCommandFailureDetails(result);
+            throw new InvalidOperationException(
+                string.IsNullOrWhiteSpace(details)
+                    ? $"{commandDescription} failed."
+                    : $"{commandDescription} failed: {details}");
         }
+    }
+
+    private static string BuildCommandFailureDetails(CommandResult result)
+    {
+        var stderr = result.StandardError.Trim();
+        var stdout = result.StandardOutput.Trim();
+
+        if (!string.IsNullOrWhiteSpace(stderr) && !string.IsNullOrWhiteSpace(stdout) &&
+            !string.Equals(stderr, stdout, StringComparison.Ordinal))
+        {
+            return $"stderr: {stderr}{Environment.NewLine}stdout: {stdout}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(stderr))
+        {
+            return stderr;
+        }
+
+        return stdout;
     }
 
     private static string ResolveCommand(string baseName)

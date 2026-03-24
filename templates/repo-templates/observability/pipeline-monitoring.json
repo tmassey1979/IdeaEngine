@@ -1,0 +1,19 @@
+{
+  "name": "pipeline-monitoring",
+  "metrics": [
+    "generation_duration_seconds",
+    "task_success_rate",
+    "agent_utilization_percent",
+    "failure_events_total"
+  ],
+  "dashboards": [
+    "pipeline-overview",
+    "pipeline-failures"
+  ],
+  "alerts": [
+    {
+      "name": "pipeline-failure-spike",
+      "condition": "failure_events_total > 0"
+    }
+  ]
+}

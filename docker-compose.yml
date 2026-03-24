@@ -1,4 +1,39 @@
 services:
+  dragon-ui:
+    build:
+      context: .
+      dockerfile: ui/react-dashboard/Dockerfile
+    image: dragon-idea-engine/ui:local
+    restart: unless-stopped
+    ports:
+      - "5080:80"
+    depends_on:
+      dragon-api:
+        condition: service_started
+      dragon-backend:
+        condition: service_healthy
+
+  dragon-api:
+    build:
+      context: .
+      dockerfile: services/dragon-api/Dockerfile
+    image: dragon-idea-engine/api:local
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DragonBackend__BaseUrl: http://dragon-backend:5078
+    ports:
+      - "5079:5079"
+    depends_on:
+      dragon-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5079/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   dragon-backend:
     build:
       context: .

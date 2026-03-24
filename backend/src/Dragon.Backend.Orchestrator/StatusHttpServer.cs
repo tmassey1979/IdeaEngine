@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Dragon.Backend.Contracts;
 
 namespace Dragon.Backend.Orchestrator;
 
@@ -14,11 +15,19 @@ public sealed class StatusHttpServer
 
     private readonly SelfBuildLoop loop;
     private readonly string? snapshotPath;
+    private readonly StatusReadModelBuilder readModelBuilder;
+    private readonly WorkflowStateStore workflowStateStore;
+    private readonly QueueStore queueStore;
+    private readonly ExecutionRecordStore executionRecordStore;
 
     public StatusHttpServer(SelfBuildLoop loop, string? snapshotPath = null)
     {
         this.loop = loop;
         this.snapshotPath = snapshotPath;
+        readModelBuilder = new StatusReadModelBuilder(loop.RootDirectory);
+        workflowStateStore = new WorkflowStateStore(loop.RootDirectory);
+        queueStore = new QueueStore(loop.RootDirectory);
+        executionRecordStore = new ExecutionRecordStore(loop.RootDirectory);
     }
 
     public async Task ServeOnceAsync(string prefix, CancellationToken cancellationToken = default)
@@ -89,6 +98,27 @@ public sealed class StatusHttpServer
                 return;
             }
 
+            if (string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase) &&
+                TryMatchIssueFixPath(path, out var fixIssueNumber))
+            {
+                var payload = await ReadJsonAsync<BackendIssueFixRequest>(context.Request, cancellationToken) ??
+                    new BackendIssueFixRequest(null);
+
+                try
+                {
+                    var response = loop.RequestIssueFix(fixIssueNumber, payload.OperatorInput);
+                    context.Response.StatusCode = (int)HttpStatusCode.OK;
+                    await WriteJsonAsync(context.Response, response, cancellationToken);
+                }
+                catch (KeyNotFoundException)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    await WriteTextAsync(context.Response, "Issue not found.", "text/plain", cancellationToken);
+                }
+
+                return;
+            }
+
             if (!string.Equals(context.Request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
@@ -112,12 +142,44 @@ public sealed class StatusHttpServer
                 return;
             }
 
+            if (string.Equals(path, "/api/read/dashboard", StringComparison.Ordinal))
+            {
+                var snapshot = ReadSnapshot();
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, readModelBuilder.BuildDashboard(snapshot), cancellationToken);
+                return;
+            }
+
+            if (string.Equals(path, "/api/read/issues", StringComparison.Ordinal))
+            {
+                var snapshot = ReadSnapshot();
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, readModelBuilder.BuildIssues(snapshot), cancellationToken);
+                return;
+            }
+
+            if (TryMatchIssueDetailPath(path, out var issueNumber))
+            {
+                var snapshot = ReadSnapshot();
+                var detail = readModelBuilder.BuildIssueDetail(snapshot, issueNumber);
+                if (detail is null)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    await WriteTextAsync(context.Response, "Issue not found.", "text/plain", cancellationToken);
+                    return;
+                }
+
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, detail, cancellationToken);
+                return;
+            }
+
             context.Response.StatusCode = (int)HttpStatusCode.NotFound;
             await WriteTextAsync(context.Response, "Not found.", "text/plain", cancellationToken);
         }
         finally
         {
-            context.Response.OutputStream.Close();
+            context.Response.Close();
         }
     }
 
@@ -136,6 +198,35 @@ public sealed class StatusHttpServer
         return path;
     }
 
+    private static bool TryMatchIssueDetailPath(string path, out int issueNumber)
+    {
+        issueNumber = 0;
+        const string prefix = "/api/read/issues/";
+
+        if (!path.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var issueText = path[prefix.Length..];
+        return int.TryParse(issueText, out issueNumber);
+    }
+
+    private static bool TryMatchIssueFixPath(string path, out int issueNumber)
+    {
+        issueNumber = 0;
+        const string prefix = "/api/control/issues/";
+        const string suffix = "/fix";
+
+        if (!path.StartsWith(prefix, StringComparison.Ordinal) || !path.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var issueText = path[prefix.Length..^suffix.Length];
+        return int.TryParse(issueText, out issueNumber);
+    }
+
     private StatusSnapshot ReadSnapshot()
     {
         if (!string.IsNullOrWhiteSpace(snapshotPath) && File.Exists(snapshotPath))
@@ -151,7 +242,29 @@ public sealed class StatusHttpServer
 
                 if (runtimeSnapshot is not null)
                 {
-                    return runtimeSnapshot with
+                    if (!IsRuntimeSnapshotStale(runtimeSnapshot, snapshotPath))
+                    {
+                        return runtimeSnapshot with
+                        {
+                            Source = "status-http"
+                        };
+                    }
+
+                    return loop.ReadStatus(
+                        runtimeSnapshot.LastCommand,
+                        runtimeSnapshot.WorkerMode,
+                        runtimeSnapshot.WorkerState,
+                        runtimeSnapshot.WorkerCompletionReason,
+                        runtimeSnapshot.NextPollAt,
+                        runtimeSnapshot.PollIntervalSeconds,
+                        runtimeSnapshot.IdleStreak,
+                        runtimeSnapshot.IdleTarget,
+                        runtimeSnapshot.IdlePassesRemaining,
+                        runtimeSnapshot.PassBudgetRemaining,
+                        runtimeSnapshot.LatestPass,
+                        runtimeSnapshot.CurrentPassNumber,
+                        runtimeSnapshot.MaxPasses,
+                        runtimeSnapshot.WorkerActivity) with
                     {
                         Source = "status-http"
                     };
@@ -169,11 +282,71 @@ public sealed class StatusHttpServer
         };
     }
 
+    private bool IsRuntimeSnapshotStale(StatusSnapshot runtimeSnapshot, string runtimeSnapshotPath)
+    {
+        var snapshotTimestamp = new[]
+        {
+            runtimeSnapshot.GeneratedAt,
+            ReadFileWriteTimeUtc(runtimeSnapshotPath)
+        }
+        .Where(timestamp => timestamp is not null)
+        .Select(timestamp => timestamp!.Value)
+        .DefaultIfEmpty(runtimeSnapshot.GeneratedAt)
+        .Max();
+
+        var latestMutation = new[]
+        {
+            ReadFileWriteTimeUtc(workflowStateStore.StatePath),
+            ReadFileWriteTimeUtc(queueStore.QueuePath),
+            ReadLatestRunWriteTimeUtc()
+        }
+        .Where(timestamp => timestamp is not null)
+        .Select(timestamp => timestamp!.Value)
+        .DefaultIfEmpty(DateTimeOffset.MinValue)
+        .Max();
+
+        return latestMutation > snapshotTimestamp;
+    }
+
+    private DateTimeOffset? ReadLatestRunWriteTimeUtc()
+    {
+        if (!Directory.Exists(executionRecordStore.RunsDirectory))
+        {
+            return null;
+        }
+
+        return Directory.GetFiles(executionRecordStore.RunsDirectory, "issue-*.json", SearchOption.TopDirectoryOnly)
+            .Select(ReadFileWriteTimeUtc)
+            .Where(timestamp => timestamp is not null)
+            .Select(timestamp => timestamp!.Value)
+            .DefaultIfEmpty()
+            .Max();
+    }
+
+    private static DateTimeOffset? ReadFileWriteTimeUtc(string path)
+    {
+        return File.Exists(path)
+            ? new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)
+            : null;
+    }
+
     private static void ApplyCorsHeaders(HttpListenerResponse response)
     {
         response.Headers["Access-Control-Allow-Origin"] = "*";
-        response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+        response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
         response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+    }
+
+    private static async Task<TPayload?> ReadJsonAsync<TPayload>(HttpListenerRequest request, CancellationToken cancellationToken)
+    {
+        using var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8, leaveOpen: true);
+        var content = await reader.ReadToEndAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return default;
+        }
+
+        return JsonSerializer.Deserialize<TPayload>(content, SerializerOptions);
     }
 
     private static async Task WriteJsonAsync(HttpListenerResponse response, object payload, CancellationToken cancellationToken)
@@ -182,6 +355,7 @@ public sealed class StatusHttpServer
         response.ContentType = "application/json; charset=utf-8";
         response.ContentLength64 = bytes.LongLength;
         await response.OutputStream.WriteAsync(bytes, cancellationToken);
+        await response.OutputStream.FlushAsync(cancellationToken);
     }
 
     private static async Task WriteTextAsync(HttpListenerResponse response, string payload, string contentType, CancellationToken cancellationToken)
@@ -190,5 +364,6 @@ public sealed class StatusHttpServer
         response.ContentType = $"{contentType}; charset=utf-8";
         response.ContentLength64 = bytes.LongLength;
         await response.OutputStream.WriteAsync(bytes, cancellationToken);
+        await response.OutputStream.FlushAsync(cancellationToken);
     }
 }

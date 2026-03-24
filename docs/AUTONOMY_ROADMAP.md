@@ -89,6 +89,8 @@ Before full unattended operation, the platform should enforce:
 - PR checks
 - deployment health checks
 - secrets isolation
+- database-backed agent/provider configuration
+- encryption at rest for agent credentials and provider secrets
 - policy-based approval for risky areas
 - operator notifications for stalled or quarantined work
 
@@ -97,7 +99,8 @@ Before full unattended operation, the platform should enforce:
 The highest-value path now is:
 
 1. finish API-first provider integration
-2. route agent roles through that provider
-3. run the orchestrator as a persistent service
-4. add notifications and deployment policy
-5. add auto-redeploy for validated major changes
+2. move provider and agent configuration into the database with encryption at rest
+3. route agent roles through that provider
+4. run the orchestrator as a persistent service
+5. add notifications and deployment policy
+6. add auto-redeploy for validated major changes

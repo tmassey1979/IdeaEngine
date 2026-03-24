@@ -7,11 +7,24 @@
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "serve:status": "dotnet run --project backend/src/Dragon.Backend.Cli -- serve-status --root . --prefix http://127.0.0.1:5078/",
+    "serve:dragon-ui": "node scripts/serve-dragon-ui.mjs",
+    "react-ui:dev": "npm --prefix ui/react-dashboard run dev",
+    "react-ui:test": "npm --prefix ui/react-dashboard test",
+    "react-ui:test:e2e": "npm --prefix ui/react-dashboard run test:e2e",
     "status:ui": "node scripts/refresh-ui-status.mjs status",
     "run:ui": "node scripts/refresh-ui-status.mjs run",
     "run:polling": "dotnet run --project backend/src/Dragon.Backend.Cli -- run-polling --root . --max-passes 10 --idle-passes 2 --max-cycles 100",
     "run:watch": "dotnet run --project backend/src/Dragon.Backend.Cli -- run-watch --root . --poll-seconds 30 --max-passes 10 --idle-passes 2 --max-cycles 100",
     "test": "dotnet test backend/Dragon.Backend.slnx",
-    "test:backend": "dotnet test backend/Dragon.Backend.slnx"
+    "test:dragon-api": "dotnet test services/dragon-api/tests/Dragon.Api.Tests.csproj",
+    "test:backend": "dotnet test backend/Dragon.Backend.slnx",
+    "test:ui": "npm run test:ui:unit && npm run test:ui:e2e",
+    "test:ui:unit": "vitest run",
+    "test:ui:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "jsdom": "^29.0.1",
+    "vitest": "^4.1.1"
   }
 }

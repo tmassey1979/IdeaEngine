@@ -32,4 +32,14 @@ templates/
 - API and UI surfaces on top of the backend runtime
 - further issue generation and execution pipelines
 - persistent job storage and credentials management
+- database-backed agent configuration with encryption at rest
 - unattended worker hosting, notification policy, and controlled auto-redeploy after validated major changes
+
+## Core System Principles
+
+- Agents are plugins loaded dynamically by the runner.
+- The runner supports CLI and service execution modes.
+- Jobs flow through an event-driven queue contract.
+- Agent/provider configuration is persisted in the database, not flat files.
+- Secrets and sensitive agent settings must be encrypted at rest; environment variables are bootstrap-only for local development and first-run setup.
+- CLI arguments may override database-backed agent/provider configuration for the current process only; they should not persist unless an explicit save flow is invoked.

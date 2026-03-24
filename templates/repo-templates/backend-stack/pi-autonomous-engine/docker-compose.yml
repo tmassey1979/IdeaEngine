@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  dragon-api:
+    build: ./dragon-api
+    env_file: .env.example
+    depends_on:
+      - rabbitmq
+      - postgres
+      - keycloak
+  dragon-worker:
+    build: ./dragon-worker
+    env_file: .env.example
+    depends_on:
+      - rabbitmq
+      - postgres
+      - redis
+  rabbitmq:
+    image: rabbitmq:3-management
+  postgres:
+    image: postgres:16
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: ["start-dev"]
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+  redis:
+    image: redis:7

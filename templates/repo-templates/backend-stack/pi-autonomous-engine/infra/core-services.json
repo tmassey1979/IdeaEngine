@@ -1,0 +1,16 @@
+{
+  "profile": "pi-autonomous-engine",
+  "services": [
+    "database",
+    "messaging",
+    "authentication",
+    "caching",
+    "object-storage",
+    "logging"
+  ],
+  "constraints": {
+    "singleDevice": true,
+    "lightweightContainers": true,
+    "limitedCpuOverhead": true
+  }
+}

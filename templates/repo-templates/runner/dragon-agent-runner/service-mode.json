@@ -1,0 +1,8 @@
+{
+  "mode": "service",
+  "queue": "rabbitmq",
+  "worker": "dragon-agent-runner",
+  "polling": {
+    "enabled": true
+  }
+}

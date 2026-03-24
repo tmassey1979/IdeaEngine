@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DragonWorkerQueueSettings",
+  "type": "object",
+  "properties": {
+    "Worker": {
+      "type": "object",
+      "properties": {
+        "PollSeconds": { "type": "integer", "minimum": 1 },
+        "QueueName": { "type": "string" },
+        "ConnectionString": { "type": "string" }
+      },
+      "required": ["PollSeconds", "QueueName"]
+    }
+  }
+}

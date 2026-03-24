@@ -1,0 +1,10 @@
+{
+  "name": "dragon-agent-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --input-type=module -e \"import('./dist/tests/runner.test.js')\""
+  }
+}

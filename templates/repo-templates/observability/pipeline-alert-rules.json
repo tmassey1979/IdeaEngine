@@ -1,0 +1,15 @@
+{
+  "name": "pipeline-alert-rules",
+  "rules": [
+    {
+      "name": "pipeline-failure-spike",
+      "severity": "high",
+      "condition": "failure_events_total > 0"
+    },
+    {
+      "name": "slow-generation-window",
+      "severity": "medium",
+      "condition": "generation_duration_seconds > 120"
+    }
+  ]
+}

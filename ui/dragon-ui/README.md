@@ -4,6 +4,11 @@ Static mockup for the operator dashboard.
 
 Open `index.html` in a browser for the current concept.
 
+The tabbed nav now works both ways:
+
+- direct `file://` open from disk or an IDE preview
+- local HTTP serving with `npm run serve:dragon-ui`
+
 The mock also reads `sample-status.json`, which mirrors the backend
 `Dragon.Backend.Cli status` snapshot shape. That lets the dashboard render
 real orchestrator fields like queued job counts, workflow notes, current stage,
@@ -44,6 +49,12 @@ To refresh that payload from the repo root, run:
 
 ```bash
 npm run status:ui
+```
+
+To serve the mock over HTTP from the repo root:
+
+```bash
+npm run serve:dragon-ui
 ```
 
 To run the local loop and refresh the payload at the end of the run:
