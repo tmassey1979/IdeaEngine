@@ -124,7 +124,15 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/runner/dragon-agent-runner/src/index.ts",
-                    RenderRunnerEntryPointTemplate())
+                    RenderRunnerEntryPointTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/runner/dragon-agent-runner/tsconfig.json",
+                    RenderRunnerTsConfigTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/runner/dragon-agent-runner/tests/runner.test.ts",
+                    RenderRunnerTestTemplate())
             ];
         }
 
@@ -303,7 +311,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/pipeline/project-factory/src/project-bootstrap.ts",
-                    RenderProjectBootstrapTemplate())
+                    RenderProjectBootstrapTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/tsconfig.json",
+                    RenderProjectFactoryTsConfigTemplate())
             ];
         }
 
@@ -322,7 +334,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/pipeline/project-factory/src/code-generator.ts",
-                    RenderCodeGeneratorTemplate())
+                    RenderCodeGeneratorTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/tests/pipeline.test.ts",
+                    RenderProjectFactoryTestTemplate())
             ];
         }
 
@@ -867,6 +883,30 @@ export async function runAgentRunner(mode: "cli" | "service"): Promise<void> {
 }
 """;
 
+    private static string RenderRunnerTsConfigTemplate() =>
+        """
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}
+""";
+
+    private static string RenderRunnerTestTemplate() =>
+        """
+import { runAgentRunner } from "../src/index";
+
+export async function runnerSmokeTest(): Promise<void> {
+  await runAgentRunner("cli");
+}
+""";
+
     private static string RenderDeploymentComposeTemplate() =>
         """
 version: "3.9"
@@ -978,6 +1018,31 @@ export function generateProjectSlice(name: string): GeneratedArtifact[] {
       content: `export const ${name} = true;`
     }
   ];
+}
+""";
+
+    private static string RenderProjectFactoryTsConfigTemplate() =>
+        """
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}
+""";
+
+    private static string RenderProjectFactoryTestTemplate() =>
+        """
+import { buildWorkflow } from "../src/workflow-engine";
+import { generateProjectSlice } from "../src/code-generator";
+
+export function pipelineSmokeTest(): boolean {
+  return buildWorkflow().length > 0 && generateProjectSlice("sample").length > 0;
 }
 """;
 

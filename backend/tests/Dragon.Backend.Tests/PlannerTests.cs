@@ -109,13 +109,17 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(3, operations.Count);
+        Assert.Equal(5, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/README.md" &&
             operation.Content!.Contains("load agent plugins", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/service-mode.json" &&
             operation.Content!.Contains("\"mode\": \"service\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/src/index.ts" &&
             operation.Content!.Contains("runAgentRunner", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/tsconfig.json" &&
+            operation.Content!.Contains("\"include\": [\"src/**/*.ts\", \"tests/**/*.ts\"]", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/tests/runner.test.ts" &&
+            operation.Content!.Contains("runnerSmokeTest", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -350,13 +354,15 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(3, operations.Count);
+        Assert.Equal(4, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/package.json" &&
             operation.Content!.Contains("\"name\": \"dragon-project-factory\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/repository-manager.ts" &&
             operation.Content!.Contains("createRepository", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/project-bootstrap.ts" &&
             operation.Content!.Contains("bootstrapProject", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/tsconfig.json" &&
+            operation.Content!.Contains("\"include\": [\"src/**/*.ts\", \"tests/**/*.ts\"]", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -374,13 +380,15 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(3, operations.Count);
+        Assert.Equal(4, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/task-router.ts" &&
             operation.Content!.Contains("routeTask", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts" &&
             operation.Content!.Contains("buildWorkflow", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/code-generator.ts" &&
             operation.Content!.Contains("generateProjectSlice", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/tests/pipeline.test.ts" &&
+            operation.Content!.Contains("pipelineSmokeTest", StringComparison.Ordinal));
     }
 
     [Fact]
