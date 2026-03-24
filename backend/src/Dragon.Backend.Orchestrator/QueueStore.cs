@@ -135,6 +135,7 @@ public sealed class QueueStore
             .ThenBy(item => GetTargetingRank(item.job))
             .ThenBy(item => GetRoleAlignmentRank(item.job))
             .ThenBy(item => GetActionRank(item.job))
+            .ThenBy(item => GetValidationModeRank(item.job))
             .ThenBy(item => GetImplementationProfileRank(item.job))
             .ThenBy(item => GetRollupBreadthRank(item.job))
             .ThenBy(item => item.index)
@@ -173,6 +174,7 @@ public sealed class QueueStore
         .ThenBy(item => GetTargetingRank(item.job))
         .ThenBy(item => GetRoleAlignmentRank(item.job))
         .ThenBy(item => GetActionRank(item.job))
+        .ThenBy(item => GetValidationModeRank(item.job))
         .ThenBy(item => GetImplementationProfileRank(item.job))
         .ThenBy(item => GetRollupBreadthRank(item.job))
         .ThenBy(item => item.index)
@@ -273,9 +275,30 @@ public sealed class QueueStore
         return 3;
     }
 
+    private static int GetValidationModeRank(SelfBuildJob job)
+    {
+        if (!string.Equals(job.Action, "review_issue", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(job.Action, "test_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        var validationMode = job.Metadata.GetValueOrDefault("validationMode");
+        if (string.IsNullOrWhiteSpace(validationMode))
+        {
+            return 2;
+        }
+
+        return string.Equals(validationMode, "scaffold-validation", StringComparison.OrdinalIgnoreCase)
+            ? 0
+            : 1;
+    }
+
     private static int GetImplementationProfileRank(SelfBuildJob job)
     {
-        if (!string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(job.Action, "review_issue", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(job.Action, "test_issue", StringComparison.OrdinalIgnoreCase))
         {
             return 3;
         }

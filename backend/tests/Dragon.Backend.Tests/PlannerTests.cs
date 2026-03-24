@@ -1501,6 +1501,90 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void QueueStore_PrioritizesScaffoldValidationAheadOfGenericValidationWork()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "review",
+            "review_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            28,
+            new SelfBuildJobPayload("Generic Validation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/SelfBuildLoop.cs",
+                ["targetOutcome"] = "Review generic validation follow-up output."
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "review",
+            "review_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            29,
+            new SelfBuildJobPayload("Structured Validation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["targetArtifact"] = "backend/src/Dragon.Backend.Orchestrator/SelfBuildLoop.cs",
+                ["targetOutcome"] = "Review structured validation follow-up output.",
+                ["implementationProfile"] = "dotnet/api",
+                ["validationMode"] = "scaffold-validation"
+            }));
+
+        var next = queue.Peek();
+
+        Assert.NotNull(next);
+        Assert.Equal(29, next!.Issue);
+        Assert.Equal("scaffold-validation", next.Metadata["validationMode"]);
+    }
+
+    [Fact]
+    public void QueueStore_PrioritizesBackendStackValidationAheadOfDotnetValidation()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "test",
+            "test_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            30,
+            new SelfBuildJobPayload(".NET Validation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["targetArtifact"] = "backend/tests/Dragon.Backend.Tests/PlannerTests.cs",
+                ["targetOutcome"] = "Validate the .NET slice scaffold.",
+                ["implementationProfile"] = "dotnet/api",
+                ["validationMode"] = "scaffold-validation"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "test",
+            "test_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            31,
+            new SelfBuildJobPayload("Backend Stack Validation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["targetArtifact"] = "backend/tests/Dragon.Backend.Tests/PlannerTests.cs",
+                ["targetOutcome"] = "Validate the backend stack scaffold.",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine",
+                ["validationMode"] = "scaffold-validation"
+            }));
+
+        var next = queue.Peek();
+
+        Assert.NotNull(next);
+        Assert.Equal(31, next!.Issue);
+        Assert.Equal("backend-stack/pi-autonomous-engine", next.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
     public void ReadStatus_IncludesQueuedCountsAndLatestExecutionNotes()
     {
         var root = CreateTempRoot();
