@@ -5293,6 +5293,8 @@ public sealed class PlannerTests
         Assert.True(result.Attempted);
         Assert.True(result.Updated);
         Assert.DoesNotContain(commands, command => command.Contains("issue create --repo", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create provider-backoff", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label provider-backoff", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("recovery issue: deferred until provider backoff clears", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("next retry unlock: 2026-03-23T16:15:00.0000000+00:00", StringComparison.Ordinal));
@@ -5580,6 +5582,8 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("global intervention acknowledged streak: 0", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation: Escalation: global intervention target is critical. Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("intervention escalation streak: 0", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("label create writeback-overdue", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("issue edit 22", StringComparison.Ordinal) && command.Contains("add-label writeback-overdue", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("stalled: yes", StringComparison.Ordinal));
     }
 

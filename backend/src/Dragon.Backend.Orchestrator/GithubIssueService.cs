@@ -258,11 +258,15 @@ public sealed class GithubIssueService
         );
 
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
+        EnsureLabel(owner, repo, "provider-backoff", "A65E2E", "Automation is waiting for provider retry capacity before continuing writeback recovery.", rootDirectory);
+        EnsureLabel(owner, repo, "writeback-overdue", "B45F06", "GitHub writeback replay is overdue and being prioritized.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "provider-backoff", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "writeback-overdue", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
         commandRunner(
             $"issue comment {workflow.IssueNumber} --repo {owner}/{repo} --body \"{EscapeForDoubleQuotes(commentBody)}\"",
@@ -437,8 +441,12 @@ public sealed class GithubIssueService
         EnsureLabel(owner, repo, "in-progress", "F9D0C4", "Actively being implemented.", rootDirectory);
         EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
         EnsureLabel(owner, repo, "waiting-follow-up", "1B7F3B", "Validated by the backend loop and left open while follow-up is still needed.", rootDirectory);
+        EnsureLabel(owner, repo, "provider-backoff", "A65E2E", "Automation is waiting for provider retry capacity before continuing writeback recovery.", rootDirectory);
+        EnsureLabel(owner, repo, "writeback-overdue", "B45F06", "GitHub writeback replay is overdue and being prioritized.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "provider-backoff", rootDirectory);
+        RemoveLabel(owner, repo, workflow.IssueNumber, "writeback-overdue", rootDirectory);
         if (string.Equals(workflow.OverallStatus, "validated", StringComparison.OrdinalIgnoreCase))
         {
             RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
@@ -692,11 +700,14 @@ public sealed class GithubIssueService
         EnsureLabel(owner, repo, "quarantined", "B60205", "Repeatedly failing work that has been quarantined.", rootDirectory);
         EnsureLabel(owner, repo, "recovery", "1D76DB", "Follow-up recovery work spawned from quarantine.", rootDirectory);
         EnsureLabel(owner, repo, "stalled", "C2A000", "In-progress work that appears stalled.", rootDirectory);
+        EnsureLabel(owner, repo, "provider-backoff", "A65E2E", "Automation is waiting for provider retry capacity before continuing writeback recovery.", rootDirectory);
+        EnsureLabel(owner, repo, "writeback-overdue", "B45F06", "GitHub writeback replay is overdue and being prioritized.", rootDirectory);
         EnsureLabel(owner, repo, "superseded", "6E7781", "Older overlapping work that has been replaced by a newer path.", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "in-progress", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "validated", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "waiting-follow-up", rootDirectory);
         RemoveLabel(owner, repo, workflow.IssueNumber, "superseded", rootDirectory);
+        var replayPriorityReason = DescribeReplayPriorityReason(rootDirectory);
         if (quarantinedProviderBackoff.IsStalled)
         {
             AddLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
@@ -704,6 +715,24 @@ public sealed class GithubIssueService
         else
         {
             RemoveLabel(owner, repo, workflow.IssueNumber, "stalled", rootDirectory);
+        }
+
+        if (quarantinedProviderBackoff.IsStalled)
+        {
+            AddLabel(owner, repo, workflow.IssueNumber, "provider-backoff", rootDirectory);
+        }
+        else
+        {
+            RemoveLabel(owner, repo, workflow.IssueNumber, "provider-backoff", rootDirectory);
+        }
+
+        if (string.Equals(replayPriorityReason, "overdue-github-writeback-retry", StringComparison.OrdinalIgnoreCase))
+        {
+            AddLabel(owner, repo, workflow.IssueNumber, "writeback-overdue", rootDirectory);
+        }
+        else
+        {
+            RemoveLabel(owner, repo, workflow.IssueNumber, "writeback-overdue", rootDirectory);
         }
 
         AddLabel(owner, repo, workflow.IssueNumber, "quarantined", rootDirectory);
