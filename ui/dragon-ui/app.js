@@ -987,7 +987,16 @@ function renderStatusSnapshot(snapshot) {
   attentionSummary.textContent = snapshot.attentionSummary ?? "No summary available";
   failed.textContent = String(snapshot.rollup?.failedIssues ?? 0);
   quarantined.textContent = String(snapshot.rollup?.quarantinedIssues ?? 0);
-  quarantineDetail.textContent = `${snapshot.rollup?.actionableQuarantinedIssues ?? 0} actionable / ${snapshot.rollup?.inactiveQuarantinedIssues ?? 0} inactive`;
+  const quarantineParts = [
+    `${snapshot.rollup?.actionableQuarantinedIssues ?? 0} actionable / ${snapshot.rollup?.inactiveQuarantinedIssues ?? 0} inactive`,
+  ];
+  if ((snapshot.providerBackoffIssueCount ?? 0) > 0) {
+    quarantineParts.push(`${snapshot.providerBackoffIssueCount} provider backoff`);
+  }
+  if ((snapshot.overdueWritebackIssueCount ?? 0) > 0) {
+    quarantineParts.push(`${snapshot.overdueWritebackIssueCount} overdue writeback`);
+  }
+  quarantineDetail.textContent = quarantineParts.join(" / ");
   inProgress.textContent = String(snapshot.rollup?.inProgressIssues ?? 0);
   validated.textContent = String(snapshot.rollup?.validatedIssues ?? 0);
   failedDelta.textContent = formatDelta(snapshot.rollupDelta?.failedIssues ?? 0);

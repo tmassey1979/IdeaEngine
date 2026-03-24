@@ -28,6 +28,8 @@ globalThis.__DRAGON_STATUS__ = {
     "inProgressIssues": 1,
     "validatedIssues": 4
   },
+  "providerBackoffIssueCount": 0,
+  "overdueWritebackIssueCount": 1,
   "leadJob": {
     "issueNumber": 23,
     "issueTitle": "[Story] Dragon Idea Engine Master Codex: System Architecture",

@@ -1630,6 +1630,8 @@ public sealed class PlannerTests
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPriorityReason").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("replayPrioritySummary").ValueKind);
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("waitSignal").ValueKind);
+        Assert.Equal(0, rootElement.GetProperty("providerBackoffIssueCount").GetInt32());
+        Assert.Equal(0, rootElement.GetProperty("overdueWritebackIssueCount").GetInt32());
         Assert.Equal(JsonValueKind.Null, rootElement.GetProperty("latestGithubReplay").ValueKind);
         Assert.Equal(0, rootElement.GetProperty("pendingGithubSync").GetArrayLength());
         Assert.Equal("implementation", rootElement.GetProperty("interventionTarget").GetProperty("kind").GetString());
@@ -5441,6 +5443,8 @@ public sealed class PlannerTests
               "replayPriorityReason": "overdue-github-writeback-retry",
               "replayPrioritySummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
               "waitSignal": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
+              "providerBackoffIssueCount": 0,
+              "overdueWritebackIssueCount": 1,
               "latestActivity": {
                 "issueNumber": 500,
                 "issueTitle": "[Recovery] Core",

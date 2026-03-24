@@ -110,6 +110,8 @@ public sealed class SelfBuildLoop
             .Min();
         var replayPriorityReason = BuildReplayPriorityReason(nextDelayedRetryAt, pendingGithubSyncRetryState, pendingGithubSyncRetryOverdueMinutes);
         var replayPrioritySummary = BuildReplayPrioritySummary(replayPriorityReason);
+        var providerBackoffIssueCount = BuildProviderBackoffIssueCount(pendingGithubSync, replayPriorityReason);
+        var overdueWritebackIssueCount = BuildOverdueWritebackIssueCount(pendingGithubSync, now);
         var nextWakeReason = DeriveNextWakeReason(nextPollAt, nextDelayedRetryAt);
         var delayedRetryUrgency = DeriveDelayedRetryUrgency(nextDelayedRetryAt, now);
         var delayedRetrySummary = nextDelayedRetryAt is null
@@ -187,7 +189,9 @@ public sealed class SelfBuildLoop
             pendingGithubSyncRetryState,
             pendingGithubSyncRetryOverdueMinutes,
             replayPriorityReason,
-            replayPrioritySummary
+            replayPrioritySummary,
+            providerBackoffIssueCount,
+            overdueWritebackIssueCount
         );
     }
 
@@ -2459,6 +2463,28 @@ public sealed class SelfBuildLoop
             _ => null
         };
 
+    private static int BuildProviderBackoffIssueCount(
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync,
+        string? replayPriorityReason) =>
+        string.Equals(replayPriorityReason, "provider-backoff", StringComparison.OrdinalIgnoreCase)
+            ? pendingGithubSync
+                .Select(item => item.IssueNumber)
+                .Distinct()
+                .Count()
+            : 0;
+
+    private static int BuildOverdueWritebackIssueCount(
+        IReadOnlyList<PendingGithubSyncSnapshot> pendingGithubSync,
+        DateTimeOffset now) =>
+        pendingGithubSync
+            .Where(item =>
+                item.NextRetryAt is not null &&
+                item.NextRetryAt.Value <= now &&
+                (now - item.NextRetryAt.Value).TotalMinutes >= LongDelayedRetryAttentionThreshold.TotalMinutes)
+            .Select(item => item.IssueNumber)
+            .Distinct()
+            .Count();
+
     private static string? BuildWaitSignal(string? replayPrioritySummary, string? nextWakeReason)
     {
         if (!string.IsNullOrWhiteSpace(replayPrioritySummary))
@@ -2984,7 +3010,9 @@ public sealed record StatusSnapshot(
     string? PendingGithubSyncRetryState = null,
     int PendingGithubSyncRetryOverdueMinutes = 0,
     string? ReplayPriorityReason = null,
-    string? ReplayPrioritySummary = null
+    string? ReplayPrioritySummary = null,
+    int ProviderBackoffIssueCount = 0,
+    int OverdueWritebackIssueCount = 0
 );
 
 public sealed record LatestPassSummary(
