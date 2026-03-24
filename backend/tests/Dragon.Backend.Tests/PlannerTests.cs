@@ -1359,7 +1359,8 @@ public sealed class PlannerTests
             {
               "nextWakeReason": "delayed-provider-retry",
               "delayedRetryUrgency": "alert",
-              "nextDelayedRetryAt": "2026-03-23T16:15:00Z"
+              "nextDelayedRetryAt": "2026-03-23T16:15:00Z",
+              "triageSummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation."
             }
             """);
         var store = new WorkflowStateStore(root);

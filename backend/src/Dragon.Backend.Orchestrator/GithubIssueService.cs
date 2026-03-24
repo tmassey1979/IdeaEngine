@@ -775,12 +775,18 @@ public sealed class GithubIssueService
                 nextDelayedRetryProperty.TryGetDateTimeOffset(out var parsedNextDelayedRetryAt)
                 ? parsedNextDelayedRetryAt
                 : (DateTimeOffset?)null;
+            var triageSummary = root.TryGetProperty("triageSummary", out var triageSummaryProperty) &&
+                triageSummaryProperty.ValueKind == JsonValueKind.String
+                ? triageSummaryProperty.GetString()
+                : null;
             var waitSignal = root.TryGetProperty("waitSignal", out var waitSignalProperty) &&
                 waitSignalProperty.ValueKind == JsonValueKind.String
                 ? waitSignalProperty.GetString()
                 : null;
 
-            var reason = !string.IsNullOrWhiteSpace(waitSignal)
+            var reason = !string.IsNullOrWhiteSpace(triageSummary)
+                ? triageSummary!
+                : !string.IsNullOrWhiteSpace(waitSignal)
                 ? waitSignal!
                 : nextDelayedRetryAt is null
                     ? "provider backoff is delaying GitHub replay for queued recovery writeback drift"
