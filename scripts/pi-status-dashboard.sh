@@ -39,6 +39,13 @@ def describe_wake_reason(value: str | None) -> str | None:
         return "scheduled poll interval"
     return value
 
+def describe_validation_mode(value: str | None) -> str | None:
+    if not value:
+        return None
+    if value == "scaffold-validation":
+        return "scaffold validation"
+    return value.replace("-", " ")
+
 with open(report_file, "r", encoding="utf-8") as handle:
     report = json.load(handle)
 
@@ -50,6 +57,8 @@ timers = report.get("timers") or {}
 status = report.get("status") or {}
 rollup = status.get("rollup") or {}
 latest = status.get("latestActivity") or {}
+lead_job = status.get("leadJob") or {}
+lead_job_validation_mode = describe_validation_mode(lead_job.get("validationMode"))
 next_wake_reason = describe_wake_reason(status.get("nextWakeReason"))
 delayed_retry_urgency = status.get("delayedRetryUrgency")
 recent_loop_signal = status.get("recentLoopSignal") or {}
@@ -96,6 +105,8 @@ if replay_priority_summary:
     print(f"  replay_priority_summary: {replay_priority_summary}")
 if triage_summary:
     print(f"  triage_summary: {triage_summary}")
+if lead_job_validation_mode:
+    print(f"  lead_job_validation_mode: {lead_job_validation_mode}")
 if provider_backoff_issue_count > 0:
     print(f"  provider_backoff_issue_count: {provider_backoff_issue_count}")
 if overdue_writeback_issue_count > 0:

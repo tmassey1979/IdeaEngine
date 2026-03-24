@@ -7389,6 +7389,76 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SyncInProgressWorkflow_IncludesLeadJobValidationModeInHeartbeatComment()
+    {
+        var root = CreateTempRoot();
+        var now = new DateTimeOffset(2026, 3, 23, 12, 10, 0, TimeSpan.Zero);
+        Directory.CreateDirectory(Path.Combine(root, ".dragon", "status"));
+        File.WriteAllText(
+            Path.Combine(root, ".dragon", "status", "runtime-status.json"),
+            """
+            {
+              "source": "status",
+              "generatedAt": "2026-03-23T12:09:45Z",
+              "lastCommand": "github-run-watch",
+              "workerMode": "watch",
+              "workerState": "waiting",
+              "workerActivity": "Waiting to review .NET API slice work via scaffold validation on the next pass.",
+              "leadJob": {
+                "issueNumber": 22,
+                "agent": "review",
+                "action": "review_issue",
+                "targetArtifact": "templates/repo-templates/dotnet/Dragon.Api/Program.cs",
+                "targetOutcome": "review .NET API slice scaffolding",
+                "priority": "high",
+                "blocking": true,
+                "workType": "validation",
+                "implementationProfile": "dotnet/api",
+                "validationMode": "scaffold-validation"
+              },
+              "rollup": {
+                "failedIssues": 0,
+                "quarantinedIssues": 0,
+                "actionableQuarantinedIssues": 0,
+                "inactiveQuarantinedIssues": 0,
+                "inProgressIssues": 1,
+                "validatedIssues": 0
+              },
+              "queuedJobs": 1
+            }
+            """);
+
+        var workflow = new IssueWorkflowState(
+            22,
+            "Core",
+            "in_progress",
+            new Dictionary<string, WorkflowStageState>
+            {
+                ["developer"] = new("success", "job-1", now.AddMinutes(-5), "done")
+            },
+            now);
+        var records = new[]
+        {
+            new ExecutionRecord(22, "Core", "developer", "implement_issue", "job-1", "success", "done", now.AddMinutes(-5), [], ["review", "test"])
+        };
+
+        var commands = new List<string>();
+        var service = new GithubIssueService((arguments, _) =>
+        {
+            commands.Add(arguments);
+            return arguments.Contains("/comments", StringComparison.Ordinal) && !arguments.Contains("--method POST", StringComparison.Ordinal)
+                ? "[]"
+                : string.Empty;
+        });
+
+        var result = service.SyncWorkflow("tmassey1979", "IdeaEngine", workflow, records, root);
+
+        Assert.True(result.Attempted);
+        Assert.True(result.Updated);
+        Assert.Contains(commands, command => command.Contains("worker lead validation mode: scaffold validation", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SyncInProgressWorkflow_UsesOperatorEscalationWorkerFocusWhenRuntimeStatusShowsIt()
     {
         var root = CreateTempRoot();

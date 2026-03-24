@@ -362,6 +362,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
+                $"- worker lead validation mode: {DescribeGlobalLeadValidationMode(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker lead quarantine drift age: {DescribeGlobalLeadQuarantineDriftAge(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
@@ -625,6 +626,7 @@ public sealed class GithubIssueService
                 $"- worker state: {DescribeGlobalWorkerState(rootDirectory)}",
                 $"- worker activity: {DescribeGlobalWorkerActivity(rootDirectory)}",
                 $"- worker lead job: {DescribeGlobalLeadJob(rootDirectory)}",
+                $"- worker lead validation mode: {DescribeGlobalLeadValidationMode(rootDirectory)}",
                 $"- worker lead quarantine: {DescribeGlobalLeadQuarantine(rootDirectory)}",
                 $"- worker lead quarantine drift age: {DescribeGlobalLeadQuarantineDriftAge(rootDirectory, workflow.UpdatedAt)}",
                 $"- worker latest activity: {DescribeGlobalLatestActivity(rootDirectory)}",
@@ -1279,6 +1281,36 @@ public sealed class GithubIssueService
         }
     }
 
+    private static string DescribeGlobalLeadValidationMode(string rootDirectory)
+    {
+        var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return "not recorded";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            if (!document.RootElement.TryGetProperty("leadJob", out var leadJob) ||
+                leadJob.ValueKind != JsonValueKind.Object)
+            {
+                return "none";
+            }
+
+            var validationMode = leadJob.TryGetProperty("validationMode", out var validationModeProperty) &&
+                validationModeProperty.ValueKind == JsonValueKind.String
+                ? validationModeProperty.GetString()
+                : null;
+
+            return FormatValidationModeLabel(validationMode) ?? "none";
+        }
+        catch (JsonException)
+        {
+            return "not recorded";
+        }
+    }
+
     private static string DescribeGlobalLeadQuarantine(string rootDirectory)
     {
         var runtimeStatusPath = Path.Combine(rootDirectory, RuntimeStatusRelativePath);
@@ -1833,6 +1865,20 @@ public sealed class GithubIssueService
         "poll-interval" => "scheduled poll interval",
         _ => null
     };
+
+    private static string? FormatValidationModeLabel(string? validationMode)
+    {
+        if (string.IsNullOrWhiteSpace(validationMode))
+        {
+            return null;
+        }
+
+        return validationMode switch
+        {
+            "scaffold-validation" => "scaffold validation",
+            _ => validationMode.Replace('-', ' ')
+        };
+    }
 
     private static string DescribeGlobalWorkerProgress(string rootDirectory)
     {

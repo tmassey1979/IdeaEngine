@@ -49,6 +49,22 @@ parse_args() {
   done
 }
 
+format_validation_mode() {
+  local value="${1:-}"
+  if [[ -z "${value}" || "${value}" == "None" || "${value}" == "null" ]]; then
+    return
+  fi
+
+  case "${value}" in
+    scaffold-validation)
+      echo "scaffold validation"
+      ;;
+    *)
+      echo "${value//-/ }"
+      ;;
+  esac
+}
+
 json_query() {
   local path="$1"
   local default_value="${2:-}"
@@ -143,6 +159,8 @@ replay_priority_reason = payload.get("replayPriorityReason") or ""
 replay_priority_summary = payload.get("replayPrioritySummary") or ""
 provider_backoff_issue_count = int(payload.get("providerBackoffIssueCount") or 0)
 overdue_writeback_issue_count = int(payload.get("overdueWritebackIssueCount") or 0)
+lead_job = payload.get("leadJob") or {}
+lead_job_validation_mode = lead_job.get("validationMode") or ""
 triage_summary = payload.get("triageSummary") or ""
 recent_loop_signal = payload.get("recentLoopSignal") or {}
 recent_loop_mode = recent_loop_signal.get("mode") or ""
@@ -176,6 +194,7 @@ fields = {
     "REPLAY_PRIORITY_SUMMARY": replay_priority_summary,
     "PROVIDER_BACKOFF_ISSUE_COUNT": str(provider_backoff_issue_count),
     "OVERDUE_WRITEBACK_ISSUE_COUNT": str(overdue_writeback_issue_count),
+    "LEAD_JOB_VALIDATION_MODE": lead_job_validation_mode,
     "TRIAGE_SUMMARY": triage_summary,
     "RECENT_LOOP_MODE": recent_loop_mode,
     "RECENT_LOOP_SUMMARY": recent_loop_summary,
@@ -662,6 +681,11 @@ main() {
     if [[ -n "${WORKER_ACTIVITY:-}" && "${WORKER_ACTIVITY}" != "None" ]]; then
       echo "worker_activity: ${WORKER_ACTIVITY}"
     fi
+    local lead_job_validation_mode
+    lead_job_validation_mode="$(format_validation_mode "${LEAD_JOB_VALIDATION_MODE:-}")"
+    if [[ -n "${lead_job_validation_mode}" ]]; then
+      echo "lead_job_validation_mode: ${lead_job_validation_mode}"
+    fi
     echo "health: ${HEALTH:-unknown}"
     echo "attention_summary: ${ATTENTION_SUMMARY:-none}"
     if [[ -n "${WAIT_SIGNAL:-}" && "${WAIT_SIGNAL}" != "None" ]]; then
@@ -720,6 +744,11 @@ main() {
   elif [[ -n "${STATUS_FILE}" && -f "${STATUS_FILE}" ]]; then
     echo "status_json_available: yes"
     echo "worker_activity: $(json_query workerActivity unknown)"
+    local lead_job_validation_mode
+    lead_job_validation_mode="$(format_validation_mode "$(json_query leadJob.validationMode '')")"
+    if [[ -n "${lead_job_validation_mode}" ]]; then
+      echo "lead_job_validation_mode: ${lead_job_validation_mode}"
+    fi
     echo "health: $(json_query health unknown)"
     echo "next_wake_reason: $(json_query nextWakeReason '')"
     if [[ -n "$(json_query waitSignal '')" ]]; then
