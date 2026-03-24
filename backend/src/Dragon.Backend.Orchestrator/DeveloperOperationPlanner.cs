@@ -116,7 +116,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/runner/dragon-agent-runner/README.md",
-                    RenderRunnerTemplateReadme(issue))
+                    RenderRunnerTemplateReadme(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/runner/dragon-agent-runner/service-mode.json",
+                    RenderRunnerServiceTemplate())
             ];
         }
 
@@ -151,7 +155,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/sdk/dragon-agent-sdk/package.json",
-                    RenderSdkPackageTemplate())
+                    RenderSdkPackageTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json",
+                    RenderSdkTsConfigTemplate())
             ];
         }
 
@@ -197,7 +205,27 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/config/git-providers.json",
-                    RenderGitProvidersTemplate())
+                    RenderGitProvidersTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/git.ts",
+                    RenderGitUtilitiesTemplate())
+            ];
+        }
+
+        if (title.Contains("docker deployment", StringComparison.Ordinal) ||
+            title.Contains("containers on the pi", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/deploy/docker-compose.yml",
+                    RenderDeploymentComposeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/deploy/.env.example",
+                    RenderDeploymentEnvTemplate())
             ];
         }
 
@@ -431,6 +459,22 @@ export default {{agentName}}Agent;
 }
 """;
 
+    private static string RenderSdkTsConfigTemplate() =>
+        """
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "declaration": true,
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"]
+}
+""";
+
     private static string RenderSdkIndexTemplate() =>
         """
 export interface DragonJobContext {
@@ -533,6 +577,69 @@ export const developerAgent = {
     }
   ]
 }
+""";
+
+    private static string RenderGitUtilitiesTemplate() =>
+        """
+export interface DragonGit {
+  cloneRepo(repo: string): Promise<string>;
+  createBranch(name: string): Promise<void>;
+  commit(message: string): Promise<void>;
+  push(): Promise<void>;
+  createPullRequest(title: string, body?: string): Promise<void>;
+}
+
+export function createGitUtilities(): DragonGit {
+  return {
+    async cloneRepo(repo) {
+      return repo;
+    },
+    async createBranch(_name) {},
+    async commit(_message) {},
+    async push() {},
+    async createPullRequest(_title, _body) {}
+  };
+}
+""";
+
+    private static string RenderRunnerServiceTemplate() =>
+        """
+{
+  "mode": "service",
+  "queue": "rabbitmq",
+  "worker": "dragon-agent-runner",
+  "polling": {
+    "enabled": true
+  }
+}
+""";
+
+    private static string RenderDeploymentComposeTemplate() =>
+        """
+version: "3.9"
+
+services:
+  dragon-ui:
+    image: dragon-ui:latest
+  dragon-api:
+    image: dragon-api:latest
+  dragon-orchestrator:
+    image: dragon-orchestrator:latest
+  dragon-agent-runner:
+    image: dragon-agent-runner:latest
+  rabbitmq:
+    image: rabbitmq:3-management
+  postgres:
+    image: postgres:16
+""";
+
+    private static string RenderDeploymentEnvTemplate() =>
+        """
+OPENAI_API_KEY=
+GITHUB_TOKEN=
+POSTGRES_PASSWORD=dragon
+RABBITMQ_DEFAULT_USER=dragon
+RABBITMQ_DEFAULT_PASS=dragon
 """;
 
     private static string RenderPipelineMonitoringTemplate() =>

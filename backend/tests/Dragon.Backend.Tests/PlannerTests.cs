@@ -108,11 +108,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/runner/dragon-agent-runner/README.md", operation.Path);
-        Assert.Contains("load agent plugins", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("dragon-agent-runner --service", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/README.md" &&
+            operation.Content!.Contains("load agent plugins", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/service-mode.json" &&
+            operation.Content!.Contains("\"mode\": \"service\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -174,11 +174,11 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/sdk/dragon-agent-sdk/package.json", operation.Path);
-        Assert.Contains("\"name\": \"dragon-agent-sdk\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"build\": \"tsc -p tsconfig.json\"", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/package.json" &&
+            operation.Content!.Contains("\"name\": \"dragon-agent-sdk\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json" &&
+            operation.Content!.Contains("\"include\": [\"src/**/*.ts\"]", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -262,11 +262,33 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/config/git-providers.json", operation.Path);
-        Assert.Contains("\"name\": \"github\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("\"name\": \"gitea\"", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/config/git-providers.json" &&
+            operation.Content!.Contains("\"name\": \"github\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/src/git.ts" &&
+            operation.Content!.Contains("createPullRequest", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_WritesDeploymentBundle_ForDockerDeploymentStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                129,
+                "[Story] Dragon Idea Engine Master Codex: Docker Deployment",
+                "OPEN",
+                ["story"],
+                "dragon-ui\ndragon-api\ndragon-orchestrator\ndocker compose up --scale agent-runner=10",
+                "Docker Deployment",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/deploy/docker-compose.yml" &&
+            operation.Content!.Contains("dragon-agent-runner", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/deploy/.env.example" &&
+            operation.Content!.Contains("OPENAI_API_KEY=", StringComparison.Ordinal));
     }
 
     [Fact]
