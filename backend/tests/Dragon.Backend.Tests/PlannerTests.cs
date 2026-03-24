@@ -2830,7 +2830,8 @@ public sealed class PlannerTests
                 "2h 0m old",
                 "critical"),
             "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
-            3);
+            3,
+            TriageSummary: "Overdue GitHub writeback replay is being prioritized before ordinary implementation.");
 
         var job = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
 
@@ -2839,9 +2840,9 @@ public sealed class PlannerTests
         Assert.Equal("summarize_issue", job.Action);
         Assert.Equal("feedback", job.Agent);
         Assert.Equal("true", job.Metadata["interventionEscalation"]);
-        Assert.Equal("Summarize the GitHub writeback replay bottleneck and the next operator action.", job.Metadata["targetOutcome"]);
-        Assert.Equal("Persistent GitHub writeback replay bottleneck needs explicit operator summary.", job.Metadata["requestedReason"]);
-        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the GitHub writeback replay bottleneck and the next operator action.", job.Metadata["interventionSignature"]);
+        Assert.Equal("Summarize the current bottleneck and the next operator action. Focus on: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", job.Metadata["targetOutcome"]);
+        Assert.Equal("Persistent bottleneck needs explicit operator summary. Current triage summary: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", job.Metadata["requestedReason"]);
+        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the current bottleneck and the next operator action. Focus on: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", job.Metadata["interventionSignature"]);
         Assert.Equal("3", job.Metadata["interventionEscalationStreak"]);
         Assert.Equal("operator-escalation", job.Metadata["workType"]);
         Assert.Single(loop.ReadQueue());
@@ -2900,14 +2901,15 @@ public sealed class PlannerTests
                 "critical"),
             "Escalation: global intervention target is critical. Provider backoff is delaying GitHub writeback replay.",
             3,
-            ReplayPriorityReason: "provider-backoff");
+            ReplayPriorityReason: "provider-backoff",
+            TriageSummary: "Provider backoff is delaying GitHub writeback replay.");
 
         var job = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
 
         Assert.NotNull(job);
-        Assert.Equal("Summarize the provider backoff bottleneck delaying GitHub writeback replay and the next operator action.", job!.Metadata["targetOutcome"]);
-        Assert.Equal("Persistent provider backoff delaying GitHub writeback replay needs explicit operator summary.", job.Metadata["requestedReason"]);
-        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the provider backoff bottleneck delaying GitHub writeback replay and the next operator action.", job.Metadata["interventionSignature"]);
+        Assert.Equal("Summarize the current bottleneck and the next operator action. Focus on: Provider backoff is delaying GitHub writeback replay.", job!.Metadata["targetOutcome"]);
+        Assert.Equal("Persistent bottleneck needs explicit operator summary. Current triage summary: Provider backoff is delaying GitHub writeback replay.", job.Metadata["requestedReason"]);
+        Assert.Equal("github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the current bottleneck and the next operator action. Focus on: Provider backoff is delaying GitHub writeback replay.", job.Metadata["interventionSignature"]);
     }
 
     [Fact]
@@ -2962,7 +2964,8 @@ public sealed class PlannerTests
                 "2h 0m old",
                 "critical"),
             "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
-            4);
+            4,
+            TriageSummary: "Overdue GitHub writeback replay is being prioritized before ordinary implementation.");
 
         var first = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
         var second = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
@@ -3114,15 +3117,16 @@ public sealed class PlannerTests
                 "2h 0m old",
                 "critical"),
             "Escalation: global intervention target is critical. Recovery for issue #23 is active, but GitHub updates for recovery #501 are still queued for retry.",
-            4);
+            4,
+            TriageSummary: "Overdue GitHub writeback replay is being prioritized before ordinary implementation.");
 
         var result = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
 
         Assert.NotNull(result);
         var queued = Assert.Single(loop.ReadQueue());
         Assert.Equal(23, queued.Issue);
-        Assert.Equal("Summarize the GitHub writeback replay bottleneck and the next operator action.", queued.Metadata["targetOutcome"]);
-        Assert.Equal("github-replay-drift|23|501|501|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the GitHub writeback replay bottleneck and the next operator action.", queued.Metadata["interventionSignature"]);
+        Assert.Equal("Summarize the current bottleneck and the next operator action. Focus on: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", queued.Metadata["targetOutcome"]);
+        Assert.Equal("github-replay-drift|23|501|501|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the current bottleneck and the next operator action. Focus on: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", queued.Metadata["interventionSignature"]);
     }
 
     [Fact]
@@ -3130,7 +3134,7 @@ public sealed class PlannerTests
     {
         var root = CreateTempRoot();
         var loop = new SelfBuildLoop(root);
-        var signature = "github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the GitHub writeback replay bottleneck and the next operator action.";
+        var signature = "github-replay-drift|22|500|500|backend/src/Dragon.Backend.Orchestrator/GithubIssueService.cs|Summarize the current bottleneck and the next operator action. Focus on: Overdue GitHub writeback replay is being prioritized before ordinary implementation.";
         var records = new ExecutionRecordStore(root);
         records.Append(
             new SelfBuildJob(
@@ -3196,7 +3200,8 @@ public sealed class PlannerTests
                 "2h 0m old",
                 "critical"),
             "Escalation: global intervention target is critical. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
-            4);
+            4,
+            TriageSummary: "Overdue GitHub writeback replay is being prioritized before ordinary implementation.");
 
         var result = loop.EnqueuePersistentInterventionEscalationFollowUp(snapshot);
 
