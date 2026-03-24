@@ -416,6 +416,23 @@ public static partial class DeveloperOperationPlanner
         ];
     }
 
+    internal static string? DescribeImplementationProfile(GithubIssue issue)
+    {
+        var matcher = BuildStoryMatcher(issue);
+        var profile = SelectImplementationProfile(matcher);
+
+        return profile switch
+        {
+            { Kind: ImplementationProfileKind.BackendStack, BackendStack: BackendStackProfile.PiAutonomousEngine } => "backend-stack/pi-autonomous-engine",
+            { Kind: ImplementationProfileKind.BackendStack, BackendStack: BackendStackProfile.PiLiteEngine } => "backend-stack/pi-lite-engine",
+            { Kind: ImplementationProfileKind.DotnetComponent, DotnetComponent: DotnetComponentProfile.Api } => "dotnet/api",
+            { Kind: ImplementationProfileKind.DotnetComponent, DotnetComponent: DotnetComponentProfile.Worker } => "dotnet/worker",
+            { Kind: ImplementationProfileKind.Pipeline, Pipeline: PipelineProfile.RepositoryBootstrap } => "pipeline/repository-bootstrap",
+            { Kind: ImplementationProfileKind.Pipeline, Pipeline: PipelineProfile.RuntimeGeneration } => "pipeline/runtime-generation",
+            _ => null
+        };
+    }
+
     private static string RenderPlannedSection(string sectionTitle, GithubIssue issue)
     {
         var excerpt = BuildExcerpt(issue.Body, 8, "Planned automatically from backlog context.");

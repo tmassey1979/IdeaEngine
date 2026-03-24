@@ -131,6 +131,7 @@ public sealed class SelfBuildLoop
                 leadJob.Metadata.GetValueOrDefault("requestedPriority"),
                 string.Equals(leadJob.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase),
                 leadJob.Metadata.GetValueOrDefault("workType"),
+                leadJob.Metadata.GetValueOrDefault("implementationProfile"),
                 ReadRetryNotBeforeUtc(leadJob),
                 readyLeadJob is null);
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync, replayPrioritySummary));
@@ -3292,6 +3293,7 @@ public sealed record LeadJobSnapshot(
     string? Priority,
     bool Blocking,
     string? WorkType,
+    string? ImplementationProfile = null,
     DateTimeOffset? RetryNotBeforeUtc = null,
     bool Delayed = false
 );

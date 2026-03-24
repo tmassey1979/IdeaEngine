@@ -1016,6 +1016,7 @@ public sealed class PlannerTests
         Assert.Equal("docs/ARCHITECTURE.md", job.Payload.Operations![0].Path);
         Assert.Equal("dragon-orchestrator-dotnet", job.Metadata["source"]);
         Assert.Equal("story", job.Metadata["workType"]);
+        Assert.DoesNotContain("implementationProfile", job.Metadata.Keys);
     }
 
     [Fact]
@@ -1162,6 +1163,7 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/task-router.ts");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/pipeline/project-factory/src/code-generator.ts");
+        Assert.Equal("pipeline/runtime-generation", job.Metadata["implementationProfile"]);
     }
 
     [Fact]
@@ -1216,6 +1218,7 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh");
+        Assert.Equal("backend-stack/pi-autonomous-engine", job.Metadata["implementationProfile"]);
     }
 
     [Fact]
@@ -1242,6 +1245,7 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/docker-compose.yml");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/infra/resource-profile.json");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/tests/compose-smoke.sh");
+        Assert.Equal("backend-stack/pi-lite-engine", job.Metadata["implementationProfile"]);
     }
 
     [Fact]
@@ -2556,7 +2560,8 @@ public sealed class PlannerTests
                 ["targetOutcome"] = "refresh dashboard status snapshot",
                 ["requestedPriority"] = "high",
                 ["requestedBlocking"] = "true",
-                ["workType"] = "story"
+                ["workType"] = "story",
+                ["implementationProfile"] = "pipeline/runtime-generation"
             }));
 
         var store = new WorkflowStateStore(root);
@@ -2608,6 +2613,7 @@ public sealed class PlannerTests
         Assert.Equal("high", rootElement.GetProperty("leadJob").GetProperty("priority").GetString());
         Assert.True(rootElement.GetProperty("leadJob").GetProperty("blocking").GetBoolean());
         Assert.Equal("story", rootElement.GetProperty("leadJob").GetProperty("workType").GetString());
+        Assert.Equal("pipeline/runtime-generation", rootElement.GetProperty("leadJob").GetProperty("implementationProfile").GetString());
         Assert.Equal(610, rootElement.GetProperty("latestActivity").GetProperty("issueNumber").GetInt32());
         Assert.Equal("documentation", rootElement.GetProperty("latestActivity").GetProperty("currentStage").GetString());
         Assert.Equal("draining", rootElement.GetProperty("recentLoopSignal").GetProperty("mode").GetString());

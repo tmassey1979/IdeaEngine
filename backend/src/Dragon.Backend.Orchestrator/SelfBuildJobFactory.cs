@@ -24,6 +24,7 @@ public static class SelfBuildJobFactory
         {
             operations = DeveloperOperationPlanner.Plan(issue);
         }
+        var implementationProfile = DeveloperOperationPlanner.DescribeImplementationProfile(issue);
 
         var payload = new SelfBuildJobPayload(
             issue.Title,
@@ -47,6 +48,10 @@ public static class SelfBuildJobFactory
         if (changedPaths?.Count > 0)
         {
             metadata["changedPaths"] = string.Join('|', changedPaths);
+        }
+        if (!string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            metadata["implementationProfile"] = implementationProfile!;
         }
 
         return new SelfBuildJob(
