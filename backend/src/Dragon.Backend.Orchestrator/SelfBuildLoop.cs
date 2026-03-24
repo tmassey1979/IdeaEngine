@@ -2856,9 +2856,10 @@ public sealed class SelfBuildLoop
             var isOperatorEscalation = string.Equals(leadJob.WorkType, "operator-escalation", StringComparison.OrdinalIgnoreCase) ||
                 (string.Equals(leadJob.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
                  string.Equals(leadJob.Priority, "high", StringComparison.OrdinalIgnoreCase));
+            var hasImplementationProfile = !string.IsNullOrWhiteSpace(leadJob.ImplementationProfile);
             var kind = isOperatorEscalation
                 ? "operator-escalation"
-                : string.Equals(leadJob.Action, "implement_issue", StringComparison.OrdinalIgnoreCase)
+                : string.Equals(leadJob.Action, "implement_issue", StringComparison.OrdinalIgnoreCase) || hasImplementationProfile
                     ? "implementation"
                     : "queued-work";
             var implementationProfile = FormatImplementationProfileLabel(leadJob.ImplementationProfile);
@@ -3015,7 +3016,12 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        return $"Advancing {implementationProfile} work for issue #{leadJob.IssueNumber}.";
+        return leadJob.Action.ToLowerInvariant() switch
+        {
+            "review_issue" => $"Reviewing {implementationProfile} work for issue #{leadJob.IssueNumber}.",
+            "test_issue" => $"Testing {implementationProfile} work for issue #{leadJob.IssueNumber}.",
+            _ => $"Advancing {implementationProfile} work for issue #{leadJob.IssueNumber}."
+        };
     }
 
     private static string? BuildLeadJobProfileWaitingActivity(LeadJobSnapshot? leadJob)
@@ -3031,7 +3037,12 @@ public sealed class SelfBuildLoop
             return null;
         }
 
-        return $"Waiting to continue {implementationProfile} work on the next pass.";
+        return leadJob.Action.ToLowerInvariant() switch
+        {
+            "review_issue" => $"Waiting to review {implementationProfile} work on the next pass.",
+            "test_issue" => $"Waiting to test {implementationProfile} work on the next pass.",
+            _ => $"Waiting to continue {implementationProfile} work on the next pass."
+        };
     }
 
     private static string? FormatImplementationProfileLabel(string? implementationProfile) =>

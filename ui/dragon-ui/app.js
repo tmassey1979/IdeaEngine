@@ -894,6 +894,7 @@ function renderStatusSnapshot(snapshot) {
   const leadJobGroup = document.getElementById("status-lead-job-group");
   const leadJobIssue = document.getElementById("status-lead-job-issue");
   const leadJobWorkType = document.getElementById("status-lead-job-work-type");
+  const leadJobProfile = document.getElementById("status-lead-job-profile");
   const leadJobAgent = document.getElementById("status-lead-job-agent");
   const leadJobAction = document.getElementById("status-lead-job-action");
   const leadJobBlocking = document.getElementById("status-lead-job-blocking");
@@ -1024,6 +1025,7 @@ function renderStatusSnapshot(snapshot) {
     ? `#${snapshot.leadJob.issueNumber} ${snapshot.leadJob.issueTitle}`
     : "No queued work";
   leadJobWorkType.textContent = snapshot.leadJob?.workType ?? "story";
+  leadJobProfile.textContent = snapshot.leadJob?.implementationProfile ?? "none";
   leadJobAgent.textContent = snapshot.leadJob?.agent ?? "unknown";
   leadJobAction.textContent = snapshot.leadJob?.action ?? "unknown";
   leadJobBlocking.textContent = snapshot.leadJob?.blocking ? "yes" : "no";
@@ -1199,6 +1201,7 @@ async function bootStatusMock() {
     const leadJobGroup = document.getElementById("status-lead-job-group");
     const leadJobIssue = document.getElementById("status-lead-job-issue");
     const leadJobWorkType = document.getElementById("status-lead-job-work-type");
+    const leadJobProfile = document.getElementById("status-lead-job-profile");
     const leadJobAgent = document.getElementById("status-lead-job-agent");
     const leadJobAction = document.getElementById("status-lead-job-action");
     const leadJobBlocking = document.getElementById("status-lead-job-blocking");
@@ -1294,6 +1297,7 @@ async function bootStatusMock() {
     validatedDelta.className = "";
     leadJobIssue.textContent = "No queued work";
     leadJobWorkType.textContent = "unavailable";
+    leadJobProfile.textContent = "unavailable";
     leadJobAgent.textContent = "unavailable";
     leadJobAction.textContent = "unavailable";
     leadJobBlocking.textContent = "unavailable";

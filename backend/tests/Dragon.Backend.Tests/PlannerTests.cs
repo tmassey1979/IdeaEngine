@@ -1706,6 +1706,34 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ReadStatus_UsesImplementationProfileForValidationWorkerActivity()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "review",
+            "review_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            622,
+            new SelfBuildJobPayload("[Story] Pi Stack Validation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine",
+                ["targetArtifact"] = "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                ["targetOutcome"] = "Validate the coordinated Pi backend stack."
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var status = loop.ReadStatus(workerMode: "watch", workerState: "waiting");
+
+        Assert.NotNull(status.LeadJob);
+        Assert.Equal("backend-stack/pi-autonomous-engine", status.LeadJob!.ImplementationProfile);
+        Assert.Equal("Waiting to review Pi autonomous engine stack work on the next pass.", status.WorkerActivity);
+    }
+
+    [Fact]
     public void ReadStatus_TreatsQuarantineWithQueuedRecoveryWorkAsBlocked()
     {
         var root = CreateTempRoot();
