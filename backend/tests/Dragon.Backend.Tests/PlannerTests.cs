@@ -714,6 +714,30 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_PrefersPipelineRuntimeBundle_WhenPipelineSignalsOverlap()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                143,
+                "[Story] PROJECT GENERATION PIPELINE: Delivery Core",
+                "OPEN",
+                ["story"],
+                "Repository bootstrap should still support code generation through the workflow engine.",
+                "Delivery Core",
+                "codex/sections/13-project-generation-pipeline.md",
+                null,
+                ["repository creation", "code generation", "workflow engine", "task router"]
+            )
+        );
+
+        Assert.Equal(4, operations.Count);
+        Assert.All(operations, operation => Assert.StartsWith("templates/repo-templates/pipeline/project-factory/", operation.Path, StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path.EndsWith("src/task-router.ts", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path.EndsWith("src/workflow-engine.ts", StringComparison.Ordinal));
+        Assert.DoesNotContain(operations, operation => operation.Path.EndsWith("src/repository-manager.ts", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_UsesHeadingMetadataForDeploymentBundle_WhenTitleIsGeneric()
     {
         var operations = DeveloperOperationPlanner.Plan(

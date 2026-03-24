@@ -50,6 +50,7 @@ public static partial class DeveloperOperationPlanner
         var rule = Rules.FirstOrDefault(candidate => candidate.Match.IsMatch($"{heading} {issue.Title}"));
         var backendStackProfile = SelectBackendStackProfile(matcher);
         var dotnetComponentProfile = SelectDotnetComponentProfile(matcher);
+        var pipelineProfile = SelectPipelineProfile(matcher);
 
         if (matcher.Matches("core system principles"))
         {
@@ -350,50 +351,14 @@ public static partial class DeveloperOperationPlanner
             return BuildDotnetComponentOperations(dotnetComponentProfile.Value);
         }
 
-        if (matcher.Matches("project initialization", "repository creation", "repository manager agent"))
+        if (pipelineProfile is PipelineProfile.RepositoryBootstrap)
         {
-            return
-            [
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/package.json",
-                    RenderProjectFactoryPackageTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/src/repository-manager.ts",
-                    RenderRepositoryManagerTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/src/project-bootstrap.ts",
-                    RenderProjectBootstrapTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/tsconfig.json",
-                    RenderProjectFactoryTsConfigTemplate())
-            ];
+            return BuildPipelineOperations(pipelineProfile.Value);
         }
 
-        if (matcher.Matches("code generation", "task router", "workflow engine", "pipeline overview"))
+        if (pipelineProfile is PipelineProfile.RuntimeGeneration)
         {
-            return
-            [
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/src/task-router.ts",
-                    RenderTaskRouterTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts",
-                    RenderWorkflowEngineTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/src/code-generator.ts",
-                    RenderCodeGeneratorTemplate()),
-                new DeveloperOperation(
-                    "write_file",
-                    "templates/repo-templates/pipeline/project-factory/tests/pipeline.test.ts",
-                    RenderProjectFactoryTestTemplate())
-            ];
+            return BuildPipelineOperations(pipelineProfile.Value);
         }
 
         if (matcher.Matches("execution monitor", "pipeline monitoring"))
@@ -1609,6 +1574,50 @@ docker compose ps >/dev/null
             _ => []
         };
 
+    private static IReadOnlyList<DeveloperOperation> BuildPipelineOperations(PipelineProfile profile) =>
+        profile switch
+        {
+            PipelineProfile.RepositoryBootstrap =>
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/package.json",
+                    RenderProjectFactoryPackageTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/src/repository-manager.ts",
+                    RenderRepositoryManagerTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/src/project-bootstrap.ts",
+                    RenderProjectBootstrapTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/tsconfig.json",
+                    RenderProjectFactoryTsConfigTemplate())
+            ],
+            PipelineProfile.RuntimeGeneration =>
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/src/task-router.ts",
+                    RenderTaskRouterTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/src/workflow-engine.ts",
+                    RenderWorkflowEngineTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/src/code-generator.ts",
+                    RenderCodeGeneratorTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/pipeline/project-factory/tests/pipeline.test.ts",
+                    RenderProjectFactoryTestTemplate())
+            ],
+            _ => []
+        };
+
     private static string RenderDotnetDirectoryBuildPropsTemplate() =>
         """
 <Project>
@@ -2271,6 +2280,34 @@ export function pipelineSmokeTest(): boolean {
         return null;
     }
 
+    private static PipelineProfile? SelectPipelineProfile(StoryMatcher matcher)
+    {
+        var repositorySignals = matcher.CountMatches(
+            "project initialization",
+            "repository creation",
+            "repository manager agent",
+            "project bootstrap",
+            "repository bootstrap");
+        var runtimeSignals = matcher.CountMatches(
+            "code generation",
+            "task router",
+            "workflow engine",
+            "pipeline overview",
+            "generate runnable project slices");
+
+        if (runtimeSignals > 0 && runtimeSignals >= repositorySignals)
+        {
+            return PipelineProfile.RuntimeGeneration;
+        }
+
+        if (repositorySignals > 0)
+        {
+            return PipelineProfile.RepositoryBootstrap;
+        }
+
+        return null;
+    }
+
     private static BackendStackProfile? SelectBackendStackProfile(StoryMatcher matcher)
     {
         var resourceConstrainedSignals = matcher.CountMatches(
@@ -2346,6 +2383,12 @@ export function pipelineSmokeTest(): boolean {
     {
         Api,
         Worker
+    }
+
+    private enum PipelineProfile
+    {
+        RepositoryBootstrap,
+        RuntimeGeneration
     }
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]
