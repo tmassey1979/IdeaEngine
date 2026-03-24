@@ -1249,6 +1249,37 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_PrefersStructuredImplementationProfilesAheadOfGenericStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                111,
+                "[Story] Miscellaneous Cleanup Story",
+                "OPEN",
+                ["story"],
+                "Capture a few generic follow-up notes.",
+                "Cleanup",
+                "codex/sections/misc.md"),
+            new GithubIssue(
+                112,
+                "[Story] PROJECT GENERATION PIPELINE: Code Generation",
+                "OPEN",
+                ["story"],
+                "Generate runnable project slices through the task router and workflow engine.",
+                "Code Generation",
+                "codex/sections/13-project-generation-pipeline.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal(112, job.Issue);
+        Assert.Equal("pipeline/runtime-generation", job.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
     public void RunUntilIdle_TreatsValidatedOnlyStoryListAsIdle()
     {
         var root = CreateTempRoot();

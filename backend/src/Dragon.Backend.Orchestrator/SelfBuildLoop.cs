@@ -1268,9 +1268,15 @@ public sealed class SelfBuildLoop
                 issue.SourceIssueNumber is null ||
                 latestRecoveryIssuesByParent.TryGetValue(issue.SourceIssueNumber.Value, out var latestIssueNumber) && latestIssueNumber == issue.Number)
             .OrderByDescending(issue => ShouldPrioritizeRecoveryIssue(issue, workflows))
+            .ThenBy(issue => GetSeedStoryPriorityRank(issue))
             .ThenBy(issue => issue.Number)
             .First();
     }
+
+    private static int GetSeedStoryPriorityRank(GithubIssue issue) =>
+        string.IsNullOrWhiteSpace(DeveloperOperationPlanner.DescribeImplementationProfile(issue))
+            ? 1
+            : 0;
 
     private FailureDisposition? ApplyFailurePolicy(int issueNumber, IssueWorkflowState workflow)
     {
