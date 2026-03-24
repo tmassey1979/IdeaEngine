@@ -1029,12 +1029,13 @@ public sealed class SelfBuildLoop
 
     private void WriteLatestGithubSync(int issueNumber, GithubSyncResult result)
     {
+        var summary = AppendTriageSummary(result.Summary);
         var existing = ReadLatestGithubSync();
         if (existing is not null &&
             existing.IssueNumber == issueNumber &&
             existing.Attempted == result.Attempted &&
             existing.Updated == result.Updated &&
-            string.Equals(existing.Summary, result.Summary, StringComparison.Ordinal))
+            string.Equals(existing.Summary, summary, StringComparison.Ordinal))
         {
             return;
         }
@@ -1049,7 +1050,7 @@ public sealed class SelfBuildLoop
             issueNumber,
             result.Attempted,
             result.Updated,
-            result.Summary,
+            summary,
             DateTimeOffset.UtcNow);
 
         File.WriteAllText(GithubSyncStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
@@ -1064,6 +1065,7 @@ public sealed class SelfBuildLoop
             : deferredCount > 0
                 ? $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing, {deferredCount} deferred."
                 : $"Replayed {attemptedCount} pending GitHub update{(attemptedCount == 1 ? string.Empty : "s")}: {updatedCount} updated, {failedCount} still failing.";
+        summary = AppendTriageSummary(summary);
 
         var existing = ReadLatestGithubReplay();
         if (existing is not null &&
@@ -1089,6 +1091,41 @@ public sealed class SelfBuildLoop
             DateTimeOffset.UtcNow);
 
         File.WriteAllText(GithubReplayStatusPath, JsonSerializer.Serialize(snapshot, StatusSerializerOptions));
+    }
+
+    private string AppendTriageSummary(string summary)
+    {
+        var triageSummary = ReadPersistedTriageSummary();
+        if (string.IsNullOrWhiteSpace(triageSummary) ||
+            summary.Contains(triageSummary, StringComparison.Ordinal))
+        {
+            return summary;
+        }
+
+        return $"{summary} Triage: {triageSummary}";
+    }
+
+    private string? ReadPersistedTriageSummary()
+    {
+        var runtimeStatusPath = Path.Combine(RootDirectory, ".dragon", "status", "runtime-status.json");
+        if (!File.Exists(runtimeStatusPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(runtimeStatusPath));
+            return document.RootElement.TryGetProperty("triageSummary", out var triageSummaryProperty) &&
+                triageSummaryProperty.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(triageSummaryProperty.GetString())
+                ? triageSummaryProperty.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static bool ReplayCountsAsWork(LatestGithubReplaySnapshot? latestReplay) =>

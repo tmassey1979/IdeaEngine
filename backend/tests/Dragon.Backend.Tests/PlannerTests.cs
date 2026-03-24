@@ -1323,6 +1323,7 @@ public sealed class PlannerTests
               "nextWakeReason": "delayed-provider-retry",
               "delayedRetryUrgency": "alert",
               "nextDelayedRetryAt": "2026-03-23T16:15:00Z",
+              "triageSummary": "Overdue GitHub writeback replay is being prioritized before ordinary implementation.",
               "waitSignal": "Provider backoff is delaying GitHub writeback replay."
             }
             """);
@@ -1346,6 +1347,7 @@ public sealed class PlannerTests
         Assert.DoesNotContain(commands, command => command.Contains("dragon-backend-heartbeat", StringComparison.Ordinal));
         Assert.NotNull(loop.ReadStatus().LatestGithubSync);
         Assert.Contains("Deferred GitHub heartbeat", loop.ReadStatus().LatestGithubSync!.Summary, StringComparison.Ordinal);
+        Assert.Contains("Triage: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", loop.ReadStatus().LatestGithubSync!.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1384,6 +1386,7 @@ public sealed class PlannerTests
         Assert.Equal(0, status.LatestGithubReplay.UpdatedCount);
         Assert.Equal(0, status.LatestGithubReplay.FailedCount);
         Assert.Contains("Intentionally deferring replay for 1 pending GitHub update", status.LatestGithubReplay.Summary, StringComparison.Ordinal);
+        Assert.Contains("Triage: Overdue GitHub writeback replay is being prioritized before ordinary implementation.", status.LatestGithubReplay.Summary, StringComparison.Ordinal);
     }
 
     [Fact]
