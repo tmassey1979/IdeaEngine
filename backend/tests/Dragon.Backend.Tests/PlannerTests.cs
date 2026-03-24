@@ -5488,7 +5488,7 @@ public sealed class PlannerTests
               },
               "recentLoopSignal": {
                 "mode": "waiting",
-                "summary": "Loop is intentionally deferring pending GitHub replay while provider backoff remains active."
+                "summary": "Loop is intentionally deferring pending GitHub replay while provider backoff remains active across 1 issue(s)."
               },
               "interventionEscalationNote": "Escalation: global intervention target is critical. Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry.",
               "interventionTarget": {
@@ -5579,7 +5579,7 @@ public sealed class PlannerTests
         Assert.Contains(commands, command => command.Contains("worker health: healthy", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker attention: Provider retry remains delayed for 1m 0s before the next execution window across 1 issue(s).", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("worker loop mode: waiting", StringComparison.Ordinal));
-        Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is intentionally deferring pending GitHub replay while provider backoff remains active.", StringComparison.Ordinal));
+        Assert.Contains(commands, command => command.Contains("worker loop summary: Loop is intentionally deferring pending GitHub replay while provider backoff remains active across 1 issue(s).", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention target: github-replay-drift: Overdue GitHub writeback replay is being prioritized before ordinary implementation. Recovery for issue #22 is active, but GitHub updates for recovery #500 are still queued for retry. (4h 30m old, critical)", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention age: 4h 30m old", StringComparison.Ordinal));
         Assert.Contains(commands, command => command.Contains("global intervention escalation level: critical", StringComparison.Ordinal));

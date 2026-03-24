@@ -136,7 +136,7 @@ public sealed class SelfBuildLoop
         var interventionTarget = AnnotateInterventionTarget(BuildInterventionTarget(leadQuarantine, leadJobSnapshot, pendingGithubSync, replayPrioritySummary));
         var health = DeriveStatusHealth(issues, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now);
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now, providerBackoffIssueCount, overdueWritebackIssueCount);
-        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes);
+        var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes, providerBackoffIssueCount, overdueWritebackIssueCount);
         var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay, pendingGithubSyncRetryOverdueMinutes)
@@ -2837,7 +2837,9 @@ public sealed class SelfBuildLoop
         LeadQuarantineSnapshot? leadQuarantine,
         LatestGithubReplaySnapshot? latestGithubReplay,
         InterventionTargetSnapshot? interventionTarget,
-        int pendingGithubSyncRetryOverdueMinutes)
+        int pendingGithubSyncRetryOverdueMinutes,
+        int providerBackoffIssueCount,
+        int overdueWritebackIssueCount)
     {
         if (string.Equals(health, "blocked", StringComparison.OrdinalIgnoreCase) && leadQuarantine is not null)
         {
@@ -2858,7 +2860,9 @@ public sealed class SelfBuildLoop
             {
                 return new RecentLoopSignalSnapshot(
                     "repairing",
-                    $"Loop is prioritizing overdue GitHub writeback replay after issue #{latestActivity.IssueNumber}.");
+                    overdueWritebackIssueCount > 0
+                        ? $"Loop is prioritizing overdue GitHub writeback replay across {overdueWritebackIssueCount} issue(s) after issue #{latestActivity.IssueNumber}."
+                        : $"Loop is prioritizing overdue GitHub writeback replay after issue #{latestActivity.IssueNumber}.");
             }
 
             return new RecentLoopSignalSnapshot("failing", $"Recent activity needs review after issue #{latestActivity.IssueNumber}.");
@@ -2868,7 +2872,9 @@ public sealed class SelfBuildLoop
         {
             return new RecentLoopSignalSnapshot(
                 "waiting",
-                "Loop is intentionally deferring pending GitHub replay while provider backoff remains active.");
+                providerBackoffIssueCount > 0
+                    ? $"Loop is intentionally deferring pending GitHub replay while provider backoff remains active across {providerBackoffIssueCount} issue(s)."
+                    : "Loop is intentionally deferring pending GitHub replay while provider backoff remains active.");
         }
 
         if (queuedJobs == 0 && ReplayCountsAsWork(latestGithubReplay))
