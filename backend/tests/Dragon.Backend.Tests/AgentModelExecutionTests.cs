@@ -1259,6 +1259,70 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CycleOnce_CarriesImplementationProfileIntoBackendStackFollowUps()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine"));
+        Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "tests"));
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "docker-compose.yml"),
+            "services:\n  api:\n    image: dragon-api\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "tests", "stack-readiness.json"),
+            "{\n  \"status\": \"initial\"\n}\n");
+
+        var provider = new FakeAgentModelProvider(
+            """
+            {
+              "summary": "Backend stack refreshed.",
+              "operations": [
+                {
+                  "type": "write_file",
+                  "path": "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                  "content": "services:\n  api:\n    image: dragon-api\n  worker:\n    image: dragon-worker\n"
+                },
+                {
+                  "type": "write_file",
+                  "path": "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/stack-readiness.json",
+                  "content": "{\n  \"status\": \"ready\"\n}\n"
+                }
+              ]
+            }
+            """
+        );
+
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            447,
+            new SelfBuildJobPayload("[Story] Pi Autonomous Engine", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["targetArtifact"] = "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                ["targetOutcome"] = "Refresh the coordinated Pi backend stack template.",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine"
+            }));
+
+        var loop = new SelfBuildLoop(root, jobExecutor: new LocalJobExecutor((_, _, _) => new CommandResult(0, "ok", string.Empty), provider));
+
+        var result = loop.CycleOnce([]);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.Contains(result.FollowUps, job => job.Agent == "review" && job.Metadata["implementationProfile"] == "backend-stack/pi-autonomous-engine");
+        Assert.Contains(result.FollowUps, job => job.Agent == "test" && job.Metadata["implementationProfile"] == "backend-stack/pi-autonomous-engine");
+
+        var summaryFollowUp = Assert.Single(result.FollowUps, job => job.Action == "summarize_issue");
+        Assert.Equal("backend-stack/pi-autonomous-engine", summaryFollowUp.Metadata["implementationProfile"]);
+        Assert.Equal("normal", summaryFollowUp.Metadata["requestedPriority"]);
+        Assert.Equal("Summarize the broader operator impact after the coordinated backend stack implementation.", summaryFollowUp.Metadata["requestedReason"]);
+        Assert.Equal("Summarize the broader operator impact of the coordinated backend stack implementation.", summaryFollowUp.Metadata["targetOutcome"]);
+    }
+
+    [Fact]
     public void CycleOnce_SkipsBroadOperatorSummary_WhenSameArtifactImplementationIsAlreadyQueued()
     {
         var root = CreateTempRoot();

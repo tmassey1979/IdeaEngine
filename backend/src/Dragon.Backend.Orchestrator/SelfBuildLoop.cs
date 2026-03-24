@@ -1578,13 +1578,28 @@ public sealed class SelfBuildLoop
             summaryAgent,
             "summarize_issue",
             execution.JobId,
-            "low",
-            "Summarize the broader operator impact after the targeted implementation.",
+            GetOperatorSummaryFollowUpPriority(sourceJob),
+            GetOperatorSummaryFollowUpReason(sourceJob),
             false,
             targetArtifact,
-            "Summarize the broader operator impact of the targeted implementation.",
+            GetOperatorSummaryFollowUpOutcome(sourceJob),
             ("changedArtifactRollup", changedArtifactRollup)));
     }
+
+    private static string GetOperatorSummaryFollowUpPriority(SelfBuildJob sourceJob) =>
+        IsBackendStackImplementationProfile(sourceJob.Metadata.GetValueOrDefault("implementationProfile"))
+            ? "normal"
+            : "low";
+
+    private static string GetOperatorSummaryFollowUpReason(SelfBuildJob sourceJob) =>
+        IsBackendStackImplementationProfile(sourceJob.Metadata.GetValueOrDefault("implementationProfile"))
+            ? "Summarize the broader operator impact after the coordinated backend stack implementation."
+            : "Summarize the broader operator impact after the targeted implementation.";
+
+    private static string GetOperatorSummaryFollowUpOutcome(SelfBuildJob sourceJob) =>
+        IsBackendStackImplementationProfile(sourceJob.Metadata.GetValueOrDefault("implementationProfile"))
+            ? "Summarize the broader operator impact of the coordinated backend stack implementation."
+            : "Summarize the broader operator impact of the targeted implementation.";
 
     private static string InferOperatorSummaryAgent(string targetArtifact)
     {
@@ -1972,6 +1987,10 @@ public sealed class SelfBuildLoop
                     : 3;
     }
 
+    private static bool IsBackendStackImplementationProfile(string? implementationProfile) =>
+        !string.IsNullOrWhiteSpace(implementationProfile) &&
+        implementationProfile.StartsWith("backend-stack/", StringComparison.OrdinalIgnoreCase);
+
     private static int GetImplementationSpecificityRank(SelfBuildJob job)
     {
         var outcome = job.Metadata.GetValueOrDefault("targetOutcome");
@@ -2036,6 +2055,12 @@ public sealed class SelfBuildLoop
         if (!string.IsNullOrWhiteSpace(targetOutcome))
         {
             metadata["targetOutcome"] = targetOutcome;
+        }
+
+        var implementationProfile = sourceJob.Metadata.GetValueOrDefault("implementationProfile");
+        if (!string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            metadata["implementationProfile"] = implementationProfile;
         }
 
         var preferredAgent = InferPreferredAgent(targetArtifact);
