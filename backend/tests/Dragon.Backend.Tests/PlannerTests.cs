@@ -1656,6 +1656,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CycleOnce_PrunesGenericSummaryWhenSameArtifactOperatorEscalationSummaryIsQueued()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "documentation",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            608,
+            new SelfBuildJobPayload("[Story] SDK Notes", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/SDK.md",
+                ["targetOutcome"] = "Summarize the broader operator impact of the targeted implementation.",
+                ["requestedPriority"] = "low"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "feedback",
+            "summarize_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            610,
+            new SelfBuildJobPayload("[Story] SDK Escalation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["targetArtifact"] = "docs/SDK.md",
+                ["targetOutcome"] = "Summarize the current bottleneck and the next operator action. Focus on: SDK writeback drift remains unresolved.",
+                ["requestedPriority"] = "high",
+                ["requestedBlocking"] = "true",
+                ["interventionEscalation"] = "true",
+                ["interventionSignature"] = "github-replay-drift|610|||docs/SDK.md|Summarize the current bottleneck and the next operator action. Focus on: SDK writeback drift remains unresolved.",
+                ["workType"] = "operator-escalation"
+            }));
+
+        var loop = new SelfBuildLoop(root);
+        var result = loop.CycleOnce([]);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.Equal(610, result.Job!.Issue);
+        Assert.Empty(loop.ReadQueue());
+
+        var record = Assert.Single(new ExecutionRecordStore(root).Read(610));
+        Assert.Contains("Kept same-artifact operator escalation summary and pruned superseded summary jobs.", record.Notes, StringComparison.Ordinal);
+        Assert.Contains("Superseded summary issues: 608.", record.Notes, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_ServesLiveStatusSnapshot()
     {
         var root = CreateTempRoot();

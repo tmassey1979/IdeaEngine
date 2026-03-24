@@ -1695,6 +1695,18 @@ public sealed class SelfBuildLoop
     private void RemoveSupersededSummaryJobs()
     {
         var jobs = queueStore.ReadAll().ToList();
+        var queuedEscalationSummariesByTarget = jobs
+            .Where(IsOperatorEscalationSummaryJob)
+            .Where(job => !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")))
+            .GroupBy(job => job.Metadata.GetValueOrDefault("targetArtifact")!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(job => GetRequestedPriorityRank(job.Metadata.GetValueOrDefault("requestedPriority")))
+                    .ThenByDescending(job => string.Equals(job.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase))
+                    .ThenByDescending(job => job.Issue)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
         var queuedImplementationJobsByTarget = jobs
             .Where(job => string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
             .Where(job => !string.IsNullOrWhiteSpace(job.Metadata.GetValueOrDefault("targetArtifact")))
@@ -1708,12 +1720,12 @@ public sealed class SelfBuildLoop
                     .First(),
                 StringComparer.OrdinalIgnoreCase);
 
-        if (queuedImplementationJobsByTarget.Count == 0)
+        if (queuedEscalationSummariesByTarget.Count == 0 && queuedImplementationJobsByTarget.Count == 0)
         {
             return;
         }
 
-        var removalsByWinnerIssue = new Dictionary<int, List<int>>();
+        var removalsByWinnerIssue = new Dictionary<int, SummaryPruneDecision>();
         var keptJobs = new List<SelfBuildJob>();
         foreach (var job in jobs)
         {
@@ -1724,34 +1736,53 @@ public sealed class SelfBuildLoop
             }
 
             var targetArtifact = job.Metadata.GetValueOrDefault("targetArtifact");
-            if (string.IsNullOrWhiteSpace(targetArtifact) ||
-                !queuedImplementationJobsByTarget.TryGetValue(targetArtifact, out var winnerJob))
+            if (string.IsNullOrWhiteSpace(targetArtifact))
             {
                 keptJobs.Add(job);
                 continue;
             }
 
-            if (!removalsByWinnerIssue.TryGetValue(winnerJob.Issue, out var removedIssues))
+            if (queuedEscalationSummariesByTarget.TryGetValue(targetArtifact, out var escalationWinner))
             {
-                removedIssues = [];
-                removalsByWinnerIssue[winnerJob.Issue] = removedIssues;
+                if (IsSameJob(job, escalationWinner))
+                {
+                    keptJobs.Add(job);
+                    continue;
+                }
+
+                AddSummaryPruneDecision(
+                    removalsByWinnerIssue,
+                    escalationWinner.Issue,
+                    "Kept same-artifact operator escalation summary and pruned superseded summary jobs.",
+                    job.Issue);
+                continue;
             }
 
-            removedIssues.Add(job.Issue);
+            if (!queuedImplementationJobsByTarget.TryGetValue(targetArtifact, out var winnerJob))
+            {
+                keptJobs.Add(job);
+                continue;
+            }
+
+            AddSummaryPruneDecision(
+                removalsByWinnerIssue,
+                winnerJob.Issue,
+                "Kept same-artifact implementation and pruned superseded summary jobs.",
+                job.Issue);
         }
 
         var updatedJobs = keptJobs
             .Select(job =>
             {
-                if (!removalsByWinnerIssue.TryGetValue(job.Issue, out var removedIssues) || removedIssues.Count == 0)
+                if (!removalsByWinnerIssue.TryGetValue(job.Issue, out var pruneDecision) || pruneDecision.RemovedIssues.Count == 0)
                 {
                     return job;
                 }
 
                 var metadata = new Dictionary<string, string>(job.Metadata, StringComparer.Ordinal)
                 {
-                    ["supersededSummaryIssues"] = string.Join("|", removedIssues.OrderBy(issue => issue)),
-                    ["summaryConflictResolution"] = "Kept same-artifact implementation and pruned superseded summary jobs."
+                    ["supersededSummaryIssues"] = string.Join("|", pruneDecision.RemovedIssues.OrderBy(issue => issue)),
+                    ["summaryConflictResolution"] = pruneDecision.Resolution
                 };
 
                 return job with { Metadata = metadata };
@@ -1760,6 +1791,43 @@ public sealed class SelfBuildLoop
 
         queueStore.ReplaceAll(updatedJobs);
     }
+
+    private static void AddSummaryPruneDecision(
+        IDictionary<int, SummaryPruneDecision> removalsByWinnerIssue,
+        int winnerIssue,
+        string resolution,
+        int removedIssue)
+    {
+        if (!removalsByWinnerIssue.TryGetValue(winnerIssue, out var existingDecision))
+        {
+            removalsByWinnerIssue[winnerIssue] = new SummaryPruneDecision(resolution, [removedIssue]);
+            return;
+        }
+
+        existingDecision.RemovedIssues.Add(removedIssue);
+    }
+
+    private static bool IsOperatorEscalationSummaryJob(SelfBuildJob job) =>
+        string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) &&
+        (string.Equals(job.Metadata.GetValueOrDefault("interventionEscalation"), "true", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(job.Metadata.GetValueOrDefault("workType"), "operator-escalation", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsSameJob(SelfBuildJob left, SelfBuildJob right) =>
+        left.Issue == right.Issue &&
+        string.Equals(left.Agent, right.Agent, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Action, right.Action, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("targetArtifact"), right.Metadata.GetValueOrDefault("targetArtifact"), StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("interventionSignature"), right.Metadata.GetValueOrDefault("interventionSignature"), StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Metadata.GetValueOrDefault("workType"), right.Metadata.GetValueOrDefault("workType"), StringComparison.OrdinalIgnoreCase);
+
+    private static int GetRequestedPriorityRank(string? requestedPriority) => requestedPriority?.ToLowerInvariant() switch
+    {
+        "high" => 0,
+        "low" => 2,
+        _ => 1
+    };
+
+    private sealed record SummaryPruneDecision(string Resolution, List<int> RemovedIssues);
 
     private void RemoveSupersededImplementationJobs()
     {
