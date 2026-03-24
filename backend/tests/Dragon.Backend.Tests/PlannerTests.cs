@@ -398,6 +398,43 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesResourceConstrainedBackendStackBundle_ForPiResourceConstraintsStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                131,
+                "[Story] REUSABLE COMPONENT LIBRARY: Pi Edition Resource Constraints",
+                "OPEN",
+                ["story"],
+                "Because the system runs on Raspberry Pi hardware, components must be optimized for low-resource environments.",
+                "Pi Edition Resource Constraints",
+                "codex/sections/07-reusable-component-library.md"
+            )
+        );
+
+        Assert.Equal(9, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/README.md" &&
+            operation.Content!.Contains("low memory usage", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/docker-compose.yml" &&
+            operation.Content!.Contains("rabbitmq:3-management-alpine", StringComparison.Ordinal) &&
+            operation.Content!.Contains("\"256m\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/.env.example" &&
+            operation.Content!.Contains("DRAGON_RESOURCE_PROFILE=pi-lite", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/dragon-api/appsettings.json" &&
+            operation.Content!.Contains("\"DisableHeavyIntegrations\": true", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/dragon-worker/appsettings.json" &&
+            operation.Content!.Contains("\"MaxConcurrentJobs\": 1", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/infra/resource-profile.json" &&
+            operation.Content!.Contains("\"lightweightContainers\": true", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/docs/resource-tuning.md" &&
+            operation.Content!.Contains("background worker concurrency at 1", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/tests/compose-smoke.sh" &&
+            operation.Content!.Contains("docker compose config >/dev/null", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/tests/stack-readiness.json" &&
+            operation.Content!.Contains("\"pi-lite-readiness\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Plan_WritesProjectFactoryBundle_ForRepositoryCreationStory()
     {
         var operations = DeveloperOperationPlanner.Plan(
@@ -531,6 +568,29 @@ public sealed class PlannerTests
             operation.Content!.Contains("\"object-storage\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path.EndsWith("tests/compose-smoke.sh", StringComparison.Ordinal) &&
             operation.Content!.Contains("curl --fail --silent http://localhost:5080/health", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_UsesTechnicalDetailsToPreferResourceConstrainedBackendStack_WhenTitleIsGeneric()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                139,
+                "[Story] REUSABLE COMPONENT LIBRARY: Platform Runtime Constraints",
+                "OPEN",
+                ["story"],
+                "This story tunes the runtime for Raspberry Pi hardware.",
+                "Platform Runtime Constraints",
+                "codex/sections/07-reusable-component-library.md",
+                null,
+                ["low memory usage", "lightweight containers", "limited CPU overhead", "efficient networking"]
+            )
+        );
+
+        Assert.Equal(9, operations.Count);
+        Assert.All(operations, operation => Assert.StartsWith("templates/repo-templates/backend-stack/pi-lite-engine/", operation.Path, StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path.EndsWith("infra/resource-profile.json", StringComparison.Ordinal) &&
+            operation.Content!.Contains("\"disabledServices\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1059,6 +1119,32 @@ public sealed class PlannerTests
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-api/Dragon.Api.csproj");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/dragon-worker/Dragon.Worker.csproj");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-autonomous-engine/tests/compose-smoke.sh");
+    }
+
+    [Fact]
+    public void SeedNext_SelectsRefactorForResourceConstrainedBackendStackStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                110,
+                "[Story] REUSABLE COMPONENT LIBRARY: Pi Edition Resource Constraints",
+                "OPEN",
+                ["story"],
+                "Components must be optimized for low-resource Raspberry Pi environments.",
+                "Pi Edition Resource Constraints",
+                "codex/sections/07-reusable-component-library.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("refactor", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/docker-compose.yml");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/infra/resource-profile.json");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/backend-stack/pi-lite-engine/tests/compose-smoke.sh");
     }
 
     [Fact]

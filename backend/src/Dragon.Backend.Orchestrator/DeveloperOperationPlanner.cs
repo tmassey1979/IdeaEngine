@@ -109,6 +109,49 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
+        if (IsResourceConstrainedBackendStackStory(matcher))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/README.md",
+                    RenderResourceConstrainedBackendStackReadmeTemplate(issue)),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/docker-compose.yml",
+                    RenderResourceConstrainedBackendStackComposeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/.env.example",
+                    RenderResourceConstrainedBackendStackEnvTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/dragon-api/appsettings.json",
+                    RenderResourceConstrainedBackendStackApiSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/dragon-worker/appsettings.json",
+                    RenderResourceConstrainedBackendStackWorkerSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/infra/resource-profile.json",
+                    RenderResourceConstrainedBackendStackProfileTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/docs/resource-tuning.md",
+                    RenderResourceConstrainedBackendStackTuningTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/tests/compose-smoke.sh",
+                    RenderResourceConstrainedBackendStackComposeSmokeTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/backend-stack/pi-lite-engine/tests/stack-readiness.json",
+                    RenderResourceConstrainedBackendStackReadinessTemplate())
+            ];
+        }
+
         if (IsBackendStackStory(matcher))
         {
             return
@@ -1405,6 +1448,149 @@ docker compose ps
 }
 """;
 
+    private static string RenderResourceConstrainedBackendStackReadmeTemplate(GithubIssue issue) =>
+        $$"""
+        # Pi Lite Backend Stack
+
+        This template bundle captures a resource-constrained Raspberry Pi deployment slice for **{{issue.Heading ?? issue.Title}}**.
+
+        ## Design Goals
+
+        - low memory usage
+        - lightweight containers
+        - limited CPU overhead
+        - efficient networking
+
+        ## Operational Profile
+
+        Use this scaffold when a backlog story focuses on Pi resource constraints rather than the full shared-services platform shape.
+        """;
+
+    private static string RenderResourceConstrainedBackendStackComposeTemplate() =>
+        """
+version: "3.9"
+
+services:
+  dragon-api:
+    image: dragon-api:lite
+    env_file: .env.example
+    restart: unless-stopped
+  dragon-worker:
+    image: dragon-worker:lite
+    env_file: .env.example
+    restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+  redis:
+    image: redis:7-alpine
+
+x-resource-hints:
+  default:
+    memory: "256m"
+    cpus: "0.50"
+""";
+
+    private static string RenderResourceConstrainedBackendStackEnvTemplate() =>
+        """
+ASPNETCORE_ENVIRONMENT=Production
+DOTNET_ENVIRONMENT=Production
+DRAGON_RESOURCE_PROFILE=pi-lite
+DRAGON_DISABLE_HEAVY_SERVICES=true
+RABBITMQ_CONNECTION=amqp://guest:guest@rabbitmq:5672
+REDIS_CONNECTION=redis:6379
+""";
+
+    private static string RenderResourceConstrainedBackendStackApiSettingsTemplate() =>
+        """
+{
+  "AllowedHosts": "*",
+  "Performance": {
+    "ResponseCaching": true,
+    "Compression": true
+  },
+  "ResourceProfile": {
+    "Name": "pi-lite",
+    "DisableHeavyIntegrations": true
+  }
+}
+""";
+
+    private static string RenderResourceConstrainedBackendStackWorkerSettingsTemplate() =>
+        """
+{
+  "Worker": {
+    "PollSeconds": 15,
+    "QueueName": "dragon.jobs.pi-lite"
+  },
+  "Performance": {
+    "MaxConcurrentJobs": 1,
+    "UseBatching": false
+  }
+}
+""";
+
+    private static string RenderResourceConstrainedBackendStackProfileTemplate() =>
+        """
+{
+  "profile": "pi-lite",
+  "constraints": {
+    "lowMemoryUsage": true,
+    "lightweightContainers": true,
+    "limitedCpuOverhead": true,
+    "efficientNetworking": true
+  },
+  "disabledServices": [
+    "object-storage",
+    "keycloak"
+  ]
+}
+""";
+
+    private static string RenderResourceConstrainedBackendStackTuningTemplate() =>
+        """
+        # Resource Tuning Notes
+
+        ## Targets
+
+        - keep container memory ceilings below 256 MB where possible
+        - prefer alpine or otherwise lightweight images
+        - avoid optional heavyweight platform services unless explicitly required
+        - keep background worker concurrency at 1 on single-device deployments
+        """;
+
+    private static string RenderResourceConstrainedBackendStackComposeSmokeTemplate() =>
+        """
+#!/usr/bin/env bash
+set -euo pipefail
+
+docker compose config >/dev/null
+docker compose ps >/dev/null
+""";
+
+    private static string RenderResourceConstrainedBackendStackReadinessTemplate() =>
+        """
+{
+  "name": "pi-lite-readiness",
+  "checks": [
+    {
+      "service": "dragon-api",
+      "probe": "http://localhost:5080/health",
+      "required": true
+    },
+    {
+      "service": "dragon-worker",
+      "probe": "single-concurrency-loop",
+      "required": true
+    },
+    {
+      "service": "rabbitmq",
+      "probe": "tcp://localhost:5672",
+      "required": true
+    }
+  ]
+}
+""";
+
     private static string RenderDotnetDirectoryBuildPropsTemplate() =>
         """
 <Project>
@@ -2063,6 +2249,14 @@ export function pipelineSmokeTest(): boolean {
             "shared infrastructure services",
             "object storage",
             "caching");
+
+    private static bool IsResourceConstrainedBackendStackStory(StoryMatcher matcher) =>
+        matcher.Matches(
+            "pi edition resource constraints",
+            "low memory usage",
+            "lightweight containers",
+            "limited cpu overhead",
+            "efficient networking");
 
     private static string InferPluginTemplateName(GithubIssue issue)
     {
