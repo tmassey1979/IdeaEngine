@@ -141,6 +141,8 @@ pending_github_sync_retry_state = payload.get("pendingGithubSyncRetryState") or 
 pending_github_sync_retry_overdue_minutes = int(payload.get("pendingGithubSyncRetryOverdueMinutes") or 0)
 replay_priority_reason = payload.get("replayPriorityReason") or ""
 replay_priority_summary = payload.get("replayPrioritySummary") or ""
+provider_backoff_issue_count = int(payload.get("providerBackoffIssueCount") or 0)
+overdue_writeback_issue_count = int(payload.get("overdueWritebackIssueCount") or 0)
 wait_signal = payload.get("waitSignal") or ""
 if not wait_signal and replay_priority_summary:
     wait_signal = replay_priority_summary
@@ -168,6 +170,8 @@ fields = {
     "WAIT_SIGNAL_BACKEND": payload.get("waitSignal", ""),
     "REPLAY_PRIORITY_REASON": replay_priority_reason,
     "REPLAY_PRIORITY_SUMMARY": replay_priority_summary,
+    "PROVIDER_BACKOFF_ISSUE_COUNT": str(provider_backoff_issue_count),
+    "OVERDUE_WRITEBACK_ISSUE_COUNT": str(overdue_writeback_issue_count),
     "PENDING_GITHUB_SYNC_NEXT_RETRY": pending_github_sync_next_retry,
     "PENDING_GITHUB_SYNC_LAST_ATTEMPT": next((item.get("lastAttemptedAt", "") for item in pending_github_sync if item.get("lastAttemptedAt")), ""),
     "PENDING_GITHUB_SYNC_RETRY_STATE": pending_github_sync_retry_state,
@@ -665,6 +669,8 @@ main() {
     if [[ -n "${REPLAY_PRIORITY_SUMMARY:-}" && "${REPLAY_PRIORITY_SUMMARY}" != "None" ]]; then
       echo "replay_priority_summary: ${REPLAY_PRIORITY_SUMMARY}"
     fi
+    echo "provider_backoff_issue_count: ${PROVIDER_BACKOFF_ISSUE_COUNT:-0}"
+    echo "overdue_writeback_issue_count: ${OVERDUE_WRITEBACK_ISSUE_COUNT:-0}"
     if [[ -n "${NEXT_DELAYED_RETRY_AT:-}" && "${NEXT_DELAYED_RETRY_AT}" != "None" ]]; then
       echo "next_delayed_retry_at: ${NEXT_DELAYED_RETRY_AT}"
     fi
@@ -721,6 +727,8 @@ main() {
     echo "wait_signal_backend: $(json_query waitSignal '')"
     echo "replay_priority_reason: $(json_query replayPriorityReason '')"
     echo "replay_priority_summary: $(json_query replayPrioritySummary '')"
+    echo "provider_backoff_issue_count: $(json_query providerBackoffIssueCount 0)"
+    echo "overdue_writeback_issue_count: $(json_query overdueWritebackIssueCount 0)"
     echo "pending_github_sync_next_retry_at: $(json_query pendingGithubSyncNextRetryAt '')"
     echo "pending_github_sync_retry_state: $(json_query pendingGithubSyncRetryState '')"
     echo "pending_github_sync_retry_overdue_minutes: $(json_query pendingGithubSyncRetryOverdueMinutes 0)"
