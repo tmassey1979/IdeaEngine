@@ -148,7 +148,7 @@ What those do:
 - `pi-status-dashboard.sh` gives a richer human-readable status page with report highlights, timer state, alert-check result, latest activity, and the next commands to run
 - `pi-watch-status.sh` refreshes the status dashboard on an interval so you can monitor the Pi from one terminal
 - `pi-service-doctor.sh` interprets the current Pi status and suggests the most likely next commands when service health, timers, or queue state need attention
-- `pi-share-status.sh` writes a lightweight support bundle with the report JSON, dashboard, doctor output, alert-check output, git status, and recent service logs
+- `pi-share-status.sh` writes a lightweight support bundle with the report JSON, a plain-text loop/status snapshot, dashboard, doctor output, alert-check output, git status, and recent service logs
 - `pi-preflight.sh` checks whether the Pi is ready to start: Docker, Compose, core repo files, credentials, disk space, and installed systemd units
 - `pi-start.sh` runs preflight by default and then starts the main systemd service, with optional `--follow`, `--skip-preflight`, or `--compose` modes
 - `pi-start-and-wait.sh` starts the Pi service and then waits until it becomes healthy or times out

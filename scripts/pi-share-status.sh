@@ -30,6 +30,7 @@ repo_dir=${REPO_DIR}
 
 Contents:
 - report.json: machine-readable pi-report snapshot
+- loop-status.txt: current backend wait signal and recent loop summary
 - dashboard.txt: human-readable dashboard summary
 - doctor.txt: guided next-step summary
 - alert-check.txt: alert check output
@@ -39,6 +40,7 @@ Contents:
 EOF
 
   write_command_output "report.json" "${REPO_DIR}/scripts/pi-report.sh" --json
+  write_command_output "loop-status.txt" "${REPO_DIR}/scripts/pi-report.sh"
   write_command_output "dashboard.txt" "${REPO_DIR}/scripts/pi-status-dashboard.sh"
   write_command_output "doctor.txt" "${REPO_DIR}/scripts/pi-service-doctor.sh"
   write_command_output "alert-check.txt" "${REPO_DIR}/scripts/pi-alert-check.sh"
