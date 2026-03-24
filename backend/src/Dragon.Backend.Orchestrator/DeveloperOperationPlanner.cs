@@ -109,6 +109,40 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
+        if (title.Contains("agent runner", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/runner/dragon-agent-runner/README.md",
+                    RenderRunnerTemplateReadme(issue))
+            ];
+        }
+
+        if (title.Contains("plugin system", StringComparison.Ordinal) ||
+            title.Contains("agent interface", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/agents/dragon-agent.ts",
+                    RenderPluginTemplate(issue))
+            ];
+        }
+
+        if (title.Contains("job message schema", StringComparison.Ordinal))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/contracts/job.schema.json",
+                    RenderJobSchemaTemplate())
+            ];
+        }
+
         if (rule is not null)
         {
             return
@@ -162,6 +196,122 @@ public static partial class DeveloperOperationPlanner
         return builder.ToString();
     }
 
+    private static string RenderRunnerTemplateReadme(GithubIssue issue)
+    {
+        var builder = new StringBuilder();
+        var excerpt = BuildExcerpt(issue.Body, 10, "Runner responsibilities are derived from backlog context.");
+
+        builder.AppendLine("# dragon-agent-runner");
+        builder.AppendLine();
+        builder.AppendLine("Bootstrap template for the Dragon agent runner process.");
+        builder.AppendLine();
+        builder.AppendLine("## Responsibilities");
+        builder.AppendLine();
+        builder.AppendLine("- load agent plugins");
+        builder.AppendLine("- run CLI commands");
+        builder.AppendLine("- connect to RabbitMQ");
+        builder.AppendLine("- execute queued jobs");
+        builder.AppendLine("- return results");
+        builder.AppendLine();
+        builder.AppendLine("## CLI");
+        builder.AppendLine();
+        builder.AppendLine("```bash");
+        builder.AppendLine("dragon-agent-runner developer --repo crm --issue 42");
+        builder.AppendLine("```");
+        builder.AppendLine();
+        builder.AppendLine("## Service Mode");
+        builder.AppendLine();
+        builder.AppendLine("```bash");
+        builder.AppendLine("dragon-agent-runner --service");
+        builder.AppendLine("```");
+        builder.AppendLine();
+        builder.AppendLine("## Source Context");
+        builder.AppendLine();
+        builder.AppendLine(excerpt);
+
+        return builder.ToString();
+    }
+
+    private static string RenderPluginTemplate(GithubIssue issue)
+    {
+        var agentName = InferPluginTemplateName(issue);
+        var description = issue.Heading ?? issue.Title;
+        return $$"""
+export interface DragonAgentContext {
+  mode: "cli" | "service";
+  payload?: unknown;
+}
+
+export interface DragonAgentResult {
+  success: boolean;
+  message?: string;
+  artifacts?: Record<string, unknown>;
+  metrics?: Record<string, number>;
+}
+
+export interface DragonAgent {
+  name: string;
+  description: string;
+  registerArgs?(cli: unknown): void;
+  execute(context: DragonAgentContext): Promise<DragonAgentResult>;
+}
+
+const {{agentName}}Agent: DragonAgent = {
+  name: "{{agentName}}",
+  description: "{{description}}",
+  async execute(_context) {
+    return {
+      success: true,
+      message: "Bootstrap plugin skeleton completed."
+    };
+  }
+};
+
+export default {{agentName}}Agent;
+""";
+    }
+
+    private static string RenderJobSchemaTemplate() =>
+        """
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DragonJob",
+  "type": "object",
+  "required": ["jobId", "agent", "action", "repo", "project", "issue", "priority", "createdAt", "payload", "metadata"],
+  "properties": {
+    "jobId": { "type": "string", "minLength": 1 },
+    "agent": { "type": "string", "minLength": 1 },
+    "action": { "type": "string", "minLength": 1 },
+    "repo": { "type": "string", "minLength": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "issue": { "type": "integer", "minimum": 1 },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["requestedBy", "source"],
+      "properties": {
+        "requestedBy": { "type": "string" },
+        "source": { "type": "string" }
+      },
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    }
+  },
+  "additionalProperties": true
+}
+""";
+
     private static string BuildExcerpt(string? body, int maxLines, string fallback)
     {
         if (string.IsNullOrWhiteSpace(body))
@@ -175,6 +325,28 @@ public static partial class DeveloperOperationPlanner
             .Take(maxLines);
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string InferPluginTemplateName(GithubIssue issue)
+    {
+        var source = issue.Heading ?? issue.Title;
+        var lowered = source.ToLowerInvariant();
+        if (lowered.Contains("architect", StringComparison.Ordinal))
+        {
+            return "architect";
+        }
+
+        if (lowered.Contains("developer", StringComparison.Ordinal))
+        {
+            return "developer";
+        }
+
+        if (lowered.Contains("review", StringComparison.Ordinal))
+        {
+            return "review";
+        }
+
+        return "agent";
     }
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]

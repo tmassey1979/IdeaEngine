@@ -94,6 +94,72 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_WritesRunnerTemplate_ForAgentRunnerStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                105,
+                "[Story] Dragon Idea Engine Master Codex: Agent Runner",
+                "OPEN",
+                ["story"],
+                "load agent plugins\nrun CLI commands\nconnect to RabbitMQ\nexecute queued jobs",
+                "Agent Runner",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/runner/dragon-agent-runner/README.md", operation.Path);
+        Assert.Contains("load agent plugins", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("dragon-agent-runner --service", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesPluginTemplate_ForPluginSystemStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                106,
+                "[Story] Dragon Idea Engine Master Codex: Plugin System",
+                "OPEN",
+                ["story"],
+                "Agents are dynamically loaded.",
+                "Plugin System",
+                "codex/sections/01-dragon-idea-engine-master-codex.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/agents/dragon-agent.ts", operation.Path);
+        Assert.Contains("export interface DragonAgent", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("const agentAgent: DragonAgent", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesJobSchemaTemplate_ForJobMessageSchemaStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                202,
+                "[Story] Dragon Idea Engine Master Codex Addendum: Job Message Schema",
+                "OPEN",
+                ["story"],
+                "All jobs published to RabbitMQ must follow this structure.",
+                "Job Message Schema",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("write_file", operation.Type);
+        Assert.Equal("templates/repo-templates/contracts/job.schema.json", operation.Path);
+        Assert.Contains("\"title\": \"DragonJob\"", operation.Content, StringComparison.Ordinal);
+        Assert.Contains("\"required\": [\"jobId\", \"agent\", \"action\"", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ExecuteDeveloper_DoesNotDuplicateIdenticalAppendTextOperations()
     {
         var root = CreateTempRoot();
