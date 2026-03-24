@@ -88,12 +88,19 @@ public sealed class GithubIssueService
                         .Select(issue => issue.SourceFile)
                         .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
+                    var mergedTechnicalDetails = orderedGroup
+                        .SelectMany(issue => issue.TechnicalDetails ?? [])
+                        .Where(value => !string.IsNullOrWhiteSpace(value))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+
                     return selected with
                     {
                         Labels = mergedLabels,
                         SourceIssueNumber = mergedSourceIssueNumber,
                         Heading = mergedHeading,
-                        SourceFile = mergedSourceFile
+                        SourceFile = mergedSourceFile,
+                        TechnicalDetails = mergedTechnicalDetails
                     };
                 })
                 .Where(IsSchedulableDiscoveredIssue)
@@ -207,7 +214,8 @@ public sealed class GithubIssueService
             body,
             metadata?.Heading,
             metadata?.SourceFile,
-            InferSourceIssueNumber(title, body)
+            InferSourceIssueNumber(title, body),
+            metadata?.TechnicalDetails
         );
 
         return true;

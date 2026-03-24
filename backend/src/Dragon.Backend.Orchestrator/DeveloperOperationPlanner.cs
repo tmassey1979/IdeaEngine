@@ -194,7 +194,7 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (matcher.Matches("supported git providers", "git utilities"))
+        if (matcher.Matches("supported git providers", "git utilities", "github", "gitlab", "gitea", "clonerepo", "createpullrequest"))
         {
             return
             [
@@ -732,7 +732,8 @@ RABBITMQ_DEFAULT_PASS=dragon
         issue.Title,
         issue.Heading ?? string.Empty,
         issue.Body ?? string.Empty,
-        issue.SourceFile ?? string.Empty);
+        issue.SourceFile ?? string.Empty,
+        issue.TechnicalDetails ?? []);
 
     private static string InferPluginTemplateName(GithubIssue issue)
     {
@@ -756,7 +757,7 @@ RABBITMQ_DEFAULT_PASS=dragon
         return "agent";
     }
 
-    private sealed record StoryMatcher(string Title, string Heading, string Body, string SourceFile)
+    private sealed record StoryMatcher(string Title, string Heading, string Body, string SourceFile, IReadOnlyList<string> TechnicalDetails)
     {
         public bool Matches(params string[] terms) => terms.Any(Matches);
 
@@ -764,7 +765,8 @@ RABBITMQ_DEFAULT_PASS=dragon
             Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             Heading.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             Body.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-            SourceFile.Contains(term, StringComparison.OrdinalIgnoreCase);
+            SourceFile.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            TechnicalDetails.Any(detail => detail.Contains(term, StringComparison.OrdinalIgnoreCase));
     }
 
     [GeneratedRegex("(architecture|core system principles|system architecture|registry architecture)", RegexOptions.IgnoreCase)]

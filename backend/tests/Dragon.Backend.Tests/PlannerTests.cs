@@ -14,10 +14,11 @@ public sealed class PlannerTests
     {
         var index = BacklogIndexLoader.Load(FindRepoRoot());
 
-        var metadata = index["[Story] Dragon Idea Engine Master Codex: Core System Principles"];
+        var metadata = index["[Story] Dragon Idea Engine Master Codex: System Architecture"];
 
-        Assert.Equal("Core System Principles", metadata.Heading);
+        Assert.Equal("System Architecture", metadata.Heading);
         Assert.Contains("01-dragon-idea-engine-master-codex", metadata.SourceFile, StringComparison.Ordinal);
+        Assert.Contains("RabbitMQ", metadata.TechnicalDetails ?? [], StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -312,6 +313,28 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void Plan_UsesTechnicalDetailsMetadataForGitProviderBundle_WhenTextIsGeneric()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                131,
+                "[Story] Platform Capability",
+                "OPEN",
+                ["story"],
+                "",
+                "Integration Slice",
+                "codex/sections/01-dragon-idea-engine-master-codex.md",
+                null,
+                ["GitHub", "GitLab", "Gitea"]
+            )
+        );
+
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/config/git-providers.json");
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/src/git.ts");
+    }
+
+    [Fact]
     public void Plan_WritesPipelineMonitoringTemplate_ForExecutionMonitorStory()
     {
         var operations = DeveloperOperationPlanner.Plan(
@@ -544,6 +567,17 @@ public sealed class PlannerTests
         Assert.Equal("recover_issue", job.Action);
         Assert.Equal("recovery", job.Metadata["workType"]);
         Assert.Equal("22", job.Metadata["sourceIssueNumber"]);
+    }
+
+    [Fact]
+    public void LoadStories_CarriesTechnicalDetailsIntoGithubIssues()
+    {
+        var stories = BacklogStoryCatalog.LoadStories(FindRepoRoot());
+
+        var story = stories.First(item => item.Title == "[Story] Dragon Idea Engine Master Codex: Agent Runner");
+
+        Assert.Contains("connect to RabbitMQ", story.TechnicalDetails ?? [], StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("execute queued jobs", story.TechnicalDetails ?? [], StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

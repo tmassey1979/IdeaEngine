@@ -11,7 +11,8 @@ public sealed record DeveloperOperation(
 public sealed record BacklogStoryMetadata(
     string Title,
     string Heading,
-    string SourceFile
+    string SourceFile,
+    IReadOnlyList<string>? TechnicalDetails = null
 );
 
 public sealed record GithubIssue(
@@ -22,7 +23,8 @@ public sealed record GithubIssue(
     string Body = "",
     string? Heading = null,
     string? SourceFile = null,
-    int? SourceIssueNumber = null
+    int? SourceIssueNumber = null,
+    IReadOnlyList<string>? TechnicalDetails = null
 );
 
 public sealed record SelfBuildJobPayload(

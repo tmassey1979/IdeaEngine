@@ -23,6 +23,7 @@ public static class BacklogStoryCatalog
             var title = story.GetProperty("title").GetString() ?? string.Empty;
             var heading = story.GetProperty("heading").GetString();
             var sourceFile = story.GetProperty("sourceFile").GetString();
+            var technicalDetails = ReadTechnicalDetails(story);
             var labels = new[] { "story" };
 
             stories.Add(new GithubIssue(
@@ -32,7 +33,9 @@ public static class BacklogStoryCatalog
                 labels,
                 story.GetProperty("description").GetString() ?? string.Empty,
                 heading,
-                sourceFile
+                sourceFile,
+                null,
+                technicalDetails
             ));
         }
 
@@ -50,5 +53,25 @@ public static class BacklogStoryCatalog
 
         var digits = new string(id.Where(character => char.IsDigit(character)).ToArray());
         return int.TryParse(digits, out var parsed) ? parsed : 0;
+    }
+
+    private static IReadOnlyList<string> ReadTechnicalDetails(JsonElement story)
+    {
+        if (!story.TryGetProperty("devNotes", out var devNotes) ||
+            devNotes.ValueKind != JsonValueKind.Object ||
+            !devNotes.TryGetProperty("technicalDetails", out var technicalDetails) ||
+            technicalDetails.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return technicalDetails
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString())
+            .OfType<string>()
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 }

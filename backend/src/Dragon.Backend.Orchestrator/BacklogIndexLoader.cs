@@ -25,15 +25,36 @@ public static class BacklogIndexLoader
             var title = story.GetProperty("title").GetString();
             var heading = story.GetProperty("heading").GetString();
             var sourceFile = story.GetProperty("sourceFile").GetString();
+            var technicalDetails = ReadTechnicalDetails(story);
 
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(heading) || string.IsNullOrWhiteSpace(sourceFile))
             {
                 continue;
             }
 
-            index[title] = new BacklogStoryMetadata(title, heading, sourceFile);
+            index[title] = new BacklogStoryMetadata(title, heading, sourceFile, technicalDetails);
         }
 
         return index;
+    }
+
+    private static IReadOnlyList<string> ReadTechnicalDetails(JsonElement story)
+    {
+        if (!story.TryGetProperty("devNotes", out var devNotes) ||
+            devNotes.ValueKind != JsonValueKind.Object ||
+            !devNotes.TryGetProperty("technicalDetails", out var technicalDetails) ||
+            technicalDetails.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return technicalDetails
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString())
+            .OfType<string>()
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 }
