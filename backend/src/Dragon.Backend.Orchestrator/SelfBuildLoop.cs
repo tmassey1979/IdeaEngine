@@ -138,7 +138,7 @@ public sealed class SelfBuildLoop
         var attentionSummary = BuildAttentionSummary(queuedJobs.Count, issues, health, baseLeadQuarantine, latestGithubReplay, interventionTarget, nextDelayedRetryAt, pendingGithubSyncNextRetryAt, now, providerBackoffIssueCount, overdueWritebackIssueCount);
         var recentLoopSignal = BuildRecentLoopSignal(queuedJobs.Count, health, latestActivity, baseLeadQuarantine, latestGithubReplay, interventionTarget, pendingGithubSyncRetryOverdueMinutes, providerBackoffIssueCount, overdueWritebackIssueCount);
         var triageSummary = BuildTriageSummary(waitSignal, recentLoopSignal, attentionSummary, health, interventionTarget);
-        var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget);
+        var interventionEscalationNote = BuildInterventionEscalationNote(interventionTarget, triageSummary);
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay, pendingGithubSyncRetryOverdueMinutes)
             : workerActivity;
@@ -2810,25 +2810,45 @@ public sealed class SelfBuildLoop
         latestGithubReplay.FailedCount == 0 &&
         latestGithubReplay.Summary.Contains("provider backoff", StringComparison.OrdinalIgnoreCase);
 
-    internal static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget)
+    internal static string? BuildInterventionEscalationNote(InterventionTargetSnapshot? interventionTarget, string? triageSummary = null)
     {
         if (interventionTarget is null || string.IsNullOrWhiteSpace(interventionTarget.Escalation))
         {
             return null;
         }
 
+        var escalationSummary = BuildInterventionEscalationSummary(interventionTarget, triageSummary);
+
         return interventionTarget.Escalation switch
         {
             "critical" when interventionTarget.Acknowledged && interventionTarget.AcknowledgedStreak > 1
-                => $"Escalation: global intervention target remains critical after acknowledgment for {interventionTarget.AcknowledgedStreak} consecutive status snapshots. {interventionTarget.Summary}",
+                => $"Escalation: global intervention target remains critical after acknowledgment for {interventionTarget.AcknowledgedStreak} consecutive status snapshots. {escalationSummary}",
             "critical" when interventionTarget.Acknowledged
-                => $"Escalation: global intervention target remains critical after acknowledgment. {interventionTarget.Summary}",
+                => $"Escalation: global intervention target remains critical after acknowledgment. {escalationSummary}",
             "critical"
-                => $"Escalation: global intervention target is critical. {interventionTarget.Summary}",
+                => $"Escalation: global intervention target is critical. {escalationSummary}",
             "warning"
-                => $"Escalation: global intervention target is aging and should be reviewed soon. {interventionTarget.Summary}",
+                => $"Escalation: global intervention target is aging and should be reviewed soon. {escalationSummary}",
             _ => null
         };
+    }
+
+    private static string BuildInterventionEscalationSummary(InterventionTargetSnapshot interventionTarget, string? triageSummary)
+    {
+        if (!string.Equals(interventionTarget.Kind, "github-replay-drift", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(triageSummary))
+        {
+            return interventionTarget.Summary;
+        }
+
+        if (string.Equals(interventionTarget.Summary, triageSummary, StringComparison.Ordinal))
+        {
+            return interventionTarget.Summary;
+        }
+
+        return interventionTarget.Summary.StartsWith(triageSummary, StringComparison.Ordinal)
+            ? interventionTarget.Summary
+            : $"{triageSummary} {interventionTarget.Summary}";
     }
 
     private static string BuildInterventionTargetSignature(InterventionTargetSnapshot interventionTarget) =>
