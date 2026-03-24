@@ -120,7 +120,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/runner/dragon-agent-runner/service-mode.json",
-                    RenderRunnerServiceTemplate())
+                    RenderRunnerServiceTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/runner/dragon-agent-runner/src/index.ts",
+                    RenderRunnerEntryPointTemplate())
             ];
         }
 
@@ -169,14 +173,62 @@ public static partial class DeveloperOperationPlanner
             ];
         }
 
-        if (matcher.Matches("sdk responsibilities"))
+        if (matcher.Matches("sdk responsibilities", "agent context", "agent result"))
         {
             return
             [
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/sdk/dragon-agent-sdk/src/index.ts",
-                    RenderSdkIndexTemplate())
+                    RenderSdkIndexTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/types.ts",
+                    RenderSdkTypesTemplate())
+            ];
+        }
+
+        if (matcher.Matches("workspace utilities"))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/workspace.ts",
+                    RenderSdkWorkspaceTemplate())
+            ];
+        }
+
+        if (matcher.Matches("credential manager"))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/credentials.ts",
+                    RenderSdkCredentialsTemplate())
+            ];
+        }
+
+        if (matcher.Matches("job publishing"))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/messaging.ts",
+                    RenderSdkMessagingTemplate())
+            ];
+        }
+
+        if (matcher.Matches("logging"))
+        {
+            return
+            [
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/dragon-agent-sdk/src/logging.ts",
+                    RenderSdkLoggingTemplate())
             ];
         }
 
@@ -187,7 +239,11 @@ public static partial class DeveloperOperationPlanner
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/sdk/examples/developer-agent.ts",
-                    RenderSdkExampleAgentTemplate())
+                    RenderSdkExampleAgentTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/sdk/examples/developer-agent.manifest.json",
+                    RenderSdkExampleAgentManifestTemplate())
             ];
         }
 
@@ -564,9 +620,85 @@ export interface DragonAgentSdk {
 }
 """;
 
+    private static string RenderSdkTypesTemplate() =>
+        """
+export interface DragonAgentContext {
+  mode: "cli" | "service";
+  payload?: unknown;
+  metadata?: Record<string, string>;
+}
+
+export interface DragonAgentResult {
+  success: boolean;
+  message?: string;
+  artifacts?: Record<string, unknown>;
+  metrics?: Record<string, number>;
+}
+""";
+
+    private static string RenderSdkWorkspaceTemplate() =>
+        """
+export interface DragonWorkspace {
+  cloneRepo(repo: string): Promise<string>;
+  prepareWorktree(path: string): Promise<void>;
+}
+
+export function createWorkspaceUtilities(): DragonWorkspace {
+  return {
+    async cloneRepo(repo) {
+      return repo;
+    },
+    async prepareWorktree(_path) {}
+  };
+}
+""";
+
+    private static string RenderSdkCredentialsTemplate() =>
+        """
+export interface DragonCredentials {
+  resolve(scope: string): Promise<Record<string, string>>;
+}
+
+export function createCredentialManager(): DragonCredentials {
+  return {
+    async resolve(_scope) {
+      return {};
+    }
+  };
+}
+""";
+
+    private static string RenderSdkMessagingTemplate() =>
+        """
+export interface DragonMessagePublisher {
+  publish(queue: string, message: unknown): Promise<void>;
+}
+
+export function createMessagePublisher(): DragonMessagePublisher {
+  return {
+    async publish(_queue, _message) {}
+  };
+}
+""";
+
+    private static string RenderSdkLoggingTemplate() =>
+        """
+export interface DragonLogger {
+  info(message: string, context?: Record<string, unknown>): void;
+  error(message: string, context?: Record<string, unknown>): void;
+}
+
+export function createLogger(): DragonLogger {
+  return {
+    info(_message, _context) {},
+    error(_message, _context) {}
+  };
+}
+""";
+
     private static string RenderSdkExampleAgentTemplate() =>
         """
-import type { DragonAgentContext, DragonAgentResult } from "../dragon-agent-sdk/src/index";
+import type { DragonAgentContext, DragonAgentResult } from "../dragon-agent-sdk/src/types";
 
 export const developerAgent = {
   name: "developer",
@@ -581,6 +713,19 @@ export const developerAgent = {
     };
   }
 };
+""";
+
+    private static string RenderSdkExampleAgentManifestTemplate() =>
+        """
+{
+  "name": "developer",
+  "entry": "./developer-agent.ts",
+  "sdk": "dragon-agent-sdk",
+  "capabilities": [
+    "implement-issue",
+    "emit-summary"
+  ]
+}
 """;
 
     private static string RenderCredentialsSchemaTemplate() =>
@@ -669,6 +814,18 @@ export function createGitUtilities(): DragonGit {
   "polling": {
     "enabled": true
   }
+}
+""";
+
+    private static string RenderRunnerEntryPointTemplate() =>
+        """
+export async function runAgentRunner(mode: "cli" | "service"): Promise<void> {
+  if (mode === "service") {
+    console.log("Starting dragon-agent-runner in service mode.");
+    return;
+  }
+
+  console.log("Starting dragon-agent-runner in CLI mode.");
 }
 """;
 

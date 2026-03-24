@@ -109,11 +109,13 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(2, operations.Count);
+        Assert.Equal(3, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/README.md" &&
             operation.Content!.Contains("load agent plugins", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/service-mode.json" &&
             operation.Content!.Contains("\"mode\": \"service\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/runner/dragon-agent-runner/src/index.ts" &&
+            operation.Content!.Contains("runAgentRunner", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -197,11 +199,51 @@ public sealed class PlannerTests
             )
         );
 
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/src/index.ts" &&
+            operation.Content!.Contains("export interface DragonAgentSdk", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/src/types.ts" &&
+            operation.Content!.Contains("export interface DragonAgentContext", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Plan_WritesSdkWorkspaceTemplate_ForWorkspaceUtilitiesStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                212,
+                "[Story] Dragon Idea Engine Master Codex Addendum: Workspace Utilities",
+                "OPEN",
+                ["story"],
+                "repository workspace preparation\nclone repo\nprepare worktree",
+                "Workspace Utilities",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md"
+            )
+        );
+
         var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/sdk/dragon-agent-sdk/src/index.ts", operation.Path);
-        Assert.Contains("export interface DragonAgentSdk", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("publishMessage", operation.Content, StringComparison.Ordinal);
+        Assert.Equal("templates/repo-templates/sdk/dragon-agent-sdk/src/workspace.ts", operation.Path);
+        Assert.Contains("createWorkspaceUtilities", operation.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Plan_WritesSdkMessagingTemplate_ForJobPublishingStory()
+    {
+        var operations = DeveloperOperationPlanner.Plan(
+            new GithubIssue(
+                213,
+                "[Story] Dragon Idea Engine Master Codex Addendum: Job Publishing",
+                "OPEN",
+                ["story"],
+                "publish queue messages\njob publishing\nasync messaging",
+                "Job Publishing",
+                "codex/sections/02-dragon-idea-engine-master-codex-addendum.md"
+            )
+        );
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("templates/repo-templates/sdk/dragon-agent-sdk/src/messaging.ts", operation.Path);
+        Assert.Contains("createMessagePublisher", operation.Content, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -219,11 +261,12 @@ public sealed class PlannerTests
             )
         );
 
-        var operation = Assert.Single(operations);
-        Assert.Equal("write_file", operation.Type);
-        Assert.Equal("templates/repo-templates/sdk/examples/developer-agent.ts", operation.Path);
-        Assert.Contains("name: \"developer\"", operation.Content, StringComparison.Ordinal);
-        Assert.Contains("Bootstrap developer agent completed.", operation.Content, StringComparison.Ordinal);
+        Assert.Equal(2, operations.Count);
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/developer-agent.ts" &&
+            operation.Content!.Contains("name: \"developer\"", StringComparison.Ordinal) &&
+            operation.Content!.Contains("../dragon-agent-sdk/src/types", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/sdk/examples/developer-agent.manifest.json" &&
+            operation.Content!.Contains("\"sdk\": \"dragon-agent-sdk\"", StringComparison.Ordinal));
     }
 
     [Fact]
