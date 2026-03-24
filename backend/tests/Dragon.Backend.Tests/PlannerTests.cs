@@ -398,13 +398,19 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(5, operations.Count);
+        Assert.Equal(8, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj" &&
             operation.Content!.Contains("Microsoft.NET.Sdk.Web", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs" &&
             operation.Content!.Contains("MapGet(\"/health\"", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/appsettings.json" &&
             operation.Content!.Contains("\"Authentication\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/appsettings.Development.json" &&
+            operation.Content!.Contains("\"Default\": \"Debug\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Properties/launchSettings.json" &&
+            operation.Content!.Contains("\"applicationUrl\": \"http://localhost:5080\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dockerfile" &&
+            operation.Content!.Contains("ENTRYPOINT [\"dotnet\", \"Dragon.Api.dll\"]", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/Dragon.Api.Tests.csproj" &&
             operation.Content!.Contains("Microsoft.AspNetCore.Mvc.Testing", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs" &&
@@ -426,13 +432,19 @@ public sealed class PlannerTests
             )
         );
 
-        Assert.Equal(5, operations.Count);
+        Assert.Equal(8, operations.Count);
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dragon.Worker.csproj" &&
             operation.Content!.Contains("Microsoft.NET.Sdk.Worker", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Program.cs" &&
             operation.Content!.Contains("AddHostedService<QueueWorker>", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/WorkerOptions.cs" &&
             operation.Content!.Contains("QueueName", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/appsettings.json" &&
+            operation.Content!.Contains("\"PollSeconds\": 10", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/appsettings.Development.json" &&
+            operation.Content!.Contains("\"dragon.jobs.dev\"", StringComparison.Ordinal));
+        Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/Dockerfile" &&
+            operation.Content!.Contains("ENTRYPOINT [\"dotnet\", \"Dragon.Worker.dll\"]", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj" &&
             operation.Content!.Contains("xunit", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/dotnet/dragon-worker/tests/WorkerOptionsTests.cs" &&
@@ -892,6 +904,7 @@ public sealed class PlannerTests
         Assert.NotNull(job.Payload.Operations);
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dragon.Api.csproj");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Program.cs");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/Dockerfile");
         Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/dotnet/dragon-api/tests/HealthEndpointTests.cs");
     }
 

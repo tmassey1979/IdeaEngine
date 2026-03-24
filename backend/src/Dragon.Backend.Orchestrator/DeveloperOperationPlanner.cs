@@ -346,6 +346,18 @@ public static partial class DeveloperOperationPlanner
                     RenderDotnetApiSettingsTemplate()),
                 new DeveloperOperation(
                     "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/appsettings.Development.json",
+                    RenderDotnetApiDevelopmentSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Properties/launchSettings.json",
+                    RenderDotnetApiLaunchSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-api/Dockerfile",
+                    RenderDotnetApiDockerfileTemplate()),
+                new DeveloperOperation(
+                    "write_file",
                     "templates/repo-templates/dotnet/dragon-api/tests/Dragon.Api.Tests.csproj",
                     RenderDotnetApiTestsProjectTemplate()),
                 new DeveloperOperation(
@@ -371,6 +383,18 @@ public static partial class DeveloperOperationPlanner
                     "write_file",
                     "templates/repo-templates/dotnet/dragon-worker/WorkerOptions.cs",
                     RenderDotnetWorkerOptionsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/appsettings.json",
+                    RenderDotnetWorkerSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/appsettings.Development.json",
+                    RenderDotnetWorkerDevelopmentSettingsTemplate()),
+                new DeveloperOperation(
+                    "write_file",
+                    "templates/repo-templates/dotnet/dragon-worker/Dockerfile",
+                    RenderDotnetWorkerDockerfileTemplate()),
                 new DeveloperOperation(
                     "write_file",
                     "templates/repo-templates/dotnet/dragon-worker/tests/Dragon.Worker.Tests.csproj",
@@ -1160,6 +1184,48 @@ public partial class Program;
 }
 """;
 
+    private static string RenderDotnetApiDevelopmentSettingsTemplate() =>
+        """
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.AspNetCore": "Information"
+    }
+  }
+}
+""";
+
+    private static string RenderDotnetApiLaunchSettingsTemplate() =>
+        """
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Dragon.Api": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:5080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+""";
+
+    private static string RenderDotnetApiDockerfileTemplate() =>
+        """
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish Dragon.Api.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "Dragon.Api.dll"]
+""";
+
     private static string RenderDotnetApiTestsProjectTemplate() =>
         """
 <Project Sdk="Microsoft.NET.Sdk">
@@ -1255,6 +1321,39 @@ public sealed class WorkerOptions
     public int PollSeconds { get; init; } = 10;
     public string QueueName { get; init; } = "dragon.jobs";
 }
+""";
+
+    private static string RenderDotnetWorkerSettingsTemplate() =>
+        """
+{
+  "Worker": {
+    "PollSeconds": 10,
+    "QueueName": "dragon.jobs"
+  }
+}
+""";
+
+    private static string RenderDotnetWorkerDevelopmentSettingsTemplate() =>
+        """
+{
+  "Worker": {
+    "PollSeconds": 2,
+    "QueueName": "dragon.jobs.dev"
+  }
+}
+""";
+
+    private static string RenderDotnetWorkerDockerfileTemplate() =>
+        """
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish Dragon.Worker.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/runtime:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "Dragon.Worker.dll"]
 """;
 
     private static string RenderDotnetWorkerTestsProjectTemplate() =>
