@@ -7999,6 +7999,54 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void TestExecutor_ValidatesBackendStackSmokeAssetsForProfiledWork()
+    {
+        var root = CreateTempRoot();
+        Directory.CreateDirectory(Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "tests"));
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "docker-compose.yml"),
+            "services:\n  api:\n    image: dragon-api\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "tests", "compose-smoke.sh"),
+            "#!/usr/bin/env bash\nexit 0\n");
+        File.WriteAllText(
+            Path.Combine(root, "templates", "repo-templates", "backend-stack", "pi-autonomous-engine", "tests", "stack-readiness.json"),
+            "{\n  \"status\": \"ready\"\n}\n");
+
+        var store = new WorkflowStateStore(root);
+        store.Update(302, "Pi Autonomous Engine", "refactor", new JobExecutionResult("job-refactor", "refactor", "success", "done", DateTimeOffset.UtcNow));
+        store.Update(302, "Pi Autonomous Engine", "review", new JobExecutionResult("job-review", "review", "success", "done", DateTimeOffset.UtcNow));
+
+        var executed = new List<string>();
+        var executor = new LocalJobExecutor((fileName, arguments, _) =>
+        {
+            executed.Add($"{fileName} {arguments}");
+            return new CommandResult(0, "ok", string.Empty);
+        });
+
+        var testResult = executor.Execute(
+            root,
+            new SelfBuildJob(
+                "test",
+                "test_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                302,
+                new SelfBuildJobPayload("Pi Autonomous Engine", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["implementationProfile"] = "backend-stack/pi-autonomous-engine",
+                    ["targetArtifact"] = "templates/repo-templates/backend-stack/pi-autonomous-engine/docker-compose.yml",
+                    ["targetOutcome"] = "Validate the coordinated Pi backend stack."
+                })
+        );
+
+        Assert.Equal("success", testResult.Status);
+        Assert.Contains("Validated backend stack smoke assets", testResult.Summary, StringComparison.Ordinal);
+        Assert.Empty(executed);
+    }
+
+    [Fact]
     public void WorkflowStateStore_ValidatesSuccessfulArchitectReviewAndTestStages()
     {
         var root = CreateTempRoot();
