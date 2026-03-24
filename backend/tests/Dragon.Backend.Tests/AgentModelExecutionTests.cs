@@ -2086,6 +2086,48 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void CreateRepositoryManagerJob_IncludesPlannedOperationsForDeploymentStories()
+    {
+        var issue = new GithubIssue(
+            105,
+            "[Story] Dragon Idea Engine Master Codex: Docker Deployment",
+            "OPEN",
+            ["story"],
+            "Run the stack through containers on the Pi.",
+            "Containers on the Pi",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+
+        var job = SelfBuildJobFactory.Create(issue, "repository-manager", "IdeaEngine", "DragonIdeaEngine");
+
+        Assert.Equal("repository-manager", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/deploy/docker-compose.yml");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/deploy/.env.example");
+    }
+
+    [Fact]
+    public void CreateRefactorJob_IncludesPlannedOperationsForSdkStories()
+    {
+        var issue = new GithubIssue(
+            106,
+            "[Story] Dragon Idea Engine Master Codex: SDK Package",
+            "OPEN",
+            ["story"],
+            "Create a reusable Dragon agent SDK package.",
+            "SDK Package",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+
+        var job = SelfBuildJobFactory.Create(issue, "refactor", "IdeaEngine", "DragonIdeaEngine");
+
+        Assert.Equal("refactor", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/package.json");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json");
+    }
+
+    [Fact]
     public void Execute_AppliesPlannedOperationsForDocumentationAgentWithoutModelProvider()
     {
         var root = CreateTempRoot();
@@ -2107,6 +2149,56 @@ public sealed class AgentModelExecutionTests
         Assert.Contains("Applied 1 planned documentation operation", result.Summary, StringComparison.Ordinal);
         Assert.Contains("docs/generated/repository-structure-notes.md", result.ChangedPaths!);
         Assert.True(File.Exists(Path.Combine(root, "docs", "generated", "repository-structure-notes.md")));
+    }
+
+    [Fact]
+    public void Execute_AppliesPlannedOperationsForRepositoryManagerAgentWithoutModelProvider()
+    {
+        var root = CreateTempRoot();
+        var issue = new GithubIssue(
+            105,
+            "[Story] Dragon Idea Engine Master Codex: Docker Deployment",
+            "OPEN",
+            ["story"],
+            "Run the stack through containers on the Pi.",
+            "Containers on the Pi",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+        var job = SelfBuildJobFactory.Create(issue, "repository-manager", "IdeaEngine", "DragonIdeaEngine");
+        var executor = LocalJobExecutor.CreateDefault(_ => null, (_, _, _) => new CommandResult(0, "ok", string.Empty));
+
+        var result = executor.Execute(root, job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Contains("Applied 2 planned repository-manager operation", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("templates/repo-templates/deploy/docker-compose.yml", result.ChangedPaths!);
+        Assert.Contains("templates/repo-templates/deploy/.env.example", result.ChangedPaths!);
+        Assert.True(File.Exists(Path.Combine(root, "templates", "repo-templates", "deploy", "docker-compose.yml")));
+    }
+
+    [Fact]
+    public void Execute_AppliesPlannedOperationsForRefactorAgentWithoutModelProvider()
+    {
+        var root = CreateTempRoot();
+        var issue = new GithubIssue(
+            106,
+            "[Story] Dragon Idea Engine Master Codex: SDK Package",
+            "OPEN",
+            ["story"],
+            "Create a reusable Dragon agent SDK package.",
+            "SDK Package",
+            "codex/sections/01-dragon-idea-engine-master-codex.md"
+        );
+        var job = SelfBuildJobFactory.Create(issue, "refactor", "IdeaEngine", "DragonIdeaEngine");
+        var executor = LocalJobExecutor.CreateDefault(_ => null, (_, _, _) => new CommandResult(0, "ok", string.Empty));
+
+        var result = executor.Execute(root, job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Contains("Applied 2 planned refactor operation", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("templates/repo-templates/sdk/dragon-agent-sdk/package.json", result.ChangedPaths!);
+        Assert.Contains("templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json", result.ChangedPaths!);
+        Assert.True(File.Exists(Path.Combine(root, "templates", "repo-templates", "sdk", "dragon-agent-sdk", "package.json")));
     }
 
     [Fact]

@@ -2124,18 +2124,55 @@ public sealed class SelfBuildLoop
             return "refactor";
         }
 
-        var plannedOperations = DeveloperOperationPlanner.Plan(issue);
-        if (plannedOperations.Count > 0 && plannedOperations.All(IsDocumentationOperation))
+        var plannedAgent = RecommendPlannedOperationsAgent(DeveloperOperationPlanner.Plan(issue));
+        if (!string.IsNullOrWhiteSpace(plannedAgent))
         {
-            return "documentation";
+            return plannedAgent;
         }
 
         return "developer";
     }
 
+    private static string? RecommendPlannedOperationsAgent(IReadOnlyList<DeveloperOperation> operations)
+    {
+        if (operations.Count == 0)
+        {
+            return null;
+        }
+
+        if (operations.All(IsDocumentationOperation))
+        {
+            return "documentation";
+        }
+
+        if (operations.All(IsRepositoryOperation))
+        {
+            return "repository-manager";
+        }
+
+        if (operations.All(IsCodeScaffoldOperation))
+        {
+            return "refactor";
+        }
+
+        return null;
+    }
+
     private static bool IsDocumentationOperation(DeveloperOperation operation) =>
         operation.Path.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) ||
         operation.Path.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRepositoryOperation(DeveloperOperation operation) =>
+        operation.Path.StartsWith("templates/repo-templates/deploy/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/config/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/observability/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/security/", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCodeScaffoldOperation(DeveloperOperation operation) =>
+        operation.Path.StartsWith("templates/repo-templates/sdk/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/runner/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/agents/", StringComparison.OrdinalIgnoreCase) ||
+        operation.Path.StartsWith("templates/repo-templates/contracts/", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRecoveryIssue(GithubIssue issue) =>
         issue.Labels.Contains("recovery", StringComparer.OrdinalIgnoreCase) ||

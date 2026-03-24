@@ -621,6 +621,56 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void SeedNext_SelectsRepositoryManagerForDeploymentBundleStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                105,
+                "[Story] Dragon Idea Engine Master Codex: Docker Deployment",
+                "OPEN",
+                ["story"],
+                "Run the stack through containers on the Pi.",
+                "Containers on the Pi",
+                "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("repository-manager", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/deploy/docker-compose.yml");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/deploy/.env.example");
+    }
+
+    [Fact]
+    public void SeedNext_SelectsRefactorForSdkScaffoldStories()
+    {
+        var root = CreateTempRoot();
+        var loop = new SelfBuildLoop(root);
+        var issues = new[]
+        {
+            new GithubIssue(
+                106,
+                "[Story] Dragon Idea Engine Master Codex: SDK Package",
+                "OPEN",
+                ["story"],
+                "Create a reusable Dragon agent SDK package.",
+                "SDK Package",
+                "codex/sections/01-dragon-idea-engine-master-codex.md")
+        };
+
+        var job = loop.SeedNext(issues);
+
+        Assert.Equal("refactor", job.Agent);
+        Assert.NotNull(job.Payload.Operations);
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/package.json");
+        Assert.Contains(job.Payload.Operations!, operation => operation.Path == "templates/repo-templates/sdk/dragon-agent-sdk/tsconfig.json");
+    }
+
+    [Fact]
     public void RunUntilIdle_TreatsValidatedOnlyStoryListAsIdle()
     {
         var root = CreateTempRoot();

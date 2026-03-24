@@ -62,7 +62,9 @@ public static class SelfBuildJobFactory
 
     private static bool SupportsPlannedOperations(string agent) =>
         string.Equals(agent, "developer", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase);
+        string.Equals(agent, "documentation", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(agent, "repository-manager", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(agent, "refactor", StringComparison.OrdinalIgnoreCase);
 
     private static string ResolveAction(string agent, bool isRecovery)
     {
