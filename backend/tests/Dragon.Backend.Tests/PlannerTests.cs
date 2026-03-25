@@ -1907,6 +1907,71 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void ExecutionRecordStore_PersistsPerformanceMonitoringFields()
+    {
+        var root = CreateTempRoot();
+        var store = new ExecutionRecordStore(root);
+        var telemetry = new HostTelemetrySnapshot(
+            "available",
+            ProcessorCount: 8,
+            ProcessorLoadPercent: 55,
+            MemoryTotalMb: 16384,
+            MemoryAvailableMb: 6144,
+            MemoryUsedPercent: 63,
+            DiskTotalGb: 512,
+            DiskFreeGb: 180,
+            DiskUsedPercent: 65,
+            Summary: "execution telemetry");
+
+        store.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                23,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "backend/src/Dragon.Backend.Orchestrator/QueueStore.cs"
+                }),
+            new JobExecutionResult(
+                "job-1",
+                "developer",
+                "success",
+                "implemented",
+                DateTimeOffset.UtcNow,
+                ["backend/src/Dragon.Backend.Orchestrator/QueueStore.cs"],
+                DurationMilliseconds: 4200),
+            [],
+            telemetry);
+
+        store.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                23,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)),
+            new JobExecutionResult("job-2", "developer", "failed", "failed", DateTimeOffset.UtcNow, DurationMilliseconds: 2500),
+            []);
+
+        var records = store.Read(23);
+
+        Assert.Equal(2, records.Count);
+        Assert.Equal(4200, records[0].DurationMilliseconds);
+        Assert.Equal(0, records[0].RetryCount);
+        Assert.Equal(0.85d, records[0].QualityScore);
+        Assert.Equal("available", records[0].HostTelemetryStatus);
+        Assert.Equal(55, records[0].ProcessorLoadPercent);
+        Assert.Equal(63, records[0].MemoryUsedPercent);
+        Assert.Equal(1, records[1].RetryCount);
+        Assert.Equal(0d, records[1].QualityScore);
+    }
+
+    [Fact]
     public void ReadStatus_UsesOperatorEscalationAsInterventionTarget()
     {
         var root = CreateTempRoot();
@@ -3675,6 +3740,121 @@ public sealed class PlannerTests
         Assert.Equal("44", issue.Id);
         Assert.Equal("[Story] Dragon Idea Engine Master Codex: UI Dashboard", issue.Title);
         Assert.Equal("React dashboard shell was updated.", issue.LatestExecutionSummary);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_ServesAgentPerformanceReadEndpoint()
+    {
+        var root = CreateTempRoot();
+        var observedAt = new DateTimeOffset(2026, 3, 25, 1, 0, 0, TimeSpan.Zero);
+        var executionStore = new ExecutionRecordStore(root);
+        var developerTelemetry = new HostTelemetrySnapshot(
+            "available",
+            ProcessorCount: 8,
+            ProcessorLoadPercent: 45,
+            MemoryTotalMb: 16384,
+            MemoryAvailableMb: 8192,
+            MemoryUsedPercent: 50,
+            DiskTotalGb: 512,
+            DiskFreeGb: 220,
+            DiskUsedPercent: 57,
+            Summary: "developer telemetry");
+        var architectTelemetry = new HostTelemetrySnapshot(
+            "available",
+            ProcessorCount: 8,
+            ProcessorLoadPercent: 70,
+            MemoryTotalMb: 16384,
+            MemoryAvailableMb: 4096,
+            MemoryUsedPercent: 75,
+            DiskTotalGb: 512,
+            DiskFreeGb: 180,
+            DiskUsedPercent: 65,
+            Summary: "architect telemetry");
+
+        executionStore.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                46,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["changedPaths"] = "backend/src/Dragon.Backend.Orchestrator/QueueStore.cs"
+                }),
+            new JobExecutionResult(
+                "job-46-dev-1",
+                "developer",
+                "success",
+                "implemented",
+                observedAt,
+                ["backend/src/Dragon.Backend.Orchestrator/QueueStore.cs"],
+                DurationMilliseconds: 2000),
+            [],
+            developerTelemetry);
+        executionStore.Append(
+            new SelfBuildJob(
+                "developer",
+                "implement_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                46,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)),
+            new JobExecutionResult(
+                "job-46-dev-2",
+                "developer",
+                "failed",
+                "failed",
+                observedAt.AddMinutes(5),
+                DurationMilliseconds: 4000),
+            []);
+        executionStore.Append(
+            new SelfBuildJob(
+                "architect",
+                "summarize_issue",
+                "IdeaEngine",
+                "DragonIdeaEngine",
+                47,
+                new SelfBuildJobPayload("Core", ["story"], null, null, null),
+                new Dictionary<string, string>(StringComparer.Ordinal)),
+            new JobExecutionResult(
+                "job-47-architect-1",
+                "architect",
+                "success",
+                "summarized",
+                observedAt.AddMinutes(10),
+                DurationMilliseconds: 1500),
+            [],
+            architectTelemetry);
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var metrics = await client.GetFromJsonAsync<BackendAgentPerformanceReadModel>($"{prefix}api/read/agent-performance");
+        await serveTask;
+
+        Assert.NotNull(metrics);
+        Assert.Equal(2, metrics!.Agents.Count);
+        var developer = Assert.Single(metrics.Agents, agent => agent.Agent == "developer");
+        Assert.Equal(2, developer.TotalExecutions);
+        Assert.Equal(1, developer.SuccessCount);
+        Assert.Equal(1, developer.FailureCount);
+        Assert.Equal(0.5d, developer.SuccessRate);
+        Assert.Equal(3000d, developer.AverageDurationMilliseconds);
+        Assert.Equal(0.425d, developer.AverageQualityScore, 3);
+        Assert.Equal(0.5d, developer.AverageRetryCount);
+        Assert.Equal(45d, developer.AverageProcessorLoadPercent);
+        var architect = Assert.Single(metrics.Agents, agent => agent.Agent == "architect");
+        Assert.Equal(1, architect.TotalExecutions);
+        Assert.Equal(1d, architect.SuccessRate);
+        Assert.Equal(0d, architect.ErrorFrequency);
+        Assert.Equal(1500d, architect.AverageDurationMilliseconds);
+        Assert.Equal(0.7d, architect.AverageQualityScore);
     }
 
     [Fact]

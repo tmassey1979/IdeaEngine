@@ -170,6 +170,15 @@ public sealed class StatusHttpServer
                 return;
             }
 
+            if (string.Equals(path, "/api/read/agent-performance", StringComparison.Ordinal))
+            {
+                var snapshot = ReadSnapshot();
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, readModelBuilder.BuildAgentPerformance(snapshot), cancellationToken);
+                responseClosed = true;
+                return;
+            }
+
             if (TryMatchIssueDetailPath(path, out var issueNumber))
             {
                 var snapshot = ReadSnapshot();

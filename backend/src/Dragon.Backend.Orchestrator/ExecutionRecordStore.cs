@@ -22,10 +22,17 @@ public sealed class ExecutionRecordStore
 
     public string RecordPath(int issueNumber) => Path.Combine(RunsDirectory, $"issue-{issueNumber}.json");
 
-    public ExecutionRecord Append(SelfBuildJob job, JobExecutionResult execution, IReadOnlyList<SelfBuildJob> followUps)
+    public ExecutionRecord Append(
+        SelfBuildJob job,
+        JobExecutionResult execution,
+        IReadOnlyList<SelfBuildJob> followUps,
+        HostTelemetrySnapshot? hostTelemetry = null)
     {
         Directory.CreateDirectory(RunsDirectory);
         var records = Read(job.Issue).ToList();
+        var retryCount = records.Count(record =>
+            string.Equals(record.JobAgent, job.Agent, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(record.JobAction, job.Action, StringComparison.OrdinalIgnoreCase));
 
         var record = new ExecutionRecord(
             job.Issue,
@@ -38,7 +45,14 @@ public sealed class ExecutionRecordStore
             execution.ObservedAt,
             execution.ChangedPaths?.Count > 0 ? execution.ChangedPaths : ReadChangedPaths(job),
             followUps.Select(item => item.Agent).ToArray(),
-            BuildNotes(job)
+            BuildNotes(job),
+            execution.DurationMilliseconds,
+            retryCount,
+            ComputeQualityScore(job, execution),
+            hostTelemetry?.Status,
+            hostTelemetry?.ProcessorLoadPercent,
+            hostTelemetry?.MemoryUsedPercent,
+            hostTelemetry?.DiskUsedPercent
         );
 
         records.Add(record);
@@ -99,5 +113,31 @@ public sealed class ExecutionRecordStore
         }
 
         return string.Join(" ", notes);
+    }
+
+    private static double ComputeQualityScore(SelfBuildJob job, JobExecutionResult execution)
+    {
+        if (!string.Equals(execution.Status, "success", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0d;
+        }
+
+        if (string.Equals(job.Action, "review_issue", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Action, "test_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1d;
+        }
+
+        if (string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0.7d;
+        }
+
+        if (string.Equals(job.Action, "implement_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return execution.ChangedPaths?.Count > 0 ? 0.85d : 0.75d;
+        }
+
+        return 0.8d;
     }
 }

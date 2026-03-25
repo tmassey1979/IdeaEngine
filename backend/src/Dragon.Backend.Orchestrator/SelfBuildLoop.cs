@@ -713,7 +713,7 @@ public sealed class SelfBuildLoop
             return new CycleResult("retry", job, execution, followUps, workflow, githubRetrySync);
         }
 
-        var executionRecord = executionRecordStore.Append(job, execution, followUps);
+        var executionRecord = executionRecordStore.Append(job, execution, followUps, hostTelemetry);
         var failureDisposition = ApplyFailurePolicy(job.Issue, workflow);
         if (failureDisposition?.Quarantined == true)
         {

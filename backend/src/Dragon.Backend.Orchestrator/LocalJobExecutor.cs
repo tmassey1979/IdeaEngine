@@ -60,6 +60,7 @@ public sealed class LocalJobExecutor
     public JobExecutionResult Execute(string rootDirectory, SelfBuildJob job)
     {
         var jobId = $"{job.Agent}-{job.Issue}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -72,16 +73,27 @@ public sealed class LocalJobExecutor
                 _ => ExecutionOutcome.FromSummary($"No local executor is registered for {job.Agent}; marked complete for bootstrap flow.")
             };
 
-            return new JobExecutionResult(jobId, job.Agent, "success", outcome.Summary, DateTimeOffset.UtcNow, outcome.ChangedPaths, outcome.RequestedFollowUps);
+            stopwatch.Stop();
+            return new JobExecutionResult(
+                jobId,
+                job.Agent,
+                "success",
+                outcome.Summary,
+                DateTimeOffset.UtcNow,
+                outcome.ChangedPaths,
+                outcome.RequestedFollowUps,
+                DurationMilliseconds: stopwatch.ElapsedMilliseconds);
         }
         catch (Exception exception)
         {
+            stopwatch.Stop();
             return new JobExecutionResult(
                 jobId,
                 job.Agent,
                 "failed",
                 FormatFailureSummary(exception),
                 DateTimeOffset.UtcNow,
+                DurationMilliseconds: stopwatch.ElapsedMilliseconds,
                 RetryNotBefore: ResolveRetryNotBefore(exception));
         }
     }

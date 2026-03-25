@@ -53,7 +53,8 @@ public sealed record JobExecutionResult(
     DateTimeOffset ObservedAt,
     IReadOnlyList<string>? ChangedPaths = null,
     IReadOnlyList<RequestedFollowUp>? RequestedFollowUps = null,
-    DateTimeOffset? RetryNotBefore = null
+    DateTimeOffset? RetryNotBefore = null,
+    long? DurationMilliseconds = null
 );
 
 public sealed record WorkflowStageState(
@@ -96,7 +97,14 @@ public sealed record ExecutionRecord(
     DateTimeOffset RecordedAt,
     IReadOnlyList<string> ChangedPaths,
     IReadOnlyList<string> FollowUpAgents,
-    string Notes = ""
+    string Notes = "",
+    long? DurationMilliseconds = null,
+    int RetryCount = 0,
+    double? QualityScore = null,
+    string? HostTelemetryStatus = null,
+    double? ProcessorLoadPercent = null,
+    double? MemoryUsedPercent = null,
+    double? DiskUsedPercent = null
 );
 
 public sealed record AgentModelMessage(
@@ -274,4 +282,27 @@ public sealed record BackendActivityEntryReadModel(
     string Status,
     string Summary,
     DateTimeOffset? RecordedAt
+);
+
+public sealed record BackendAgentPerformanceReadModel(
+    DateTimeOffset GeneratedAt,
+    string Summary,
+    IReadOnlyList<BackendAgentMetricReadModel> Agents
+);
+
+public sealed record BackendAgentMetricReadModel(
+    string Agent,
+    int TotalExecutions,
+    int SuccessCount,
+    int FailureCount,
+    double SuccessRate,
+    double ErrorFrequency,
+    double AverageDurationMilliseconds,
+    double AverageQualityScore,
+    double AverageRetryCount,
+    double? AverageProcessorLoadPercent,
+    double? AverageMemoryUsedPercent,
+    double? AverageDiskUsedPercent,
+    DateTimeOffset? LastRecordedAt,
+    string Summary
 );

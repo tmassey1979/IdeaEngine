@@ -125,6 +125,72 @@ public sealed class StatusReadModelBuilder
                 activityEntries));
     }
 
+    public BackendAgentPerformanceReadModel BuildAgentPerformance(StatusSnapshot snapshot)
+    {
+        var records = ReadAllExecutionRecords();
+        var agentMetrics = records
+            .GroupBy(record => record.JobAgent, StringComparer.OrdinalIgnoreCase)
+            .Select(group =>
+            {
+                var total = group.Count();
+                var successCount = group.Count(record => string.Equals(record.Status, "success", StringComparison.OrdinalIgnoreCase));
+                var failureCount = total - successCount;
+                var averageDuration = group
+                    .Where(record => record.DurationMilliseconds is not null)
+                    .Select(record => (double)record.DurationMilliseconds!.Value)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var averageQuality = group
+                    .Where(record => record.QualityScore is not null)
+                    .Select(record => record.QualityScore!.Value)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var averageRetryCount = group
+                    .Select(record => (double)record.RetryCount)
+                    .DefaultIfEmpty(0d)
+                    .Average();
+                var averageProcessorLoad = AverageNullable(group.Select(record => record.ProcessorLoadPercent));
+                var averageMemoryUsed = AverageNullable(group.Select(record => record.MemoryUsedPercent));
+                var averageDiskUsed = AverageNullable(group.Select(record => record.DiskUsedPercent));
+                var lastRecordedAt = group
+                    .Select(record => (DateTimeOffset?)record.RecordedAt)
+                    .OrderByDescending(value => value)
+                    .FirstOrDefault();
+                var successRate = total == 0 ? 0d : successCount / (double)total;
+                var errorFrequency = total == 0 ? 0d : failureCount / (double)total;
+
+                return new BackendAgentMetricReadModel(
+                    group.Key,
+                    total,
+                    successCount,
+                    failureCount,
+                    Math.Round(successRate, 4),
+                    Math.Round(errorFrequency, 4),
+                    Math.Round(averageDuration, 2),
+                    Math.Round(averageQuality, 4),
+                    Math.Round(averageRetryCount, 2),
+                    RoundNullable(averageProcessorLoad),
+                    RoundNullable(averageMemoryUsed),
+                    RoundNullable(averageDiskUsed),
+                    lastRecordedAt,
+                    BuildAgentPerformanceSummary(group.Key, successRate, averageDuration, failureCount, averageRetryCount));
+            })
+            .OrderByDescending(metric => metric.ErrorFrequency)
+            .ThenBy(metric => metric.SuccessRate)
+            .ThenByDescending(metric => metric.TotalExecutions)
+            .ThenBy(metric => metric.Agent, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var summary = agentMetrics.Length == 0
+            ? "No execution records are available yet."
+            : $"{agentMetrics.Length} agent profile(s) aggregated from {records.Count} execution record(s).";
+
+        return new BackendAgentPerformanceReadModel(
+            snapshot.GeneratedAt,
+            summary,
+            agentMetrics);
+    }
+
     private static IReadOnlyList<string> BuildBlockers(IssueStatusSnapshot issue, IssueWorkflowState? workflow)
     {
         var blockers = new List<string>();
@@ -292,6 +358,56 @@ public sealed class StatusReadModelBuilder
         }
 
         return entries;
+    }
+
+    private IReadOnlyList<ExecutionRecord> ReadAllExecutionRecords()
+    {
+        if (!Directory.Exists(executionRecordStore.RunsDirectory))
+        {
+            return [];
+        }
+
+        return Directory
+            .GetFiles(executionRecordStore.RunsDirectory, "issue-*.json", SearchOption.TopDirectoryOnly)
+            .SelectMany(path =>
+            {
+                var fileName = Path.GetFileNameWithoutExtension(path);
+                if (!fileName.StartsWith("issue-", StringComparison.OrdinalIgnoreCase))
+                {
+                    return [];
+                }
+
+                var issueText = fileName["issue-".Length..];
+                return int.TryParse(issueText, out var issueNumber)
+                    ? executionRecordStore.Read(issueNumber)
+                    : [];
+            })
+            .ToArray();
+    }
+
+    private static double? AverageNullable(IEnumerable<double?> values)
+    {
+        var presentValues = values
+            .Where(value => value is not null)
+            .Select(value => value!.Value)
+            .ToArray();
+
+        return presentValues.Length == 0
+            ? null
+            : presentValues.Average();
+    }
+
+    private static double? RoundNullable(double? value) =>
+        value is null ? null : Math.Round(value.Value, 2);
+
+    private static string BuildAgentPerformanceSummary(
+        string agent,
+        double successRate,
+        double averageDuration,
+        int failureCount,
+        double averageRetryCount)
+    {
+        return $"{Humanize(agent)} success {successRate:P0}, avg duration {averageDuration:0} ms, failures {failureCount}, avg retries {averageRetryCount:0.0}.";
     }
 
     private static int StageSortKey(string stage)
