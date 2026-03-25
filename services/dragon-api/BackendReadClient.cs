@@ -9,6 +9,8 @@ public interface IBackendReadClient
     Task<BackendDashboardReadModel> GetDashboardAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<BackendIssueReadModel>> GetIdeasAsync(CancellationToken cancellationToken);
     Task<BackendIssueDetailReadModel?> GetIdeaAsync(string id, CancellationToken cancellationToken);
+    Task<BackendAgentPerformanceReadModel> GetAgentPerformanceAsync(CancellationToken cancellationToken);
+    Task<BackendAuditLogReadModel> GetAuditLogAsync(int limit, CancellationToken cancellationToken);
     Task<BackendIssueFixResponse> RequestIssueFixAsync(string id, BackendIssueFixRequest request, CancellationToken cancellationToken);
 }
 
@@ -42,6 +44,16 @@ public sealed class BackendReadHttpClient(HttpClient httpClient) : IBackendReadC
 
         var payload = await response.Content.ReadFromJsonAsync<BackendIssueDetailReadModel>(cancellationToken: cancellationToken);
         return payload ?? throw new HttpRequestException("Backend issue detail response body was empty.");
+    }
+
+    public async Task<BackendAgentPerformanceReadModel> GetAgentPerformanceAsync(CancellationToken cancellationToken)
+    {
+        return await GetRequiredAsync<BackendAgentPerformanceReadModel>("/api/read/agent-performance", cancellationToken);
+    }
+
+    public async Task<BackendAuditLogReadModel> GetAuditLogAsync(int limit, CancellationToken cancellationToken)
+    {
+        return await GetRequiredAsync<BackendAuditLogReadModel>($"/api/read/audit-log?limit={Math.Clamp(limit, 1, 500)}", cancellationToken);
     }
 
     public async Task<BackendIssueFixResponse> RequestIssueFixAsync(string id, BackendIssueFixRequest request, CancellationToken cancellationToken)

@@ -93,6 +93,40 @@ public static class DragonApiMapper
             response.Message,
             response.OperatorInput);
 
+    public static AgentPerformanceResponse MapAgentPerformance(BackendAgentPerformanceReadModel response) =>
+        new(
+            response.GeneratedAt,
+            response.Summary,
+            response.Agents.Select(agent => new AgentMetricResponse(
+                agent.Agent,
+                agent.TotalExecutions,
+                agent.SuccessCount,
+                agent.FailureCount,
+                agent.SuccessRate,
+                agent.ErrorFrequency,
+                agent.AverageDurationMilliseconds,
+                agent.AverageQualityScore,
+                agent.AverageRetryCount,
+                agent.AverageProcessorLoadPercent,
+                agent.AverageMemoryUsedPercent,
+                agent.AverageDiskUsedPercent,
+                agent.LastRecordedAt,
+                agent.Summary)).ToArray());
+
+    public static AuditLogResponse MapAuditLog(BackendAuditLogReadModel response) =>
+        new(
+            response.GeneratedAt,
+            response.Summary,
+            response.Entries.Select(entry => new AuditLogEntryResponse(
+                entry.Id,
+                entry.Actor,
+                entry.Action,
+                entry.Project,
+                entry.IssueNumber,
+                entry.Details,
+                entry.Source,
+                entry.RecordedAt)).ToArray());
+
     private static string BuildQueueSummary(BackendDashboardReadModel dashboard)
     {
         var failed = dashboard.Rollup.TryGetValue("failedIssues", out var failedIssues) ? failedIssues : 0;

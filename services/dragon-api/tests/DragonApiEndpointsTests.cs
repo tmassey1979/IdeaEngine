@@ -123,7 +123,7 @@ public sealed class DragonApiEndpointsTests
         });
 
         using var client = factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/ideas/45/fix", new IdeaFixRequest("Focus on review findings first."));
+        var response = await client.PostAsJsonAsync("/api/ideas/45/fix", new IdeaFixRequest("Focus on review findings first.", "terry"));
         var payload = await response.Content.ReadFromJsonAsync<IdeaFixResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -131,6 +131,53 @@ public sealed class DragonApiEndpointsTests
         Assert.True(payload!.Queued);
         Assert.Equal("developer", payload.Agent);
         Assert.Equal("Focus on review findings first.", payload.OperatorInput);
+    }
+
+    [Fact]
+    public async Task AgentPerformanceEndpoint_MapsBackendPayload()
+    {
+        await using var factory = new DragonApiFactory(new StubBackendReadClient
+        {
+            AgentPerformance = new BackendAgentPerformanceReadModel(
+                DateTimeOffset.UtcNow,
+                "2 agent profile(s) aggregated from 3 execution record(s).",
+                [
+                    new BackendAgentMetricReadModel("developer", 2, 1, 1, 0.5, 0.5, 3000, 0.425, 0.5, 45, 50, 57, DateTimeOffset.UtcNow, "Developer summary")
+                ])
+        });
+
+        using var client = factory.CreateClient();
+        var payload = await client.GetFromJsonAsync<AgentPerformanceResponse>("/api/agent-performance");
+
+        Assert.NotNull(payload);
+        var agent = Assert.Single(payload!.Agents);
+        Assert.Equal("developer", agent.Agent);
+        Assert.Equal(2, agent.TotalExecutions);
+        Assert.Equal(3000, agent.AverageDurationMilliseconds);
+        Assert.Equal(45, agent.AverageProcessorLoadPercent);
+    }
+
+    [Fact]
+    public async Task AuditLogEndpoint_MapsBackendPayload()
+    {
+        await using var factory = new DragonApiFactory(new StubBackendReadClient
+        {
+            AuditLog = new BackendAuditLogReadModel(
+                DateTimeOffset.UtcNow,
+                "1 audit entry returned.",
+                [
+                    new BackendAuditLogEntryReadModel("entry-1", "terry", "issue_fix_requested", "DragonIdeaEngine", 35, "Queued retry.", "status-http", DateTimeOffset.UtcNow)
+                ])
+        });
+
+        using var client = factory.CreateClient();
+        var payload = await client.GetFromJsonAsync<AuditLogResponse>("/api/audit-log?limit=1");
+
+        Assert.NotNull(payload);
+        var entry = Assert.Single(payload!.Entries);
+        Assert.Equal("terry", entry.Actor);
+        Assert.Equal("issue_fix_requested", entry.Action);
+        Assert.Equal(35, entry.IssueNumber);
     }
 
     [Fact]
@@ -175,6 +222,8 @@ public sealed class DragonApiEndpointsTests
         public BackendDashboardReadModel? Dashboard { get; init; }
         public IReadOnlyList<BackendIssueReadModel> Ideas { get; init; } = [];
         public BackendIssueDetailReadModel? Detail { get; init; }
+        public BackendAgentPerformanceReadModel? AgentPerformance { get; init; }
+        public BackendAuditLogReadModel? AuditLog { get; init; }
         public BackendIssueFixResponse? FixResponse { get; init; }
         public Exception? DashboardException { get; init; }
 
@@ -196,6 +245,16 @@ public sealed class DragonApiEndpointsTests
         public Task<BackendIssueDetailReadModel?> GetIdeaAsync(string id, CancellationToken cancellationToken)
         {
             return Task.FromResult(Detail is not null && Detail.Id == id ? Detail : null);
+        }
+
+        public Task<BackendAgentPerformanceReadModel> GetAgentPerformanceAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AgentPerformance ?? throw new InvalidOperationException("Agent performance payload was not configured."));
+        }
+
+        public Task<BackendAuditLogReadModel> GetAuditLogAsync(int limit, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AuditLog ?? throw new InvalidOperationException("Audit log payload was not configured."));
         }
 
         public Task<BackendIssueFixResponse> RequestIssueFixAsync(string id, BackendIssueFixRequest request, CancellationToken cancellationToken)

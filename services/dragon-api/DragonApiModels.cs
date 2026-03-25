@@ -62,7 +62,8 @@ public sealed record IdeaDetailResponse(
 );
 
 public sealed record IdeaFixRequest(
-    string? OperatorInput
+    string? OperatorInput,
+    string? Actor = null
 );
 
 public sealed record IdeaFixResponse(
@@ -119,4 +120,44 @@ public sealed record ActivityEntryResponse(
     string Status,
     string Summary,
     DateTimeOffset? RecordedAt
+);
+
+public sealed record AgentPerformanceResponse(
+    DateTimeOffset GeneratedAt,
+    string Summary,
+    IReadOnlyList<AgentMetricResponse> Agents
+);
+
+public sealed record AgentMetricResponse(
+    string Agent,
+    int TotalExecutions,
+    int SuccessCount,
+    int FailureCount,
+    double SuccessRate,
+    double ErrorFrequency,
+    double AverageDurationMilliseconds,
+    double AverageQualityScore,
+    double AverageRetryCount,
+    double? AverageProcessorLoadPercent,
+    double? AverageMemoryUsedPercent,
+    double? AverageDiskUsedPercent,
+    DateTimeOffset? LastRecordedAt,
+    string Summary
+);
+
+public sealed record AuditLogResponse(
+    DateTimeOffset GeneratedAt,
+    string Summary,
+    IReadOnlyList<AuditLogEntryResponse> Entries
+);
+
+public sealed record AuditLogEntryResponse(
+    string Id,
+    string Actor,
+    string Action,
+    string Project,
+    int? IssueNumber,
+    string Details,
+    string? Source,
+    DateTimeOffset RecordedAt
 );

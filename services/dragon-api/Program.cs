@@ -67,11 +67,43 @@ app.MapGet("/api/ideas/{id}", async (string id, IBackendReadClient backendReadCl
     }
 });
 
+app.MapGet("/api/agent-performance", async (IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var metrics = await backendReadClient.GetAgentPerformanceAsync(cancellationToken);
+        return Results.Ok(DragonApiMapper.MapAgentPerformance(metrics));
+    }
+    catch (HttpRequestException exception)
+    {
+        return Results.Problem(
+            title: "Agent performance data is unavailable",
+            detail: exception.Message,
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
+
+app.MapGet("/api/audit-log", async (int? limit, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var auditLog = await backendReadClient.GetAuditLogAsync(limit ?? 50, cancellationToken);
+        return Results.Ok(DragonApiMapper.MapAuditLog(auditLog));
+    }
+    catch (HttpRequestException exception)
+    {
+        return Results.Problem(
+            title: "Audit log data is unavailable",
+            detail: exception.Message,
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
+
 app.MapPost("/api/ideas/{id}/fix", async (string id, IdeaFixRequest request, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
     try
     {
-        var response = await backendReadClient.RequestIssueFixAsync(id, new BackendIssueFixRequest(request.OperatorInput), cancellationToken);
+        var response = await backendReadClient.RequestIssueFixAsync(id, new BackendIssueFixRequest(request.OperatorInput, request.Actor), cancellationToken);
         return Results.Ok(DragonApiMapper.MapIssueFix(response));
     }
     catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
