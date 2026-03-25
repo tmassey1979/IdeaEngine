@@ -17,6 +17,7 @@ public sealed class SelfBuildLoop
     private readonly QueueStore queueStore;
     private readonly WorkflowStateStore workflowStateStore;
     private readonly ExecutionRecordStore executionRecordStore;
+    private readonly AuditLogStore auditLogStore;
     private readonly LocalJobExecutor jobExecutor;
     private readonly GithubIssueService githubIssueService;
     private readonly Func<DateTimeOffset> nowProvider;
@@ -38,6 +39,7 @@ public sealed class SelfBuildLoop
         queueStore = new QueueStore(rootDirectory, queueName, this.nowProvider);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
+        auditLogStore = new AuditLogStore(rootDirectory, this.nowProvider);
         this.jobExecutor = jobExecutor ?? LocalJobExecutor.CreateDefault(
             rootDirectory,
             environmentReader ?? Environment.GetEnvironmentVariable,
@@ -570,6 +572,7 @@ public sealed class SelfBuildLoop
     public BackendIssueFixResponse RequestIssueFix(
         int issueNumber,
         string? operatorInput,
+        string? actor = null,
         string repo = "IdeaEngine",
         string project = "DragonIdeaEngine")
     {
@@ -579,8 +582,17 @@ public sealed class SelfBuildLoop
             throw new KeyNotFoundException($"Issue #{issueNumber} was not found in workflow state.");
         }
 
+        var effectiveActor = NormalizeActor(actor);
+
         if (queueStore.ReadAll().Any(job => job.Issue == issueNumber))
         {
+            auditLogStore.Append(
+                effectiveActor,
+                "issue_fix_request_rejected",
+                project,
+                issueNumber,
+                BuildAuditDetails("Issue already has queued work.", operatorInput),
+                "status-http");
             return new BackendIssueFixResponse(
                 issueNumber.ToString(),
                 workflow.IssueTitle,
@@ -615,7 +627,7 @@ public sealed class SelfBuildLoop
         var job = SelfBuildJobFactory.CreateRetry(issue, agent, repo, project);
         var metadata = new Dictionary<string, string>(job.Metadata, StringComparer.Ordinal)
         {
-            ["requestedBy"] = "operator-ui",
+            ["requestedBy"] = effectiveActor,
             ["operatorFixRequestedAt"] = nowProvider().ToString("O")
         };
 
@@ -628,6 +640,18 @@ public sealed class SelfBuildLoop
         {
             Metadata = metadata
         });
+
+        auditLogStore.Append(
+            effectiveActor,
+            "issue_fix_requested",
+            project,
+            issueNumber,
+            BuildAuditDetails(
+                string.IsNullOrWhiteSpace(normalizedOperatorInput)
+                    ? $"Queued {agent} to retry {job.Action}."
+                    : $"Queued {agent} to retry {job.Action} with operator guidance.",
+                normalizedOperatorInput),
+            "status-http");
 
         return new BackendIssueFixResponse(
             issueNumber.ToString(),
@@ -2356,8 +2380,19 @@ public sealed class SelfBuildLoop
             : $"{prefix} Guidance: {operatorInput}";
     }
 
+    private static string BuildAuditDetails(string summary, string? operatorInput)
+    {
+        var normalizedInput = NormalizeOperatorInput(operatorInput);
+        return string.IsNullOrWhiteSpace(normalizedInput)
+            ? summary
+            : $"{summary} Guidance: {normalizedInput}";
+    }
+
     private static string? NormalizeOperatorInput(string? operatorInput) =>
         string.IsNullOrWhiteSpace(operatorInput) ? null : operatorInput.Trim();
+
+    private static string NormalizeActor(string? actor) =>
+        string.IsNullOrWhiteSpace(actor) ? "operator-ui" : actor.Trim();
 
     private static string? RecommendPlannedOperationsAgent(IReadOnlyList<DeveloperOperation> operations)
     {

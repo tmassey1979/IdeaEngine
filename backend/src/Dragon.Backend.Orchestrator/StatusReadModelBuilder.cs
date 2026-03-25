@@ -6,11 +6,13 @@ public sealed class StatusReadModelBuilder
 {
     private readonly WorkflowStateStore workflowStateStore;
     private readonly ExecutionRecordStore executionRecordStore;
+    private readonly AuditLogStore auditLogStore;
 
     public StatusReadModelBuilder(string rootDirectory)
     {
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
+        auditLogStore = new AuditLogStore(rootDirectory);
     }
 
     public BackendDashboardReadModel BuildDashboard(StatusSnapshot snapshot)
@@ -189,6 +191,29 @@ public sealed class StatusReadModelBuilder
             snapshot.GeneratedAt,
             summary,
             agentMetrics);
+    }
+
+    public BackendAuditLogReadModel BuildAuditLog(StatusSnapshot snapshot, int limit = 50)
+    {
+        var entries = auditLogStore.ReadAll()
+            .OrderByDescending(entry => entry.RecordedAt)
+            .Take(Math.Max(1, limit))
+            .Select(entry => new BackendAuditLogEntryReadModel(
+                entry.Id,
+                entry.Actor,
+                entry.Action,
+                entry.Project,
+                entry.IssueNumber,
+                entry.Details,
+                entry.Source,
+                entry.RecordedAt))
+            .ToArray();
+
+        var summary = entries.Length == 0
+            ? "No operator audit entries are available yet."
+            : $"{entries.Length} audit entr{(entries.Length == 1 ? "y" : "ies")} returned.";
+
+        return new BackendAuditLogReadModel(snapshot.GeneratedAt, summary, entries);
     }
 
     private static IReadOnlyList<string> BuildBlockers(IssueStatusSnapshot issue, IssueWorkflowState? workflow)

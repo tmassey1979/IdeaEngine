@@ -225,7 +225,8 @@ public sealed record BackendIssueDetailReadModel(
 );
 
 public sealed record BackendIssueFixRequest(
-    string? OperatorInput
+    string? OperatorInput,
+    string? Actor = null
 );
 
 public sealed record BackendIssueFixResponse(
@@ -305,4 +306,21 @@ public sealed record BackendAgentMetricReadModel(
     double? AverageDiskUsedPercent,
     DateTimeOffset? LastRecordedAt,
     string Summary
+);
+
+public sealed record BackendAuditLogReadModel(
+    DateTimeOffset GeneratedAt,
+    string Summary,
+    IReadOnlyList<BackendAuditLogEntryReadModel> Entries
+);
+
+public sealed record BackendAuditLogEntryReadModel(
+    string Id,
+    string Actor,
+    string Action,
+    string Project,
+    int? IssueNumber,
+    string Details,
+    string? Source,
+    DateTimeOffset RecordedAt
 );

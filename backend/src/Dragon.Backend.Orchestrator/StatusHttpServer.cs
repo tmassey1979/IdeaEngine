@@ -111,7 +111,10 @@ public sealed class StatusHttpServer
 
                 try
                 {
-                    var response = loop.RequestIssueFix(fixIssueNumber, payload.OperatorInput);
+                    var response = loop.RequestIssueFix(
+                        fixIssueNumber,
+                        payload.OperatorInput,
+                        ResolveActor(context.Request, payload.Actor));
                     context.Response.StatusCode = (int)HttpStatusCode.OK;
                     await WriteJsonAsync(context.Response, response, cancellationToken);
                     responseClosed = true;
@@ -175,6 +178,15 @@ public sealed class StatusHttpServer
                 var snapshot = ReadSnapshot();
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, readModelBuilder.BuildAgentPerformance(snapshot), cancellationToken);
+                responseClosed = true;
+                return;
+            }
+
+            if (string.Equals(path, "/api/read/audit-log", StringComparison.Ordinal))
+            {
+                var snapshot = ReadSnapshot();
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, readModelBuilder.BuildAuditLog(snapshot, ReadLimit(context.Request)), cancellationToken);
                 responseClosed = true;
                 return;
             }
@@ -374,6 +386,23 @@ public sealed class StatusHttpServer
         }
 
         return JsonSerializer.Deserialize<TPayload>(content, SerializerOptions);
+    }
+
+    private static int ReadLimit(HttpListenerRequest request)
+    {
+        var rawLimit = request.QueryString["limit"];
+        return int.TryParse(rawLimit, out var limit) ? Math.Clamp(limit, 1, 500) : 50;
+    }
+
+    private static string? ResolveActor(HttpListenerRequest request, string? payloadActor)
+    {
+        if (!string.IsNullOrWhiteSpace(payloadActor))
+        {
+            return payloadActor.Trim();
+        }
+
+        var headerActor = request.Headers["X-Dragon-Actor"];
+        return string.IsNullOrWhiteSpace(headerActor) ? null : headerActor.Trim();
     }
 
     private static async Task WriteJsonAsync(HttpListenerResponse response, object payload, CancellationToken cancellationToken)

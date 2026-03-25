@@ -3858,6 +3858,35 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public async Task StatusHttpServer_ServesAuditLogReadEndpoint()
+    {
+        var root = CreateTempRoot();
+        var auditTimes = new Queue<DateTimeOffset>([
+            new DateTimeOffset(2026, 3, 25, 2, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 3, 25, 2, 1, 0, TimeSpan.Zero)
+        ]);
+        var auditStore = new AuditLogStore(root, () => auditTimes.Dequeue());
+        auditStore.Append("terry", "issue_fix_requested", "DragonIdeaEngine", 35, "Queued developer retry. Guidance: rebuild implementation first.", "status-http");
+        auditStore.Append("scheduler", "issue_fix_request_rejected", "DragonIdeaEngine", 35, "Issue already has queued work.", "status-http");
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var payload = await client.GetFromJsonAsync<BackendAuditLogReadModel>($"{prefix}api/read/audit-log?limit=1");
+        await serveTask;
+
+        Assert.NotNull(payload);
+        var entry = Assert.Single(payload!.Entries);
+        Assert.Equal("scheduler", entry.Actor);
+        Assert.Equal("issue_fix_request_rejected", entry.Action);
+        Assert.Equal("DragonIdeaEngine", entry.Project);
+        Assert.Equal(35, entry.IssueNumber);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_ServesWorkflowBackedIssueDetailEndpoint()
     {
         var root = CreateTempRoot();
@@ -3925,7 +3954,9 @@ public sealed class PlannerTests
         var serveTask = server.ServeOnceAsync(prefix);
 
         using var client = new HttpClient();
-        var response = await client.PostAsJsonAsync($"{prefix}api/control/issues/35/fix", new BackendIssueFixRequest("Rebuild this as implementation work first."));
+        var response = await client.PostAsJsonAsync(
+            $"{prefix}api/control/issues/35/fix",
+            new BackendIssueFixRequest("Rebuild this as implementation work first.", "terry"));
         var payload = await response.Content.ReadFromJsonAsync<BackendIssueFixResponse>();
         await serveTask;
 
@@ -3939,12 +3970,19 @@ public sealed class PlannerTests
         var queued = Assert.Single(loop.ReadQueue());
         Assert.Equal(35, queued.Issue);
         Assert.Equal("implement_issue", queued.Action);
-        Assert.Equal("operator-ui", queued.Metadata["requestedBy"]);
+        Assert.Equal("terry", queued.Metadata["requestedBy"]);
         Assert.Equal("Rebuild this as implementation work first.", queued.Metadata["operatorFixNotes"]);
 
         var workflow = store.ReadAll()[35];
         Assert.Equal("in_progress", workflow.OverallStatus);
         Assert.Contains("Operator requested a", workflow.Note, StringComparison.Ordinal);
+
+        var auditEntry = Assert.Single(new AuditLogStore(root).ReadAll());
+        Assert.Equal("terry", auditEntry.Actor);
+        Assert.Equal("issue_fix_requested", auditEntry.Action);
+        Assert.Equal("DragonIdeaEngine", auditEntry.Project);
+        Assert.Equal(35, auditEntry.IssueNumber);
+        Assert.Contains("Rebuild this as implementation work first.", auditEntry.Details, StringComparison.Ordinal);
     }
 
     [Fact]
