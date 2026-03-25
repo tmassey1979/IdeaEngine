@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import App from "./App";
@@ -149,6 +149,7 @@ describe("React dashboard", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.useRealTimers();
     window.history.replaceState(null, "", "/");
   });
 
@@ -177,6 +178,55 @@ describe("React dashboard", () => {
     render(<App />);
 
     await screen.findByText(/Ideas already in active delivery/i);
+  });
+
+  test("refreshes dashboard data every 10 seconds", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url.endsWith("/api/dashboard")) {
+        return Promise.resolve(new Response(JSON.stringify(dashboardPayload), { status: 200 }));
+      }
+
+      if (url.endsWith("/api/ideas")) {
+        return Promise.resolve(new Response(JSON.stringify(ideasPayload), { status: 200 }));
+      }
+
+      if (url.endsWith("/api/ideas/1")) {
+        return Promise.resolve(new Response(JSON.stringify(detailPayload), { status: 200 }));
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation(() => {
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    });
+    vi.spyOn(globalThis, "clearInterval").mockImplementation(() => {});
+
+    render(<App />);
+
+    await screen.findByText(/Ideas come in, route into the right build lane/i);
+
+    const countDashboardCalls = () => fetchMock.mock.calls.filter(([request]) => {
+      const url = typeof request === "string" ? request : request instanceof URL ? request.toString() : request.url;
+      return url.endsWith("/api/dashboard");
+    }).length;
+
+    const initialDashboardCalls = countDashboardCalls();
+    const refreshCall = setIntervalSpy.mock.calls.find(([, timeout]) => timeout === 10_000);
+
+    expect(refreshCall).toBeDefined();
+    expect(typeof refreshCall?.[0]).toBe("function");
+
+    await act(async () => {
+      (refreshCall![0] as () => void)();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(countDashboardCalls()).toBeGreaterThan(initialDashboardCalls);
   });
 
   test("opens the intervention workspace from the loop health card", async () => {

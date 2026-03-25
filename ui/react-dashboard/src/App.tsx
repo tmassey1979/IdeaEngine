@@ -80,6 +80,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const intervalId = globalThis.setInterval(() => {
+      setRefreshToken((value) => value + 1);
+    }, 10_000);
+
+    return () => {
+      globalThis.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     setDashboardState(createResourceState());
 
