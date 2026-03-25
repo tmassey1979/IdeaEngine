@@ -70,8 +70,9 @@ public sealed class SelfBuildLoop
         string? workerActivity = null)
     {
         var now = nowProvider();
+        var hostTelemetry = hostTelemetryProvider(RootDirectory);
         var queuedJobs = queueStore.ReadAll();
-        var readyLeadJob = queueStore.Peek();
+        var readyLeadJob = queueStore.Peek(hostTelemetry);
         var leadJob = readyLeadJob ?? queueStore.PeekAny();
         var workflows = workflowStateStore.ReadAll();
         var issues = workflows.Values
@@ -151,7 +152,6 @@ public sealed class SelfBuildLoop
         var effectiveWorkerActivity = string.IsNullOrWhiteSpace(workerActivity)
             ? BuildDefaultWorkerActivity(workerState, interventionTarget, leadJobSnapshot, latestGithubReplay, pendingGithubSyncRetryOverdueMinutes)
             : workerActivity;
-        var hostTelemetry = hostTelemetryProvider(RootDirectory);
         var services = BuildServiceHealthSnapshots(
             health,
             effectiveWorkerActivity,
@@ -692,7 +692,8 @@ public sealed class SelfBuildLoop
             return new CycleResult("waiting", null, null, []);
         }
 
-        var readyLeadJob = queueStore.Peek();
+        var hostTelemetry = hostTelemetryProvider(RootDirectory);
+        var readyLeadJob = queueStore.Peek(hostTelemetry);
         if (readyLeadJob is not null)
         {
             var prioritizedReplay = TryPrioritizeReadyGithubReplayAheadOfOrdinaryWork(readyLeadJob, githubOwner, repo, syncValidatedWorkflows);
@@ -702,7 +703,7 @@ public sealed class SelfBuildLoop
             }
         }
 
-        var job = queueStore.Dequeue()!;
+        var job = queueStore.Dequeue(hostTelemetry)!;
         var execution = jobExecutor.Execute(RootDirectory, job);
         var workflow = workflowStateStore.Update(job, execution);
         var followUps = PublishFollowUps(job, execution, competingImplementationArtifacts);

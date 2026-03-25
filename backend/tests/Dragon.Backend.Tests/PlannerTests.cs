@@ -1580,6 +1580,150 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void QueueStore_DefersHeavyImplementationProfilesOnConstrainedHosts()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            32,
+            new SelfBuildJobPayload(".NET Slice", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "dotnet/api"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            33,
+            new SelfBuildJobPayload("Backend Stack", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine"
+            }));
+
+        var next = queue.Peek(new HostTelemetrySnapshot(
+            "available",
+            ProcessorCount: 4,
+            ProcessorLoadPercent: 68,
+            MemoryTotalMb: 4096,
+            MemoryAvailableMb: 896,
+            MemoryUsedPercent: 78,
+            DiskTotalGb: 128,
+            DiskFreeGb: 24,
+            DiskUsedPercent: 81,
+            Summary: "constrained laptop"));
+
+        Assert.NotNull(next);
+        Assert.Equal(32, next!.Issue);
+        Assert.Equal("dotnet/api", next.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
+    public void QueueStore_KeepsBackendStackPriorityOnHigherCapacityHosts()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            34,
+            new SelfBuildJobPayload(".NET Slice", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "dotnet/api"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            35,
+            new SelfBuildJobPayload("Backend Stack", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine"
+            }));
+
+        var next = queue.Peek(new HostTelemetrySnapshot(
+            "available",
+            ProcessorCount: 12,
+            ProcessorLoadPercent: 68,
+            MemoryTotalMb: 32768,
+            MemoryAvailableMb: 7168,
+            MemoryUsedPercent: 78,
+            DiskTotalGb: 1024,
+            DiskFreeGb: 220,
+            DiskUsedPercent: 79,
+            Summary: "higher capacity workstation"));
+
+        Assert.NotNull(next);
+        Assert.Equal(35, next!.Issue);
+        Assert.Equal("backend-stack/pi-autonomous-engine", next.Metadata["implementationProfile"]);
+    }
+
+    [Fact]
+    public void QueueStore_PreservesHighPriorityValidationAheadOfImplementationUnderResourcePressure()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "refactor",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            36,
+            new SelfBuildJobPayload("Backend Stack", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "test",
+            "test_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            37,
+            new SelfBuildJobPayload("Validation", ["story"], null, null, null),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["workType"] = "story",
+                ["targetArtifact"] = "backend/tests/Dragon.Backend.Tests/PlannerTests.cs",
+                ["targetOutcome"] = "Validate the scaffold.",
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine",
+                ["validationMode"] = "scaffold-validation"
+            }));
+
+        var next = queue.Peek(new HostTelemetrySnapshot(
+            "available",
+            ProcessorCount: 4,
+            ProcessorLoadPercent: 91,
+            MemoryTotalMb: 4096,
+            MemoryAvailableMb: 320,
+            MemoryUsedPercent: 92,
+            DiskTotalGb: 128,
+            DiskFreeGb: 10,
+            DiskUsedPercent: 92,
+            Summary: "severe pressure"));
+
+        Assert.NotNull(next);
+        Assert.Equal(37, next!.Issue);
+        Assert.Equal("test_issue", next.Action);
+    }
+
+    [Fact]
     public void QueueStore_PrioritizesScaffoldValidationAheadOfGenericValidationWork()
     {
         var root = CreateTempRoot();
@@ -3130,6 +3274,71 @@ public sealed class PlannerTests
         Assert.Equal(4, rootElement.GetProperty("hostTelemetry").GetProperty("processorCount").GetInt32());
         Assert.Equal(4, rootElement.GetProperty("services").GetArrayLength());
         Assert.Equal("orchestrator", rootElement.GetProperty("services")[0].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public void CycleOnce_UsesTelemetryAwareQueueSelectionForExecution()
+    {
+        var root = CreateTempRoot();
+        var queue = new QueueStore(root);
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            612,
+            new SelfBuildJobPayload(
+                "Medium Slice",
+                ["story"],
+                null,
+                null,
+                [
+                    new DeveloperOperation("write_file", "docs/generated/medium-slice.md", "medium")
+                ]),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["implementationProfile"] = "dotnet/api"
+            }));
+        queue.Enqueue(new SelfBuildJob(
+            "developer",
+            "implement_issue",
+            "IdeaEngine",
+            "DragonIdeaEngine",
+            613,
+            new SelfBuildJobPayload(
+                "Heavy Slice",
+                ["story"],
+                null,
+                null,
+                [
+                    new DeveloperOperation("write_file", "docs/generated/heavy-slice.md", "heavy")
+                ]),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["implementationProfile"] = "backend-stack/pi-autonomous-engine"
+            }));
+
+        var loop = new SelfBuildLoop(
+            root,
+            hostTelemetryProvider: _ => new HostTelemetrySnapshot(
+                "available",
+                ProcessorCount: 4,
+                ProcessorLoadPercent: 68,
+                MemoryTotalMb: 4096,
+                MemoryAvailableMb: 896,
+                MemoryUsedPercent: 78,
+                DiskTotalGb: 128,
+                DiskFreeGb: 24,
+                DiskUsedPercent: 81,
+                Summary: "constrained laptop"));
+
+        var result = loop.CycleOnce([]);
+
+        Assert.Equal("consume", result.Mode);
+        Assert.NotNull(result.Job);
+        Assert.Equal(612, result.Job!.Issue);
+        Assert.True(File.Exists(Path.Combine(root, "docs", "generated", "medium-slice.md")));
+        Assert.False(File.Exists(Path.Combine(root, "docs", "generated", "heavy-slice.md")));
     }
 
     [Fact]

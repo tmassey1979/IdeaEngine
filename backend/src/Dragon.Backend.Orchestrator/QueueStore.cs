@@ -44,7 +44,7 @@ public sealed class QueueStore
             .ToArray();
     }
 
-    public SelfBuildJob? Dequeue()
+    public SelfBuildJob? Dequeue(HostTelemetrySnapshot? hostTelemetry = null)
     {
         var jobs = ReadAll().ToList();
         if (jobs.Count == 0)
@@ -52,7 +52,7 @@ public sealed class QueueStore
             return null;
         }
 
-        var selectedIndex = GetNextReadyIndex(jobs, nowProvider());
+        var selectedIndex = GetNextReadyIndex(jobs, nowProvider(), hostTelemetry);
         if (selectedIndex < 0)
         {
             return null;
@@ -77,7 +77,7 @@ public sealed class QueueStore
         return next;
     }
 
-    public SelfBuildJob? Peek()
+    public SelfBuildJob? Peek(HostTelemetrySnapshot? hostTelemetry = null)
     {
         var jobs = ReadAll().ToList();
         if (jobs.Count == 0)
@@ -85,7 +85,7 @@ public sealed class QueueStore
             return null;
         }
 
-        var selectedIndex = GetNextReadyIndex(jobs, nowProvider());
+        var selectedIndex = GetNextReadyIndex(jobs, nowProvider(), hostTelemetry);
         return selectedIndex < 0 ? null : jobs[selectedIndex];
     }
 
@@ -118,7 +118,7 @@ public sealed class QueueStore
             : nextRetryNotBefore.Value - now;
     }
 
-    private static int GetNextReadyIndex(IReadOnlyList<SelfBuildJob> jobs, DateTimeOffset now)
+    private static int GetNextReadyIndex(IReadOnlyList<SelfBuildJob> jobs, DateTimeOffset now, HostTelemetrySnapshot? hostTelemetry = null)
     {
         var readyJobs = jobs
             .Select((job, index) => new { job, index })
@@ -132,6 +132,7 @@ public sealed class QueueStore
 
         return readyJobs
             .OrderBy(item => GetQueuePriorityRank(item.job))
+            .ThenBy(item => GetResourceRank(item.job, hostTelemetry))
             .ThenBy(item => GetTargetingRank(item.job))
             .ThenBy(item => GetRoleAlignmentRank(item.job))
             .ThenBy(item => GetActionRank(item.job))
@@ -275,6 +276,116 @@ public sealed class QueueStore
         return 3;
     }
 
+    private static int GetResourceRank(SelfBuildJob job, HostTelemetrySnapshot? hostTelemetry)
+    {
+        var pressure = GetResourcePressureLevel(hostTelemetry);
+        if (pressure == ResourcePressureLevel.Normal || IsResourceCriticalWork(job))
+        {
+            return 0;
+        }
+
+        var workload = GetJobResourceWeight(job);
+        if (workload == JobResourceWeight.Light)
+        {
+            return 0;
+        }
+
+        return pressure switch
+        {
+            ResourcePressureLevel.Constrained => workload == JobResourceWeight.Heavy ? 1 : 0,
+            ResourcePressureLevel.Severe => workload switch
+            {
+                JobResourceWeight.Medium => 1,
+                JobResourceWeight.Heavy => 2,
+                _ => 0
+            },
+            _ => 0
+        };
+    }
+
+    private static ResourcePressureLevel GetResourcePressureLevel(HostTelemetrySnapshot? hostTelemetry)
+    {
+        if (hostTelemetry is null)
+        {
+            return ResourcePressureLevel.Normal;
+        }
+
+        var limitedHost =
+            (hostTelemetry.ProcessorCount is not null && hostTelemetry.ProcessorCount.Value <= 4) ||
+            (hostTelemetry.MemoryTotalMb is not null && hostTelemetry.MemoryTotalMb.Value <= 8192);
+
+        var constrainedCpuThreshold = limitedHost ? 60d : 70d;
+        var severeCpuThreshold = limitedHost ? 75d : 85d;
+        var constrainedMemoryThreshold = limitedHost ? 70d : 80d;
+        var severeMemoryThreshold = limitedHost ? 80d : 90d;
+        var constrainedDiskThreshold = limitedHost ? 75d : 85d;
+        var severeDiskThreshold = limitedHost ? 85d : 92d;
+
+        if (IsThresholdExceeded(hostTelemetry.ProcessorLoadPercent, severeCpuThreshold) ||
+            IsThresholdExceeded(hostTelemetry.MemoryUsedPercent, severeMemoryThreshold) ||
+            IsThresholdExceeded(hostTelemetry.DiskUsedPercent, severeDiskThreshold))
+        {
+            return ResourcePressureLevel.Severe;
+        }
+
+        if (IsThresholdExceeded(hostTelemetry.ProcessorLoadPercent, constrainedCpuThreshold) ||
+            IsThresholdExceeded(hostTelemetry.MemoryUsedPercent, constrainedMemoryThreshold) ||
+            IsThresholdExceeded(hostTelemetry.DiskUsedPercent, constrainedDiskThreshold))
+        {
+            return ResourcePressureLevel.Constrained;
+        }
+
+        return ResourcePressureLevel.Normal;
+    }
+
+    private static bool IsThresholdExceeded(double? value, double threshold) =>
+        value is not null && value.Value >= threshold;
+
+    private static bool IsResourceCriticalWork(SelfBuildJob job)
+    {
+        if (string.Equals(job.Agent, "review", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Agent, "test", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(job.Metadata.GetValueOrDefault("requestedBlocking"), "true", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Metadata.GetValueOrDefault("requestedPriority"), "high", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static JobResourceWeight GetJobResourceWeight(SelfBuildJob job)
+    {
+        if (string.Equals(job.Action, "summarize_issue", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Metadata.GetValueOrDefault("workType"), "operator-escalation", StringComparison.OrdinalIgnoreCase))
+        {
+            return JobResourceWeight.Light;
+        }
+
+        if (string.Equals(job.Action, "review_issue", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(job.Action, "test_issue", StringComparison.OrdinalIgnoreCase))
+        {
+            return JobResourceWeight.Light;
+        }
+
+        var implementationProfile = job.Metadata.GetValueOrDefault("implementationProfile");
+        if (!string.IsNullOrWhiteSpace(implementationProfile))
+        {
+            if (implementationProfile.StartsWith("backend-stack/", StringComparison.OrdinalIgnoreCase) ||
+                implementationProfile.StartsWith("pipeline/", StringComparison.OrdinalIgnoreCase))
+            {
+                return JobResourceWeight.Heavy;
+            }
+
+            if (implementationProfile.StartsWith("dotnet/", StringComparison.OrdinalIgnoreCase) ||
+                implementationProfile.StartsWith("ui/", StringComparison.OrdinalIgnoreCase))
+            {
+                return JobResourceWeight.Medium;
+            }
+        }
+
+        return IsDocumentationArtifact(job) ? JobResourceWeight.Light : JobResourceWeight.Medium;
+    }
+
     private static int GetValidationModeRank(SelfBuildJob job)
     {
         if (!string.Equals(job.Action, "review_issue", StringComparison.OrdinalIgnoreCase) &&
@@ -371,5 +482,19 @@ public sealed class QueueStore
 
         Directory.CreateDirectory(Path.GetDirectoryName(QueuePath)!);
         File.WriteAllLines(QueuePath, jobs.Select(job => JsonSerializer.Serialize(job, serializerOptions)));
+    }
+
+    private enum ResourcePressureLevel
+    {
+        Normal = 0,
+        Constrained = 1,
+        Severe = 2
+    }
+
+    private enum JobResourceWeight
+    {
+        Light = 0,
+        Medium = 1,
+        Heavy = 2
     }
 }
