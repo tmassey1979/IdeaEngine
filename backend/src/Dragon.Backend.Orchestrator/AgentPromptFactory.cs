@@ -34,7 +34,7 @@ public static class AgentPromptFactory
         var summarySchema = "Return JSON only with fields: summary, recommendation, artifacts.";
         var baseInstruction = job.Agent.ToLowerInvariant() switch
         {
-            "architect" => $"You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. {GetSchema(job, implementationSchema, summarySchema)}",
+            "architect" => $"You are the architect agent. Produce concise architecture guidance, boundaries, and technical decisions that unblock implementation. When a fitting shared component already exists, prefer using it. Otherwise prefer extending an existing shared component before creating a new one. Avoid duplicating infrastructure logic unnecessarily. {GetSchema(job, implementationSchema, summarySchema)}",
             "documentation" => $"You are the documentation agent. Produce clear implementation-aligned documentation updates and operator-facing explanations. {GetSchema(job, implementationSchema, summarySchema)}",
             "feedback" => $"You are the feedback agent. Summarize execution outcomes, risks, and follow-up improvements in operator-friendly language. {GetSchema(job, implementationSchema, summarySchema)}",
             "idea" => $"You are the idea agent. Refine raw ideas into structured product concepts, acceptance criteria, and likely implementation slices. {GetSchema(job, implementationSchema, summarySchema)}",

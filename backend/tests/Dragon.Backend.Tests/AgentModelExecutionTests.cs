@@ -26,6 +26,9 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("implement_issue", request.Purpose);
         Assert.Equal("gpt-5", request.Model);
         Assert.Contains("architect agent", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("prefer using it", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("extending an existing shared component before creating a new one", request.Instructions!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Avoid duplicating infrastructure logic unnecessarily", request.Instructions!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Return JSON only", request.Instructions!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("operations", request.Instructions!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("followUps", request.Instructions!, StringComparison.OrdinalIgnoreCase);
