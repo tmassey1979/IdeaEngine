@@ -127,6 +127,35 @@ public static class DragonApiMapper
                 entry.Source,
                 entry.RecordedAt)).ToArray());
 
+    public static ContinuousMonitoringResponse MapContinuousMonitoring(BackendContinuousMonitoringReadModel response) =>
+        new(
+            response.GeneratedAt,
+            response.Summary,
+            response.Findings.Select(finding => new ContinuousMonitoringFindingResponse(
+                finding.Id,
+                finding.Category,
+                finding.Severity,
+                finding.Status,
+                finding.Project,
+                finding.IssueNumber,
+                finding.Summary,
+                finding.Recommendation,
+                finding.TriggerAutomatedUpdate,
+                finding.RecordedAt,
+                finding.LastObservedAt)).ToArray());
+
+    public static MonitoringFindingUpsertResponse MapMonitoringFindingUpsert(BackendMonitoringFindingUpsertResponse response) =>
+        new(
+            response.Id,
+            response.Category,
+            response.Severity,
+            response.Status,
+            response.Project,
+            response.IssueNumber,
+            response.TriggerAutomatedUpdate,
+            response.AutomatedRemediationQueued,
+            response.Message);
+
     private static string BuildQueueSummary(BackendDashboardReadModel dashboard)
     {
         var failed = dashboard.Rollup.TryGetValue("failedIssues", out var failedIssues) ? failedIssues : 0;

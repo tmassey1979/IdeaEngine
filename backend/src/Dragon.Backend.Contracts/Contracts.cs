@@ -324,3 +324,46 @@ public sealed record BackendAuditLogEntryReadModel(
     string? Source,
     DateTimeOffset RecordedAt
 );
+
+public sealed record BackendContinuousMonitoringReadModel(
+    DateTimeOffset GeneratedAt,
+    string Summary,
+    IReadOnlyList<BackendContinuousMonitoringFindingReadModel> Findings
+);
+
+public sealed record BackendContinuousMonitoringFindingReadModel(
+    string Id,
+    string Category,
+    string Severity,
+    string Status,
+    string Project,
+    int? IssueNumber,
+    string Summary,
+    string Recommendation,
+    bool TriggerAutomatedUpdate,
+    DateTimeOffset RecordedAt,
+    DateTimeOffset LastObservedAt
+);
+
+public sealed record BackendMonitoringFindingUpsertRequest(
+    string Category,
+    string Severity,
+    string Status,
+    string Project,
+    int? IssueNumber,
+    string Summary,
+    string Recommendation,
+    bool TriggerAutomatedUpdate = false
+);
+
+public sealed record BackendMonitoringFindingUpsertResponse(
+    string Id,
+    string Category,
+    string Severity,
+    string Status,
+    string Project,
+    int? IssueNumber,
+    bool TriggerAutomatedUpdate,
+    bool AutomatedRemediationQueued,
+    string Message
+);

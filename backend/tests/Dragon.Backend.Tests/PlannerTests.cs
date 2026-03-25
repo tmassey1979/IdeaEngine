@@ -3887,6 +3887,78 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public async Task StatusHttpServer_ServesContinuousMonitoringReadEndpoint()
+    {
+        var root = CreateTempRoot();
+        var monitoringTimes = new Queue<DateTimeOffset>([
+            new DateTimeOffset(2026, 3, 25, 3, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 3, 25, 3, 5, 0, TimeSpan.Zero)
+        ]);
+        var store = new MonitoringFindingStore(root, () => monitoringTimes.Dequeue());
+        store.Upsert("new_vulnerability_discovery", "high", "active", "DragonIdeaEngine", 45, "New CVE affects the API gateway.", "Upgrade the impacted package.", true);
+        store.Upsert("technology_deprecations", "medium", "active", "DragonIdeaEngine", null, "A dependency is entering deprecation.", "Plan an upgrade window.", false);
+
+        var loop = new SelfBuildLoop(root);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var payload = await client.GetFromJsonAsync<BackendContinuousMonitoringReadModel>($"{prefix}api/read/continuous-monitoring?limit=1");
+        await serveTask;
+
+        Assert.NotNull(payload);
+        var finding = Assert.Single(payload!.Findings);
+        Assert.Equal("technology_deprecations", finding.Category);
+        Assert.Equal("DragonIdeaEngine", finding.Project);
+        Assert.Null(finding.IssueNumber);
+    }
+
+    [Fact]
+    public async Task StatusHttpServer_RecordsContinuousMonitoringFindingAndQueuesAutomatedRemediation()
+    {
+        var root = CreateTempRoot();
+        var workflowStore = new WorkflowStateStore(root);
+        var now = new DateTimeOffset(2026, 3, 25, 4, 0, 0, TimeSpan.Zero);
+        workflowStore.Update(52, "[Story] API Gateway", "review", new JobExecutionResult("job-review", "review", "failed", "review blocked", now));
+        workflowStore.OverrideOverallStatus(52, "quarantined", "Awaiting monitoring-driven remediation.");
+
+        var loop = new SelfBuildLoop(root, nowProvider: () => now);
+        var server = new StatusHttpServer(loop);
+        var prefix = CreateLocalHttpPrefix();
+        var serveTask = server.ServeOnceAsync(prefix);
+
+        using var client = new HttpClient();
+        var response = await client.PostAsJsonAsync(
+            $"{prefix}api/control/monitoring/findings",
+            new BackendMonitoringFindingUpsertRequest(
+                "new_vulnerability_discovery",
+                "critical",
+                "active",
+                "DragonIdeaEngine",
+                52,
+                "A new vulnerability affects the API gateway dependency.",
+                "Upgrade the vulnerable package and rerun validation.",
+                true));
+        var payload = await response.Content.ReadFromJsonAsync<BackendMonitoringFindingUpsertResponse>();
+        await serveTask;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.True(payload!.TriggerAutomatedUpdate);
+        Assert.True(payload.AutomatedRemediationQueued);
+
+        var queued = Assert.Single(loop.ReadQueue());
+        Assert.Equal(52, queued.Issue);
+        Assert.Equal("continuous-monitor", queued.Metadata["requestedBy"]);
+        Assert.Contains("A new vulnerability affects the API gateway dependency.", queued.Metadata["operatorFixNotes"], StringComparison.Ordinal);
+
+        var finding = Assert.Single(new MonitoringFindingStore(root).ReadAll());
+        Assert.Equal("new_vulnerability_discovery", finding.Category);
+        Assert.True(finding.TriggerAutomatedUpdate);
+    }
+
+    [Fact]
     public async Task StatusHttpServer_ServesWorkflowBackedIssueDetailEndpoint()
     {
         var root = CreateTempRoot();

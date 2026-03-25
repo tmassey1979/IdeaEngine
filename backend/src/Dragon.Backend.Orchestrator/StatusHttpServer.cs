@@ -19,6 +19,7 @@ public sealed class StatusHttpServer
     private readonly WorkflowStateStore workflowStateStore;
     private readonly QueueStore queueStore;
     private readonly ExecutionRecordStore executionRecordStore;
+    private readonly MonitoringFindingStore monitoringFindingStore;
 
     public StatusHttpServer(SelfBuildLoop loop, string? snapshotPath = null)
     {
@@ -28,6 +29,7 @@ public sealed class StatusHttpServer
         workflowStateStore = new WorkflowStateStore(loop.RootDirectory);
         queueStore = new QueueStore(loop.RootDirectory);
         executionRecordStore = new ExecutionRecordStore(loop.RootDirectory);
+        monitoringFindingStore = new MonitoringFindingStore(loop.RootDirectory);
     }
 
     public async Task ServeOnceAsync(string prefix, CancellationToken cancellationToken = default)
@@ -129,6 +131,59 @@ public sealed class StatusHttpServer
                 return;
             }
 
+            if (string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(path, "/api/control/monitoring/findings", StringComparison.Ordinal))
+            {
+                var payload = await ReadJsonAsync<BackendMonitoringFindingUpsertRequest>(context.Request, cancellationToken);
+                if (payload is null)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    await WriteTextAsync(context.Response, "Monitoring finding payload is required.", "text/plain", cancellationToken);
+                    responseClosed = true;
+                    return;
+                }
+
+                var finding = monitoringFindingStore.Upsert(
+                    payload.Category,
+                    payload.Severity,
+                    payload.Status,
+                    payload.Project,
+                    payload.IssueNumber,
+                    payload.Summary,
+                    payload.Recommendation,
+                    payload.TriggerAutomatedUpdate);
+
+                var automatedRemediationQueued = false;
+                var message = $"Recorded monitoring finding '{finding.Category}'.";
+                if (payload.TriggerAutomatedUpdate && payload.IssueNumber is not null &&
+                    !string.Equals(payload.Status, "resolved", StringComparison.OrdinalIgnoreCase))
+                {
+                    var fixResponse = loop.RequestIssueFix(
+                        payload.IssueNumber.Value,
+                        $"Continuous monitoring finding: {payload.Summary}. Recommendation: {payload.Recommendation}",
+                        "continuous-monitor",
+                        project: payload.Project);
+                    automatedRemediationQueued = fixResponse.Queued;
+                    message = automatedRemediationQueued
+                        ? $"{message} Automated remediation was queued."
+                        : $"{message} Automated remediation was not queued: {fixResponse.Message}";
+                }
+
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, new BackendMonitoringFindingUpsertResponse(
+                    finding.Id,
+                    finding.Category,
+                    finding.Severity,
+                    finding.Status,
+                    finding.Project,
+                    finding.IssueNumber,
+                    finding.TriggerAutomatedUpdate,
+                    automatedRemediationQueued,
+                    message), cancellationToken);
+                responseClosed = true;
+                return;
+            }
+
             if (!string.Equals(context.Request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
@@ -187,6 +242,15 @@ public sealed class StatusHttpServer
                 var snapshot = ReadSnapshot();
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, readModelBuilder.BuildAuditLog(snapshot, ReadLimit(context.Request)), cancellationToken);
+                responseClosed = true;
+                return;
+            }
+
+            if (string.Equals(path, "/api/read/continuous-monitoring", StringComparison.Ordinal))
+            {
+                var snapshot = ReadSnapshot();
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                await WriteJsonAsync(context.Response, readModelBuilder.BuildContinuousMonitoring(snapshot, ReadLimit(context.Request)), cancellationToken);
                 responseClosed = true;
                 return;
             }

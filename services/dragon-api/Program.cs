@@ -99,6 +99,48 @@ app.MapGet("/api/audit-log", async (int? limit, IBackendReadClient backendReadCl
     }
 });
 
+app.MapGet("/api/continuous-monitoring", async (int? limit, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var payload = await backendReadClient.GetContinuousMonitoringAsync(limit ?? 50, cancellationToken);
+        return Results.Ok(DragonApiMapper.MapContinuousMonitoring(payload));
+    }
+    catch (HttpRequestException exception)
+    {
+        return Results.Problem(
+            title: "Continuous monitoring data is unavailable",
+            detail: exception.Message,
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
+
+app.MapPost("/api/continuous-monitoring/findings", async (MonitoringFindingUpsertRequest request, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var response = await backendReadClient.RecordMonitoringFindingAsync(
+            new BackendMonitoringFindingUpsertRequest(
+                request.Category,
+                request.Severity,
+                request.Status,
+                request.Project,
+                request.IssueNumber,
+                request.Summary,
+                request.Recommendation,
+                request.TriggerAutomatedUpdate),
+            cancellationToken);
+        return Results.Ok(DragonApiMapper.MapMonitoringFindingUpsert(response));
+    }
+    catch (HttpRequestException exception)
+    {
+        return Results.Problem(
+            title: "Continuous monitoring update failed",
+            detail: exception.Message,
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
+
 app.MapPost("/api/ideas/{id}/fix", async (string id, IdeaFixRequest request, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
     try

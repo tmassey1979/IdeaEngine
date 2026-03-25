@@ -161,3 +161,46 @@ public sealed record AuditLogEntryResponse(
     string? Source,
     DateTimeOffset RecordedAt
 );
+
+public sealed record ContinuousMonitoringResponse(
+    DateTimeOffset GeneratedAt,
+    string Summary,
+    IReadOnlyList<ContinuousMonitoringFindingResponse> Findings
+);
+
+public sealed record ContinuousMonitoringFindingResponse(
+    string Id,
+    string Category,
+    string Severity,
+    string Status,
+    string Project,
+    int? IssueNumber,
+    string Summary,
+    string Recommendation,
+    bool TriggerAutomatedUpdate,
+    DateTimeOffset RecordedAt,
+    DateTimeOffset LastObservedAt
+);
+
+public sealed record MonitoringFindingUpsertRequest(
+    string Category,
+    string Severity,
+    string Status,
+    string Project,
+    int? IssueNumber,
+    string Summary,
+    string Recommendation,
+    bool TriggerAutomatedUpdate = false
+);
+
+public sealed record MonitoringFindingUpsertResponse(
+    string Id,
+    string Category,
+    string Severity,
+    string Status,
+    string Project,
+    int? IssueNumber,
+    bool TriggerAutomatedUpdate,
+    bool AutomatedRemediationQueued,
+    string Message
+);

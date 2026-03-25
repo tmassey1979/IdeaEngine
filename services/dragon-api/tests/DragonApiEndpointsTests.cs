@@ -181,6 +181,67 @@ public sealed class DragonApiEndpointsTests
     }
 
     [Fact]
+    public async Task ContinuousMonitoringEndpoint_MapsBackendPayload()
+    {
+        await using var factory = new DragonApiFactory(new StubBackendReadClient
+        {
+            ContinuousMonitoring = new BackendContinuousMonitoringReadModel(
+                DateTimeOffset.UtcNow,
+                "1 monitoring finding returned.",
+                [
+                    new BackendContinuousMonitoringFindingReadModel("finding-1", "new_vulnerability_discovery", "critical", "active", "DragonIdeaEngine", 52, "A dependency is vulnerable.", "Upgrade the package.", true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)
+                ])
+        });
+
+        using var client = factory.CreateClient();
+        var payload = await client.GetFromJsonAsync<ContinuousMonitoringResponse>("/api/continuous-monitoring?limit=1");
+
+        Assert.NotNull(payload);
+        var finding = Assert.Single(payload!.Findings);
+        Assert.Equal("new_vulnerability_discovery", finding.Category);
+        Assert.True(finding.TriggerAutomatedUpdate);
+        Assert.Equal(52, finding.IssueNumber);
+    }
+
+    [Fact]
+    public async Task ContinuousMonitoringControlEndpoint_ForwardsBackendRequest()
+    {
+        await using var factory = new DragonApiFactory(new StubBackendReadClient
+        {
+            MonitoringFindingResponse = new BackendMonitoringFindingUpsertResponse(
+                "finding-1",
+                "new_vulnerability_discovery",
+                "critical",
+                "active",
+                "DragonIdeaEngine",
+                52,
+                true,
+                true,
+                "Recorded monitoring finding 'new_vulnerability_discovery'. Automated remediation was queued.")
+        });
+
+        using var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
+            "/api/continuous-monitoring/findings",
+            new MonitoringFindingUpsertRequest(
+                "new_vulnerability_discovery",
+                "critical",
+                "active",
+                "DragonIdeaEngine",
+                52,
+                "A dependency is vulnerable.",
+                "Upgrade the package.",
+                true));
+        var payload = await response.Content.ReadFromJsonAsync<MonitoringFindingUpsertResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.True(payload!.AutomatedRemediationQueued);
+        Assert.True(payload.TriggerAutomatedUpdate);
+        Assert.Equal("new_vulnerability_discovery", payload.Category);
+    }
+
+    [Fact]
     public async Task IdeaDetailEndpoint_ReturnsNotFoundWhenBackendReturnsNoDetail()
     {
         await using var factory = new DragonApiFactory(new StubBackendReadClient());
@@ -224,6 +285,8 @@ public sealed class DragonApiEndpointsTests
         public BackendIssueDetailReadModel? Detail { get; init; }
         public BackendAgentPerformanceReadModel? AgentPerformance { get; init; }
         public BackendAuditLogReadModel? AuditLog { get; init; }
+        public BackendContinuousMonitoringReadModel? ContinuousMonitoring { get; init; }
+        public BackendMonitoringFindingUpsertResponse? MonitoringFindingResponse { get; init; }
         public BackendIssueFixResponse? FixResponse { get; init; }
         public Exception? DashboardException { get; init; }
 
@@ -255,6 +318,16 @@ public sealed class DragonApiEndpointsTests
         public Task<BackendAuditLogReadModel> GetAuditLogAsync(int limit, CancellationToken cancellationToken)
         {
             return Task.FromResult(AuditLog ?? throw new InvalidOperationException("Audit log payload was not configured."));
+        }
+
+        public Task<BackendContinuousMonitoringReadModel> GetContinuousMonitoringAsync(int limit, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ContinuousMonitoring ?? throw new InvalidOperationException("Continuous monitoring payload was not configured."));
+        }
+
+        public Task<BackendMonitoringFindingUpsertResponse> RecordMonitoringFindingAsync(BackendMonitoringFindingUpsertRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(MonitoringFindingResponse ?? throw new InvalidOperationException("Monitoring finding response was not configured."));
         }
 
         public Task<BackendIssueFixResponse> RequestIssueFixAsync(string id, BackendIssueFixRequest request, CancellationToken cancellationToken)

@@ -11,6 +11,8 @@ public interface IBackendReadClient
     Task<BackendIssueDetailReadModel?> GetIdeaAsync(string id, CancellationToken cancellationToken);
     Task<BackendAgentPerformanceReadModel> GetAgentPerformanceAsync(CancellationToken cancellationToken);
     Task<BackendAuditLogReadModel> GetAuditLogAsync(int limit, CancellationToken cancellationToken);
+    Task<BackendContinuousMonitoringReadModel> GetContinuousMonitoringAsync(int limit, CancellationToken cancellationToken);
+    Task<BackendMonitoringFindingUpsertResponse> RecordMonitoringFindingAsync(BackendMonitoringFindingUpsertRequest request, CancellationToken cancellationToken);
     Task<BackendIssueFixResponse> RequestIssueFixAsync(string id, BackendIssueFixRequest request, CancellationToken cancellationToken);
 }
 
@@ -54,6 +56,26 @@ public sealed class BackendReadHttpClient(HttpClient httpClient) : IBackendReadC
     public async Task<BackendAuditLogReadModel> GetAuditLogAsync(int limit, CancellationToken cancellationToken)
     {
         return await GetRequiredAsync<BackendAuditLogReadModel>($"/api/read/audit-log?limit={Math.Clamp(limit, 1, 500)}", cancellationToken);
+    }
+
+    public async Task<BackendContinuousMonitoringReadModel> GetContinuousMonitoringAsync(int limit, CancellationToken cancellationToken)
+    {
+        return await GetRequiredAsync<BackendContinuousMonitoringReadModel>($"/api/read/continuous-monitoring?limit={Math.Clamp(limit, 1, 500)}", cancellationToken);
+    }
+
+    public async Task<BackendMonitoringFindingUpsertResponse> RecordMonitoringFindingAsync(BackendMonitoringFindingUpsertRequest request, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(
+            () => httpClient.PostAsJsonAsync("/api/control/monitoring/findings", request, cancellationToken),
+            "/api/control/monitoring/findings",
+            cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Backend monitoring control request failed with status {(int)response.StatusCode}.", null, response.StatusCode);
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<BackendMonitoringFindingUpsertResponse>(cancellationToken: cancellationToken);
+        return payload ?? throw new HttpRequestException("Backend monitoring control response body was empty.");
     }
 
     public async Task<BackendIssueFixResponse> RequestIssueFixAsync(string id, BackendIssueFixRequest request, CancellationToken cancellationToken)

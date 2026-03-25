@@ -7,12 +7,14 @@ public sealed class StatusReadModelBuilder
     private readonly WorkflowStateStore workflowStateStore;
     private readonly ExecutionRecordStore executionRecordStore;
     private readonly AuditLogStore auditLogStore;
+    private readonly MonitoringFindingStore monitoringFindingStore;
 
     public StatusReadModelBuilder(string rootDirectory)
     {
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
         auditLogStore = new AuditLogStore(rootDirectory);
+        monitoringFindingStore = new MonitoringFindingStore(rootDirectory);
     }
 
     public BackendDashboardReadModel BuildDashboard(StatusSnapshot snapshot)
@@ -214,6 +216,33 @@ public sealed class StatusReadModelBuilder
             : $"{entries.Length} audit entr{(entries.Length == 1 ? "y" : "ies")} returned.";
 
         return new BackendAuditLogReadModel(snapshot.GeneratedAt, summary, entries);
+    }
+
+    public BackendContinuousMonitoringReadModel BuildContinuousMonitoring(StatusSnapshot snapshot, int limit = 50)
+    {
+        var findings = monitoringFindingStore.ReadAll()
+            .OrderByDescending(finding => finding.LastObservedAt)
+            .ThenByDescending(finding => finding.RecordedAt)
+            .Take(Math.Max(1, limit))
+            .Select(finding => new BackendContinuousMonitoringFindingReadModel(
+                finding.Id,
+                finding.Category,
+                finding.Severity,
+                finding.Status,
+                finding.Project,
+                finding.IssueNumber,
+                finding.Summary,
+                finding.Recommendation,
+                finding.TriggerAutomatedUpdate,
+                finding.RecordedAt,
+                finding.LastObservedAt))
+            .ToArray();
+
+        var summary = findings.Length == 0
+            ? "No continuous monitoring findings are currently recorded."
+            : $"{findings.Length} monitoring finding{(findings.Length == 1 ? string.Empty : "s")} returned.";
+
+        return new BackendContinuousMonitoringReadModel(snapshot.GeneratedAt, summary, findings);
     }
 
     private static IReadOnlyList<string> BuildBlockers(IssueStatusSnapshot issue, IssueWorkflowState? workflow)
