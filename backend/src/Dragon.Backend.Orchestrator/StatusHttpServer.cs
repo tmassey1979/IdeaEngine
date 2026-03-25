@@ -32,19 +32,20 @@ public sealed class StatusHttpServer
 
     public async Task ServeOnceAsync(string prefix, CancellationToken cancellationToken = default)
     {
-        using var listener = CreateListener(prefix);
+        var listener = CreateListener(prefix);
         listener.Start();
 
         try
         {
             var context = await listener.GetContextAsync().WaitAsync(cancellationToken);
             await HandleContextAsync(context, cancellationToken);
+            await Task.Delay(50, CancellationToken.None);
         }
         finally
         {
-            if (listener.IsListening)
+            if (listener is not null)
             {
-                listener.Stop();
+                listener.Close();
             }
         }
     }
@@ -88,6 +89,8 @@ public sealed class StatusHttpServer
 
     private async Task HandleContextAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
+        var responseClosed = false;
+
         try
         {
             ApplyCorsHeaders(context.Response);
@@ -95,6 +98,8 @@ public sealed class StatusHttpServer
             if (string.Equals(context.Request.HttpMethod, "OPTIONS", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+                context.Response.Close();
+                responseClosed = true;
                 return;
             }
 
@@ -109,11 +114,13 @@ public sealed class StatusHttpServer
                     var response = loop.RequestIssueFix(fixIssueNumber, payload.OperatorInput);
                     context.Response.StatusCode = (int)HttpStatusCode.OK;
                     await WriteJsonAsync(context.Response, response, cancellationToken);
+                    responseClosed = true;
                 }
                 catch (KeyNotFoundException)
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.NotFound;
                     await WriteTextAsync(context.Response, "Issue not found.", "text/plain", cancellationToken);
+                    responseClosed = true;
                 }
 
                 return;
@@ -123,6 +130,7 @@ public sealed class StatusHttpServer
             {
                 context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
                 await WriteTextAsync(context.Response, "Method not allowed.", "text/plain", cancellationToken);
+                responseClosed = true;
                 return;
             }
 
@@ -132,6 +140,7 @@ public sealed class StatusHttpServer
 
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, snapshot, cancellationToken);
+                responseClosed = true;
                 return;
             }
 
@@ -139,6 +148,7 @@ public sealed class StatusHttpServer
             {
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, new { status = "ok" }, cancellationToken);
+                responseClosed = true;
                 return;
             }
 
@@ -147,6 +157,7 @@ public sealed class StatusHttpServer
                 var snapshot = ReadSnapshot();
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, readModelBuilder.BuildDashboard(snapshot), cancellationToken);
+                responseClosed = true;
                 return;
             }
 
@@ -155,6 +166,7 @@ public sealed class StatusHttpServer
                 var snapshot = ReadSnapshot();
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, readModelBuilder.BuildIssues(snapshot), cancellationToken);
+                responseClosed = true;
                 return;
             }
 
@@ -166,20 +178,26 @@ public sealed class StatusHttpServer
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.NotFound;
                     await WriteTextAsync(context.Response, "Issue not found.", "text/plain", cancellationToken);
+                    responseClosed = true;
                     return;
                 }
 
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
                 await WriteJsonAsync(context.Response, detail, cancellationToken);
+                responseClosed = true;
                 return;
             }
 
             context.Response.StatusCode = (int)HttpStatusCode.NotFound;
             await WriteTextAsync(context.Response, "Not found.", "text/plain", cancellationToken);
+            responseClosed = true;
         }
         finally
         {
-            context.Response.Close();
+            if (!responseClosed)
+            {
+                context.Response.Close();
+            }
         }
     }
 
@@ -354,8 +372,9 @@ public sealed class StatusHttpServer
         var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, SerializerOptions);
         response.ContentType = "application/json; charset=utf-8";
         response.ContentLength64 = bytes.LongLength;
-        await response.OutputStream.WriteAsync(bytes, cancellationToken);
-        await response.OutputStream.FlushAsync(cancellationToken);
+        await Task.Yield();
+        cancellationToken.ThrowIfCancellationRequested();
+        response.Close(bytes, willBlock: true);
     }
 
     private static async Task WriteTextAsync(HttpListenerResponse response, string payload, string contentType, CancellationToken cancellationToken)
@@ -363,7 +382,8 @@ public sealed class StatusHttpServer
         var bytes = Encoding.UTF8.GetBytes(payload);
         response.ContentType = $"{contentType}; charset=utf-8";
         response.ContentLength64 = bytes.LongLength;
-        await response.OutputStream.WriteAsync(bytes, cancellationToken);
-        await response.OutputStream.FlushAsync(cancellationToken);
+        await Task.Yield();
+        cancellationToken.ThrowIfCancellationRequested();
+        response.Close(bytes, willBlock: true);
     }
 }

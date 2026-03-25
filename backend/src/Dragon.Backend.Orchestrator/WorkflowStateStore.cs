@@ -5,6 +5,8 @@ namespace Dragon.Backend.Orchestrator;
 
 public sealed class WorkflowStateStore
 {
+    private const int ReplaceRetryCount = 5;
+    private static readonly TimeSpan ReplaceRetryDelay = TimeSpan.FromMilliseconds(50);
     private readonly JsonSerializerOptions serializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -308,12 +310,45 @@ public sealed class WorkflowStateStore
 
         if (File.Exists(StatePath))
         {
-            File.Replace(tempPath, StatePath, BackupPath, true);
+            ReplaceStateFile(tempPath);
             File.Copy(StatePath, BackupPath, true);
             return;
         }
 
         File.Move(tempPath, StatePath);
         File.WriteAllText(BackupPath, payload);
+    }
+
+    private void ReplaceStateFile(string tempPath)
+    {
+        IOException? lastIOException = null;
+
+        for (var attempt = 0; attempt < ReplaceRetryCount; attempt += 1)
+        {
+            try
+            {
+                File.Replace(tempPath, StatePath, BackupPath, true);
+                return;
+            }
+            catch (IOException exception)
+            {
+                lastIOException = exception;
+                Thread.Sleep(ReplaceRetryDelay);
+            }
+        }
+
+        try
+        {
+            if (File.Exists(StatePath))
+            {
+                File.Copy(StatePath, BackupPath, true);
+            }
+
+            File.Move(tempPath, StatePath, true);
+        }
+        catch (IOException) when (lastIOException is not null)
+        {
+            throw lastIOException;
+        }
     }
 }

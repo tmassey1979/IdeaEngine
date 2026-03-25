@@ -14,35 +14,47 @@ public sealed class LocalJobExecutor
 {
     private readonly LocalCommandRunner commandRunner;
     private readonly IAgentModelProvider? modelProvider;
+    private readonly AgentRuntimeConfigurationResolver? configurationResolver;
     private readonly ModelExecutionRetryOptions modelRetryOptions;
     private readonly Action<TimeSpan> sleepAction;
 
     public LocalJobExecutor(
         LocalCommandRunner? commandRunner = null,
         IAgentModelProvider? modelProvider = null,
+        AgentRuntimeConfigurationResolver? configurationResolver = null,
         ModelExecutionRetryOptions? modelRetryOptions = null,
         Action<TimeSpan>? sleepAction = null)
     {
         this.commandRunner = commandRunner ?? RunCommand;
         this.modelProvider = modelProvider;
+        this.configurationResolver = configurationResolver;
         this.modelRetryOptions = modelRetryOptions ?? new ModelExecutionRetryOptions();
         this.sleepAction = sleepAction ?? Thread.Sleep;
     }
 
-    public static LocalJobExecutor CreateDefault(Func<string, string?> environmentReader, LocalCommandRunner? commandRunner = null)
+    public LocalJobExecutor(
+        LocalCommandRunner? commandRunner,
+        IAgentModelProvider? modelProvider,
+        ModelExecutionRetryOptions? modelRetryOptions,
+        Action<TimeSpan>? sleepAction = null)
+        : this(commandRunner, modelProvider, null, modelRetryOptions, sleepAction)
     {
-        IAgentModelProvider? provider = null;
+    }
 
-        try
-        {
-            provider = new OpenAiResponsesProvider(OpenAiResponsesOptions.FromEnvironment(environmentReader));
-        }
-        catch (InvalidOperationException)
-        {
-            provider = null;
-        }
+    public static LocalJobExecutor CreateDefault(
+        Func<string, string?> environmentReader,
+        LocalCommandRunner? commandRunner = null,
+        AgentRuntimeOverrides? runtimeOverrides = null) =>
+        CreateDefault(Directory.GetCurrentDirectory(), environmentReader, commandRunner, runtimeOverrides);
 
-        return new LocalJobExecutor(commandRunner, provider);
+    public static LocalJobExecutor CreateDefault(
+        string rootDirectory,
+        Func<string, string?> environmentReader,
+        LocalCommandRunner? commandRunner = null,
+        AgentRuntimeOverrides? runtimeOverrides = null)
+    {
+        var resolver = AgentRuntimeConfigurationResolver.CreateDefault(rootDirectory, environmentReader, runtimeOverrides);
+        return new LocalJobExecutor(commandRunner, configurationResolver: resolver);
     }
 
     public JobExecutionResult Execute(string rootDirectory, SelfBuildJob job)
@@ -76,7 +88,8 @@ public sealed class LocalJobExecutor
 
     private ExecutionOutcome ExecuteModelBacked(string rootDirectory, SelfBuildJob job)
     {
-        if (modelProvider is null)
+        var provider = ResolveProvider(job.Agent);
+        if (provider is null)
         {
             if (job.Payload.Operations?.Count > 0)
             {
@@ -92,8 +105,8 @@ public sealed class LocalJobExecutor
             return ExecutionOutcome.FromSummary($"No model provider configured for {job.Agent}; marked complete for bootstrap flow.");
         }
 
-        var request = AgentPromptFactory.Build(job, modelProvider.Describe().DefaultModel);
-        var response = ExecuteModelRequestWithRetry(request);
+        var request = AgentPromptFactory.Build(job, provider.Describe().DefaultModel);
+        var response = ExecuteModelRequestWithRetry(provider, request);
         var structuredResult = AgentStructuredResultParser.Parse(response.OutputText);
         var summary = !string.IsNullOrWhiteSpace(structuredResult?.Summary)
             ? structuredResult.Summary
@@ -110,7 +123,32 @@ public sealed class LocalJobExecutor
         return new ExecutionOutcome(summary, [], structuredResult?.FollowUps ?? []);
     }
 
-    private AgentModelResponse ExecuteModelRequestWithRetry(AgentModelRequest request)
+    private IAgentModelProvider? ResolveProvider(string agentName)
+    {
+        if (modelProvider is not null)
+        {
+            return modelProvider;
+        }
+
+        var resolved = configurationResolver?.Resolve(agentName);
+        if (resolved is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(resolved.ProviderName, "openai-responses", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Unsupported configured provider: {resolved.ProviderName}");
+        }
+
+        return new OpenAiResponsesProvider(new OpenAiResponsesOptions(
+            resolved.ApiKey,
+            resolved.Model,
+            resolved.Endpoint,
+            resolved.Source == "database" ? "database" : "OPENAI_API_KEY"));
+    }
+
+    private AgentModelResponse ExecuteModelRequestWithRetry(IAgentModelProvider provider, AgentModelRequest request)
     {
         Exception? lastException = null;
         var maxAttempts = Math.Max(1, modelRetryOptions.MaxAttempts);
@@ -119,7 +157,7 @@ public sealed class LocalJobExecutor
         {
             try
             {
-                return modelProvider!.GenerateAsync(request).GetAwaiter().GetResult();
+                return provider.GenerateAsync(request).GetAwaiter().GetResult();
             }
             catch (Exception exception) when (attempt < maxAttempts && IsTransientModelFailure(exception))
             {
@@ -326,31 +364,20 @@ public sealed class LocalJobExecutor
             "artifacts",
             "dotnet-test",
             $"{job.Issue}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
-        var outputRoot = EnsureTrailingDirectorySeparator(Path.Combine(artifactRoot, "bin"));
-        var intermediateRoot = EnsureTrailingDirectorySeparator(Path.Combine(artifactRoot, "obj"));
-
-        Directory.CreateDirectory(outputRoot);
-        Directory.CreateDirectory(intermediateRoot);
+        Directory.CreateDirectory(artifactRoot);
 
         return string.Join(
             " ",
             [
                 "test",
                 QuoteArgument(solution),
-                $"--property:BaseOutputPath={QuoteArgument(outputRoot)}",
-                $"--property:BaseIntermediateOutputPath={QuoteArgument(intermediateRoot)}",
+                "--artifacts-path",
+                QuoteArgument(artifactRoot),
                 "--property:UseSharedCompilation=false"
             ]);
     }
 
     private static string QuoteArgument(string value) => $"\"{value}\"";
-
-    private static string EnsureTrailingDirectorySeparator(string path)
-    {
-        return path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)
-            ? path
-            : path + Path.DirectorySeparatorChar;
-    }
 
     private static string? TryExecuteProfileAwareTest(string rootDirectory, SelfBuildJob job)
     {

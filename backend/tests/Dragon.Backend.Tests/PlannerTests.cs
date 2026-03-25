@@ -3342,7 +3342,11 @@ public sealed class PlannerTests
         var serveTask = server.ServeOnceAsync(prefix);
 
         using var client = new HttpClient();
-        var snapshot = await client.GetFromJsonAsync<StatusSnapshot>($"{prefix}status");
+        var response = await client.GetStringAsync($"{prefix}status");
+        var snapshot = JsonSerializer.Deserialize<StatusSnapshot>(response, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
         await serveTask;
 
         Assert.NotNull(snapshot);
@@ -8595,8 +8599,8 @@ public sealed class PlannerTests
         Assert.Equal("success", result.Status);
         var invocation = Assert.Single(executed);
         Assert.Contains("dotnet", invocation.fileName, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("--property:BaseOutputPath=", invocation.arguments, StringComparison.Ordinal);
-        Assert.Contains("--property:BaseIntermediateOutputPath=", invocation.arguments, StringComparison.Ordinal);
+        Assert.Contains("--artifacts-path", invocation.arguments, StringComparison.Ordinal);
+        Assert.Contains(".dragon", invocation.arguments, StringComparison.Ordinal);
         Assert.Contains("--property:UseSharedCompilation=false", invocation.arguments, StringComparison.Ordinal);
     }
 
@@ -9354,8 +9358,11 @@ public sealed class PlannerTests
         Assert.Equal(2, recovered.Count);
         Assert.Equal("Core", recovered[22].IssueTitle);
         Assert.Equal("failed", recovered[23].OverallStatus);
-        Assert.StartsWith("[", File.ReadAllText(store.StatePath), StringComparison.Ordinal);
-        Assert.DoesNotContain("[\n  {", File.ReadAllText(store.StatePath), StringComparison.Ordinal);
+        var restoredJson = File.ReadAllText(store.StatePath);
+        Assert.StartsWith("[", restoredJson, StringComparison.Ordinal);
+        var restoredSnapshots = JsonSerializer.Deserialize<List<IssueWorkflowState>>(restoredJson);
+        Assert.NotNull(restoredSnapshots);
+        Assert.Equal(2, restoredSnapshots.Count);
     }
 
     private static string FindRepoRoot()

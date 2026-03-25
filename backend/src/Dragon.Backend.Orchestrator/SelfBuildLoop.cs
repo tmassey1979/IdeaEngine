@@ -28,6 +28,7 @@ public sealed class SelfBuildLoop
         GithubIssueService? githubIssueService = null,
         LocalJobExecutor? jobExecutor = null,
         Func<string, string?>? environmentReader = null,
+        AgentRuntimeOverrides? runtimeOverrides = null,
         Func<DateTimeOffset>? nowProvider = null,
         Func<string, HostTelemetrySnapshot>? hostTelemetryProvider = null)
     {
@@ -37,7 +38,10 @@ public sealed class SelfBuildLoop
         queueStore = new QueueStore(rootDirectory, queueName, this.nowProvider);
         workflowStateStore = new WorkflowStateStore(rootDirectory);
         executionRecordStore = new ExecutionRecordStore(rootDirectory);
-        this.jobExecutor = jobExecutor ?? LocalJobExecutor.CreateDefault(environmentReader ?? Environment.GetEnvironmentVariable);
+        this.jobExecutor = jobExecutor ?? LocalJobExecutor.CreateDefault(
+            rootDirectory,
+            environmentReader ?? Environment.GetEnvironmentVariable,
+            runtimeOverrides: runtimeOverrides);
         this.githubIssueService = githubIssueService ?? new GithubIssueService();
     }
 
