@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fixIdea, fixIdeas, loadDashboard, loadIdeaDetail, loadIdeas } from "./api";
 import { buildLanes, detailTabs, wizardSteps, workspaceTabs } from "./data";
 import type { DashboardResponse, IdeaDetailResponse, IdeaFixResponse, IdeaListItemResponse, ResourceState } from "./types";
@@ -25,6 +25,7 @@ export default function App() {
   const [servicePanelOpen, setServicePanelOpen] = useState(false);
   const [selectedInterventionIds, setSelectedInterventionIds] = useState<string[]>([]);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const [refreshToast, setRefreshToast] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [fixDraft, setFixDraft] = useState("");
   const [fixState, setFixState] = useState<{
@@ -54,6 +55,9 @@ export default function App() {
     loading: false,
     error: null,
   });
+  const dashboardDataRef = useRef<DashboardResponse | null>(null);
+  const ideasDataRef = useRef<IdeaListItemResponse[] | null>(null);
+  const detailDataRef = useRef<IdeaDetailResponse | null>(null);
 
   const activePagination = usePagination((ideasState.data ?? []).filter((idea) => idea.isActive).length);
   const queuedPreviewPagination = usePagination((ideasState.data ?? []).filter((idea) => idea.status === "queued").length);
@@ -61,6 +65,18 @@ export default function App() {
   const queuePagination = usePagination((ideasState.data ?? []).filter((idea) => idea.status !== "done").length);
   const projectPagination = usePagination((ideasState.data ?? []).filter((idea) => idea.status !== "done").length);
   const quarantinePagination = usePagination((ideasState.data ?? []).filter((idea) => idea.sourceOverallStatus === "quarantined").length);
+
+  useEffect(() => {
+    dashboardDataRef.current = dashboardState.data;
+  }, [dashboardState.data]);
+
+  useEffect(() => {
+    ideasDataRef.current = ideasState.data;
+  }, [ideasState.data]);
+
+  useEffect(() => {
+    detailDataRef.current = detailState.data;
+  }, [detailState.data]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -80,6 +96,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!refreshToast) {
+      return undefined;
+    }
+
+    const timeoutId = globalThis.setTimeout(() => {
+      setRefreshToast(null);
+    }, 5000);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [refreshToast]);
+
+  useEffect(() => {
     const intervalId = globalThis.setInterval(() => {
       setRefreshToken((value) => value + 1);
     }, 10_000);
@@ -91,7 +121,12 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    setDashboardState(createResourceState());
+    const hasCachedData = dashboardDataRef.current !== null;
+    setDashboardState((current) =>
+      current.data
+        ? { ...current, loading: false, error: null }
+        : createResourceState(),
+    );
 
     loadDashboard()
       .then((dashboard) => {
@@ -101,11 +136,23 @@ export default function App() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Dashboard data is unavailable.";
+          if (hasCachedData) {
+            setDashboardState((current) => ({
+              data: current.data,
+              loading: false,
+              error: null,
+            }));
+            setRefreshToast(`Dashboard auto-refresh failed. ${message}`);
+            return;
+          }
+
           setDashboardState({
             data: null,
             loading: false,
-            error: error instanceof Error ? error.message : "Dashboard data is unavailable.",
+            error: message,
           });
+          setRefreshToast(`Dashboard auto-refresh failed. ${message}`);
         }
       });
 
@@ -116,7 +163,12 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    setIdeasState(createResourceState());
+    const hasCachedData = ideasDataRef.current !== null;
+    setIdeasState((current) =>
+      current.data
+        ? { ...current, loading: false, error: null }
+        : createResourceState(),
+    );
 
     loadIdeas()
       .then((ideas) => {
@@ -126,11 +178,23 @@ export default function App() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Idea data is unavailable.";
+          if (hasCachedData) {
+            setIdeasState((current) => ({
+              data: current.data,
+              loading: false,
+              error: null,
+            }));
+            setRefreshToast(`Idea refresh failed. ${message}`);
+            return;
+          }
+
           setIdeasState({
             data: null,
             loading: false,
-            error: error instanceof Error ? error.message : "Idea data is unavailable.",
+            error: message,
           });
+          setRefreshToast(`Idea refresh failed. ${message}`);
         }
       });
 
@@ -158,7 +222,12 @@ export default function App() {
     }
 
     let cancelled = false;
-    setDetailState({ data: null, loading: true, error: null });
+    const hasCachedData = detailDataRef.current?.id === selectedIdeaId;
+    setDetailState((current) =>
+      current.data?.id === selectedIdeaId
+        ? { ...current, loading: false, error: null }
+        : { data: null, loading: true, error: null },
+    );
 
     loadIdeaDetail(selectedIdeaId)
       .then((detail) => {
@@ -168,11 +237,23 @@ export default function App() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Idea detail is unavailable.";
+          if (hasCachedData) {
+            setDetailState((current) => ({
+              data: current.data,
+              loading: false,
+              error: null,
+            }));
+            setRefreshToast(`Idea detail refresh failed. ${message}`);
+            return;
+          }
+
           setDetailState({
             data: null,
             loading: false,
-            error: error instanceof Error ? error.message : "Idea detail is unavailable.",
+            error: message,
           });
+          setRefreshToast(`Idea detail refresh failed. ${message}`);
         }
       });
 
@@ -350,6 +431,14 @@ export default function App() {
       </aside>
 
       <main className="main-content">
+        {refreshToast && (
+          <div className="toast toast-error" role="alert">
+            <span>{refreshToast}</span>
+            <button type="button" className="toast-dismiss" onClick={() => setRefreshToast(null)} aria-label="Dismiss notification">
+              Dismiss
+            </button>
+          </div>
+        )}
         {activeTab === "dashboard" && (
           <>
             <section className="hero panel">

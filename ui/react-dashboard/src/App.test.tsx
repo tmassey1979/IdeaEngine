@@ -229,6 +229,57 @@ describe("React dashboard", () => {
     expect(countDashboardCalls()).toBeGreaterThan(initialDashboardCalls);
   });
 
+  test("keeps dashboard data visible and shows a toast when background refresh fails", async () => {
+    let dashboardRequests = 0;
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url.endsWith("/api/dashboard")) {
+        dashboardRequests += 1;
+
+        if (dashboardRequests === 1) {
+          return Promise.resolve(new Response(JSON.stringify(dashboardPayload), { status: 200 }));
+        }
+
+        return Promise.resolve(new Response(null, { status: 503 }));
+      }
+
+      if (url.endsWith("/api/ideas")) {
+        return Promise.resolve(new Response(JSON.stringify(ideasPayload), { status: 200 }));
+      }
+
+      if (url.endsWith("/api/ideas/1")) {
+        return Promise.resolve(new Response(JSON.stringify(detailPayload), { status: 200 }));
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation(() => {
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    });
+    vi.spyOn(globalThis, "clearInterval").mockImplementation(() => {});
+
+    render(<App />);
+
+    await screen.findByText("2/2 healthy");
+
+    const refreshCall = setIntervalSpy.mock.calls.find(([, timeout]) => timeout === 10_000);
+    expect(refreshCall).toBeDefined();
+
+    await act(async () => {
+      (refreshCall![0] as () => void)();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await screen.findByRole("alert");
+    expect(screen.getByText(/Dashboard auto-refresh failed\. Request failed \(503\)/i)).toBeInTheDocument();
+    expect(screen.getByText("2/2 healthy")).toBeInTheDocument();
+    expect(screen.queryByText(/Loading active projects/i)).not.toBeInTheDocument();
+  });
+
   test("opens the intervention workspace from the loop health card", async () => {
     const user = userEvent.setup();
     render(<App />);
