@@ -353,7 +353,7 @@ public sealed class PlannerTests
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/deploy/docker-compose.yml" &&
             operation.Content!.Contains("dragon-agent-runner", StringComparison.Ordinal));
         Assert.Contains(operations, operation => operation.Path == "templates/repo-templates/deploy/.env.example" &&
-            operation.Content!.Contains("OPENAI_API_KEY=", StringComparison.Ordinal));
+            operation.Content!.Contains("CODEX_MODEL=", StringComparison.Ordinal));
     }
 
     [Fact]

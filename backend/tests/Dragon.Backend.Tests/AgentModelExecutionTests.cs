@@ -327,7 +327,7 @@ public sealed class AgentModelExecutionTests
             {
               "summary": "Documentation plan generated.",
               "recommendation": "Update operator docs before enabling unattended mode.",
-              "artifacts": ["docs/OPENAI_PROVIDER.md", "docs/AUTONOMY_ROADMAP.md"]
+              "artifacts": ["docs/ARCHITECTURE.md", "docs/AUTONOMY_ROADMAP.md"]
             }
             """
         );
@@ -360,7 +360,7 @@ public sealed class AgentModelExecutionTests
                 {
                   "type": "write_file",
                   "path": "docs/generated/provider-notes.md",
-                  "content": "# Provider Notes\nAPI-first execution enabled.\n"
+                  "content": "# Provider Notes\nCodex CLI execution enabled.\n"
                 }
               ]
             }
@@ -373,7 +373,7 @@ public sealed class AgentModelExecutionTests
         Assert.Equal("success", result.Status);
         Assert.Equal("Documentation updated.", result.Summary);
         Assert.Equal(["docs/generated/provider-notes.md"], result.ChangedPaths);
-        Assert.Contains("API-first execution enabled.", File.ReadAllText(Path.Combine(root, "docs", "generated", "provider-notes.md")), StringComparison.Ordinal);
+        Assert.Contains("Codex CLI execution enabled.", File.ReadAllText(Path.Combine(root, "docs", "generated", "provider-notes.md")), StringComparison.Ordinal);
     }
 
     [Fact]
