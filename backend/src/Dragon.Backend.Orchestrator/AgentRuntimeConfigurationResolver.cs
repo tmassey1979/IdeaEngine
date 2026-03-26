@@ -48,66 +48,28 @@ public sealed class AgentRuntimeConfigurationResolver
     public ResolvedAgentConfiguration? Resolve(string? agentName = null)
     {
         var normalizedAgentName = Normalize(agentName);
-        var cliProvider = Normalize(overrides?.ProviderName);
-        var cliApiKey = Normalize(overrides?.ApiKey);
         var cliModel = Normalize(overrides?.Model);
-        var cliEndpoint = Normalize(overrides?.Endpoint);
+        var databaseAgent = ResolveDatabaseAgent(normalizedAgentName);
 
-        if (cliProvider is not null || cliApiKey is not null || cliModel is not null || cliEndpoint is not null)
+        if (databaseAgent is not null && !databaseAgent.Enabled)
         {
-            var providerName = cliProvider ?? ResolveDatabaseProviderName(normalizedAgentName) ?? "openai-responses";
-            var databaseProvider = ResolveDatabaseProvider(providerName);
-            var databaseAgent = ResolveDatabaseAgent(normalizedAgentName);
-            if (databaseAgent is not null && !databaseAgent.Enabled)
-            {
-                return null;
-            }
-
-            var apiKey = cliApiKey ?? DecryptApiKey(databaseProvider);
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                return null;
-            }
-
-            return new ResolvedAgentConfiguration(
-                providerName,
-                apiKey,
-                cliModel ?? databaseAgent?.Model ?? databaseProvider?.DefaultModel ?? "gpt-5",
-                cliEndpoint ?? databaseProvider?.Endpoint ?? "https://api.openai.com/v1/responses",
-                "cli",
-                normalizedAgentName);
+            return null;
         }
 
-        var dbProviderName = ResolveDatabaseProviderName(normalizedAgentName);
-        if (dbProviderName is not null)
+        if (cliModel is not null)
         {
-            var databaseProvider = ResolveDatabaseProvider(dbProviderName);
-            var databaseAgent = ResolveDatabaseAgent(normalizedAgentName);
-            if (databaseAgent is not null && !databaseAgent.Enabled)
-            {
-                return null;
-            }
-
-            var apiKey = DecryptApiKey(databaseProvider);
-            if (!string.IsNullOrWhiteSpace(apiKey) && databaseProvider is not null)
-            {
-                return new ResolvedAgentConfiguration(
-                    dbProviderName,
-                    apiKey,
-                    databaseAgent?.Model ?? databaseProvider.DefaultModel,
-                    databaseProvider.Endpoint,
-                    "database",
-                    normalizedAgentName);
-            }
+            return new ResolvedAgentConfiguration(cliModel, "cli", normalizedAgentName);
         }
 
-        var environmentConfig = ResolveEnvironment();
-        return environmentConfig is null
+        if (databaseAgent?.Model is { Length: > 0 } databaseModel)
+        {
+            return new ResolvedAgentConfiguration(databaseModel, "database", normalizedAgentName);
+        }
+
+        var environmentConfiguration = ResolveEnvironment();
+        return environmentConfiguration is null
             ? null
-            : environmentConfig with
-            {
-                AgentName = normalizedAgentName
-            };
+            : environmentConfiguration with { AgentName = normalizedAgentName };
     }
 
     public StoredProviderConfiguration? GetStoredProvider(string providerName) => ResolveDatabaseProvider(providerName);
@@ -151,30 +113,10 @@ public sealed class AgentRuntimeConfigurationResolver
 
     private ResolvedAgentConfiguration? ResolveEnvironment()
     {
-        var apiKey = Normalize(environmentReader("OPENAI_API_KEY"));
-        if (apiKey is null)
-        {
-            return null;
-        }
-
-        return new ResolvedAgentConfiguration(
-            "openai-responses",
-            apiKey,
-            Normalize(environmentReader("OPENAI_MODEL")) ?? "gpt-5",
-            Normalize(environmentReader("OPENAI_RESPONSES_ENDPOINT")) ?? "https://api.openai.com/v1/responses",
-            "environment",
-            null);
-    }
-
-    private string? ResolveDatabaseProviderName(string? agentName)
-    {
-        var agentConfiguration = ResolveDatabaseAgent(agentName);
-        if (agentConfiguration is not null)
-        {
-            return Normalize(agentConfiguration.ProviderName) ?? "openai-responses";
-        }
-
-        return ResolveDatabaseProvider("openai-responses") is not null ? "openai-responses" : null;
+        var model = Normalize(environmentReader("CODEX_MODEL"));
+        return model is null
+            ? null
+            : new ResolvedAgentConfiguration(model, "environment", null);
     }
 
     private StoredProviderConfiguration? ResolveDatabaseProvider(string? providerName)
@@ -195,21 +137,6 @@ public sealed class AgentRuntimeConfigurationResolver
         }
 
         return store.GetAgent(agentName);
-    }
-
-    private string? DecryptApiKey(StoredProviderConfiguration? configuration)
-    {
-        if (configuration is null)
-        {
-            return null;
-        }
-
-        if (encryptionService is null)
-        {
-            throw new InvalidOperationException("Stored provider configuration exists but DRAGON_CONFIG_ENCRYPTION_KEY is unavailable.");
-        }
-
-        return encryptionService.Decrypt(configuration.EncryptedApiKey);
     }
 
     private static string? FirstNonEmpty(params string?[] values) =>

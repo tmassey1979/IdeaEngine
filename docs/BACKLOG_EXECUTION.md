@@ -3035,3 +3035,196 @@ Source section: `codex/sections/16-knowledge-and-learning-system.md`
 As a platform architect, I want the raspberry pi deployment considerations capability, so that because the system may run on Raspberry Pi clusters, the knowledge system must remain lightweight.
 ## Description
 Because the system may run on Raspberry Pi clusters, the knowledge system must remain lightweight.
+
+## Issue #315: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Core Principles
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the core principles capability, so that agent evolution is guided by the following principles: All improvements must maintain system stability and compliance with the Security and Compliance Validation System.
+## Description
+Agent evolution is guided by the following principles:
+
+## Issue #317: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Agent Performance Profiles
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the agent performance profiles capability, so that each agent has a performance profile stored in the knowledge system.
+## Description
+Each agent has a performance profile stored in the knowledge system.
+
+## Issue #318: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Improvement Triggers
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the improvement triggers capability, so that agent improvement processes may be triggered by several conditions.
+## Description
+Agent improvement processes may be triggered by several conditions.
+
+## Issue #319: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Improvement Strategies
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the improvement strategies capability, so that the system may apply several strategies to improve agents.
+## Description
+The system may apply several strategies to improve agents.
+
+## Issue #320: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Experimental Agent Variants
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the experimental agent variants capability, so that when improving an agent, the system may create experimental variants.
+## Description
+When improving an agent, the system may create experimental variants.
+
+## Issue #322: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Safe Deployment Process
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the safe deployment process capability, so that agent upgrades follow a controlled rollout process.
+## Description
+Agent upgrades follow a controlled rollout process.
+
+## Issue #323: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Agent Retirement
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the agent retirement capability, so that agents that consistently perform poorly may be retired.
+## Description
+Agents that consistently perform poorly may be retired.
+
+## Issue #324: [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Cross-Agent Learning
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the cross-agent learning capability, so that agents may learn from the successes of other agents.
+## Description
+Agents may learn from the successes of other agents.
+
+## Issue #327: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Human Roles
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the human roles capability, so that the system supports several types of human participants.
+## Description
+The system supports several types of human participants.
+
+## Issue #328: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Human Interaction Interfaces
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the human interaction interfaces capability, so that humans interact with the system through several interfaces.
+## Description
+Humans interact with the system through several interfaces.
+
+## Issue #330: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Feedback Collection
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the feedback collection capability, so that human users may provide feedback to improve the system.
+## Description
+Human users may provide feedback to improve the system.
+
+## Issue #331: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Collaborative Development
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the collaborative development capability, so that humans and agents may collaborate on projects.
+## Description
+Humans and agents may collaborate on projects.
+
+## Issue #332: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Safety Controls
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the safety controls capability, so that humans must be able to quickly stop unsafe behavior.
+## Description
+Humans must be able to quickly stop unsafe behavior.
+
+## Issue #334: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Training and Guidance System
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the training and guidance system capability, so that the platform may assist human users with recommendations.
+## Description
+The platform may assist human users with recommendations.
+
+## Issue #335: [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Raspberry Pi Deployment Considerations
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the raspberry pi deployment considerations capability, so that for installations running on Raspberry Pi clusters, the collaboration interface may run on a central node accessible through a web interface.
+## Description
+For installations running on Raspberry Pi clusters, the collaboration interface may run on a central node accessible through a web interface.
+
+## Issue #349: Redesign UI into dashboard-first product shell
+
+## Goal
+Replace the overloaded war-room homepage with a cleaner dashboard-first shell for Dragon Idea Engine.
+## Scope
+- Make Dashboard the primary landing page
+- Reduce dense all-at-once operational data on the homepage
+- Reorganize navigation around Dashboard, Submit Idea, Idea Queue, and Projects
+
+## Issue #350: Add idea detail view with backlog and agile board
+
+## Goal
+Make each idea expandable into a deeper execution workspace with backlog and agile-style delivery visibility.
+## Scope
+- Add idea detail view for approved or active ideas
+- Show summary, status, queue position, and MVP ETA
+- Show backlog items/stories for the idea
+
+## Issue #352: Add Idea Queue view with approval state, queue position, and MVP ETA
+
+## Goal
+Add a first-class Idea Queue view so submitted ideas can be tracked through review, approval, and execution order.
+## Scope
+- Show submitted ideas and approval status
+- Show whether ideas are approved, rejected, under review, or queued
+- Show queue position for approved ideas
+
+## Issue #354: Expose host and service telemetry for dashboard system health
+
+## Goal
+Support the redesigned dashboard with real operational telemetry for the Pi-hosted engine.
+## Scope
+- Surface CPU, memory, and disk telemetry from the running host or container environment
+- Surface health for backend and supporting services
+- Make telemetry available to the UI in a compact dashboard-friendly shape
+
+## Issue #353: Add guided idea submission wizard with stack and technology intake
+
+## Goal
+Create a dedicated idea submission wizard that captures product intent and technical preferences before an idea enters review.
+## Scope
+- Add a separate guided intake flow for new ideas
+- Capture stack, languages, frameworks, deployment target, and constraints
+- Separate must-have MVP scope from nice-to-have scope
+- Deferred to the last Pi-MVP UI task because it needs another design pass before final implementation
+
+## Issue #142: [Story] ETHICS ANALYSIS AGENT: Agent Categories
+
+Quarantined after 4 repeated failed test executions. Latest failure: test / test-142-1774380884902.
+
+## Issue #166: [Story] REUSABLE COMPONENT LIBRARY: Hardware Component Library
+
+Quarantined after 4 repeated failed test executions. Latest failure: test / test-166-1774380913650.
+
+## Issue #168: [Story] REUSABLE COMPONENT LIBRARY: Component Versioning
+
+Quarantined after 4 repeated failed test executions. Latest failure: test / test-168-1774380934638.

@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { fixIdea, fixIdeas, loadDashboard, loadIdeaDetail, loadIdeas } from "./api";
+import { fixIdea, fixIdeas, loadAgentPerformance, loadAuditLog, loadContinuousMonitoring, loadDashboard, loadIdeaDetail, loadIdeas } from "./api";
 import { buildLanes, detailTabs, wizardSteps, workspaceTabs } from "./data";
-import type { DashboardResponse, IdeaDetailResponse, IdeaFixResponse, IdeaListItemResponse, ResourceState } from "./types";
+import type {
+  AgentPerformanceResponse,
+  AuditLogResponse,
+  ContinuousMonitoringResponse,
+  DashboardResponse,
+  IdeaDetailResponse,
+  IdeaFixResponse,
+  IdeaListItemResponse,
+  ResourceState,
+} from "./types";
 import { ActivityPanelView, BoardPanelView, DragonMark, HeroSigil, ListPanelView, PaginationControls, SectionStateCard } from "./ui";
 import { createResourceState, formatStatus, formatTimestamp, paginate, usePagination } from "./view";
 import "./styles.css";
@@ -50,6 +59,9 @@ export default function App() {
   });
   const [dashboardState, setDashboardState] = useState<ResourceState<DashboardResponse>>(createResourceState);
   const [ideasState, setIdeasState] = useState<ResourceState<IdeaListItemResponse[]>>(createResourceState);
+  const [agentPerformanceState, setAgentPerformanceState] = useState<ResourceState<AgentPerformanceResponse>>(createResourceState);
+  const [auditLogState, setAuditLogState] = useState<ResourceState<AuditLogResponse>>(createResourceState);
+  const [continuousMonitoringState, setContinuousMonitoringState] = useState<ResourceState<ContinuousMonitoringResponse>>(createResourceState);
   const [detailState, setDetailState] = useState<ResourceState<IdeaDetailResponse>>({
     data: null,
     loading: false,
@@ -57,6 +69,9 @@ export default function App() {
   });
   const dashboardDataRef = useRef<DashboardResponse | null>(null);
   const ideasDataRef = useRef<IdeaListItemResponse[] | null>(null);
+  const agentPerformanceDataRef = useRef<AgentPerformanceResponse | null>(null);
+  const auditLogDataRef = useRef<AuditLogResponse | null>(null);
+  const continuousMonitoringDataRef = useRef<ContinuousMonitoringResponse | null>(null);
   const detailDataRef = useRef<IdeaDetailResponse | null>(null);
 
   const activePagination = usePagination((ideasState.data ?? []).filter((idea) => idea.isActive).length);
@@ -65,6 +80,9 @@ export default function App() {
   const queuePagination = usePagination((ideasState.data ?? []).filter((idea) => idea.status !== "done").length);
   const projectPagination = usePagination((ideasState.data ?? []).filter((idea) => idea.status !== "done").length);
   const quarantinePagination = usePagination((ideasState.data ?? []).filter((idea) => idea.sourceOverallStatus === "quarantined").length);
+  const agentPerformancePagination = usePagination(agentPerformanceState.data?.agents.length ?? 0);
+  const auditLogPagination = usePagination(auditLogState.data?.entries.length ?? 0);
+  const monitoringPagination = usePagination(continuousMonitoringState.data?.findings.length ?? 0);
 
   useEffect(() => {
     dashboardDataRef.current = dashboardState.data;
@@ -73,6 +91,18 @@ export default function App() {
   useEffect(() => {
     ideasDataRef.current = ideasState.data;
   }, [ideasState.data]);
+
+  useEffect(() => {
+    agentPerformanceDataRef.current = agentPerformanceState.data;
+  }, [agentPerformanceState.data]);
+
+  useEffect(() => {
+    auditLogDataRef.current = auditLogState.data;
+  }, [auditLogState.data]);
+
+  useEffect(() => {
+    continuousMonitoringDataRef.current = continuousMonitoringState.data;
+  }, [continuousMonitoringState.data]);
 
   useEffect(() => {
     detailDataRef.current = detailState.data;
@@ -204,6 +234,129 @@ export default function App() {
   }, [refreshToken]);
 
   useEffect(() => {
+    let cancelled = false;
+    const hasCachedData = agentPerformanceDataRef.current !== null;
+    setAgentPerformanceState((current) =>
+      current.data
+        ? { ...current, loading: false, error: null }
+        : createResourceState(),
+    );
+
+    loadAgentPerformance()
+      .then((agentPerformance) => {
+        if (!cancelled) {
+          setAgentPerformanceState({ data: agentPerformance, loading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Agent performance data is unavailable.";
+          if (hasCachedData) {
+            setAgentPerformanceState((current) => ({
+              data: current.data,
+              loading: false,
+              error: null,
+            }));
+            setRefreshToast(`Agent performance refresh failed. ${message}`);
+            return;
+          }
+
+          setAgentPerformanceState({
+            data: null,
+            loading: false,
+            error: message,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const hasCachedData = auditLogDataRef.current !== null;
+    setAuditLogState((current) =>
+      current.data
+        ? { ...current, loading: false, error: null }
+        : createResourceState(),
+    );
+
+    loadAuditLog()
+      .then((auditLog) => {
+        if (!cancelled) {
+          setAuditLogState({ data: auditLog, loading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Audit log data is unavailable.";
+          if (hasCachedData) {
+            setAuditLogState((current) => ({
+              data: current.data,
+              loading: false,
+              error: null,
+            }));
+            setRefreshToast(`Audit log refresh failed. ${message}`);
+            return;
+          }
+
+          setAuditLogState({
+            data: null,
+            loading: false,
+            error: message,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const hasCachedData = continuousMonitoringDataRef.current !== null;
+    setContinuousMonitoringState((current) =>
+      current.data
+        ? { ...current, loading: false, error: null }
+        : createResourceState(),
+    );
+
+    loadContinuousMonitoring()
+      .then((monitoring) => {
+        if (!cancelled) {
+          setContinuousMonitoringState({ data: monitoring, loading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Continuous monitoring data is unavailable.";
+          if (hasCachedData) {
+            setContinuousMonitoringState((current) => ({
+              data: current.data,
+              loading: false,
+              error: null,
+            }));
+            setRefreshToast(`Continuous monitoring refresh failed. ${message}`);
+            return;
+          }
+
+          setContinuousMonitoringState({
+            data: null,
+            loading: false,
+            error: message,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshToken]);
+
+  useEffect(() => {
     const ideas = ideasState.data ?? [];
     if (ideas.length === 0) {
       setSelectedIdeaId(null);
@@ -277,6 +430,9 @@ export default function App() {
   const queueSlice = paginate(queueIdeas, queuePagination.page, queuePagination.pageSize);
   const projectSlice = paginate(projectIdeas, projectPagination.page, projectPagination.pageSize);
   const quarantineSlice = paginate(quarantinedIdeas, quarantinePagination.page, quarantinePagination.pageSize);
+  const agentPerformanceSlice = paginate(agentPerformanceState.data?.agents ?? [], agentPerformancePagination.page, agentPerformancePagination.pageSize);
+  const auditLogSlice = paginate(auditLogState.data?.entries ?? [], auditLogPagination.page, auditLogPagination.pageSize);
+  const monitoringSlice = paginate(continuousMonitoringState.data?.findings ?? [], monitoringPagination.page, monitoringPagination.pageSize);
 
   useEffect(() => {
     setSelectedInterventionIds((current) => {
@@ -720,6 +876,173 @@ export default function App() {
                     <strong>{dashboardState.data?.sourceStatus ?? "Unavailable"}</strong>
                   </div>
                 </div>
+              </article>
+            </section>
+
+            <section className="dashboard-grid monitoring-grid">
+              <article className="panel">
+                <div className="panel-head">
+                  <div>
+                    <p className="panel-label">Agent performance</p>
+                    <h3>Execution quality and throughput</h3>
+                  </div>
+                  <span className="chip">{agentPerformanceState.data?.summary ?? "Loading metrics"}</span>
+                </div>
+                {agentPerformanceState.error ? (
+                  <SectionStateCard tone="error" message={`Agent performance is unavailable right now. ${agentPerformanceState.error}`} />
+                ) : (
+                  <>
+                    <PaginationControls
+                      label="Agent performance"
+                      totalCount={agentPerformanceState.data?.agents.length ?? 0}
+                      page={agentPerformanceSlice.page}
+                      pageSize={agentPerformancePagination.pageSize}
+                      totalPages={agentPerformanceSlice.totalPages}
+                      startIndex={agentPerformanceSlice.startIndex}
+                      endIndex={agentPerformanceSlice.endIndex}
+                      onPageChange={agentPerformancePagination.setPage}
+                      onPageSizeChange={agentPerformancePagination.setPageSize}
+                    />
+                    <div className="card-stack compact">
+                      {agentPerformanceSlice.items.length === 0 ? (
+                        <SectionStateCard message={agentPerformanceState.loading ? "Loading agent performance..." : "No agent performance metrics are available."} />
+                      ) : (
+                        agentPerformanceSlice.items.map((agent) => (
+                          <article key={agent.agent} className="service-card monitoring-card">
+                            <div className="project-card-header">
+                              <div>
+                                <h4>{agent.agent}</h4>
+                                <p className="subtle">{agent.summary}</p>
+                              </div>
+                              <span className={`pill ${agent.failureCount > 0 ? "blocked" : "review"}`}>
+                                {Math.round(agent.successRate)}% success
+                              </span>
+                            </div>
+                            <div className="triage-meta">
+                              <span>{agent.totalExecutions} run(s)</span>
+                              <span>{Math.round(agent.averageDurationMilliseconds)} ms avg</span>
+                              <span>{agent.averageRetryCount.toFixed(1)} retries avg</span>
+                              <span>Quality {agent.averageQualityScore.toFixed(1)}</span>
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </article>
+
+              <article className="panel">
+                <div className="panel-head">
+                  <div>
+                    <p className="panel-label">Continuous monitoring</p>
+                    <h3>Active findings and automated remediation</h3>
+                  </div>
+                  <span className="chip">{continuousMonitoringState.data?.summary ?? "Monitoring loading"}</span>
+                </div>
+                {continuousMonitoringState.error ? (
+                  <SectionStateCard tone="error" message={`Continuous monitoring is unavailable right now. ${continuousMonitoringState.error}`} />
+                ) : (
+                  <>
+                    <PaginationControls
+                      label="Continuous monitoring"
+                      totalCount={continuousMonitoringState.data?.findings.length ?? 0}
+                      page={monitoringSlice.page}
+                      pageSize={monitoringPagination.pageSize}
+                      totalPages={monitoringSlice.totalPages}
+                      startIndex={monitoringSlice.startIndex}
+                      endIndex={monitoringSlice.endIndex}
+                      onPageChange={monitoringPagination.setPage}
+                      onPageSizeChange={monitoringPagination.setPageSize}
+                    />
+                    <div className="card-stack compact">
+                      {monitoringSlice.items.length === 0 ? (
+                        <SectionStateCard message={continuousMonitoringState.loading ? "Loading monitoring findings..." : "No monitoring findings are currently recorded."} />
+                      ) : (
+                        monitoringSlice.items.map((finding) => (
+                          <article key={finding.id} className="service-card monitoring-card">
+                            <div className="project-card-header">
+                              <div>
+                                <h4>{formatStatus(finding.category)}</h4>
+                                <p className="subtle">{finding.summary}</p>
+                              </div>
+                              <span className={`pill ${finding.severity.toLowerCase() === "critical" ? "blocked" : "review"}`}>
+                                {formatStatus(finding.severity)}
+                              </span>
+                            </div>
+                            <div className="triage-meta">
+                              <span>Status: {formatStatus(finding.status)}</span>
+                              <span>Project: {finding.project}</span>
+                              <span>Last seen: {formatTimestamp(finding.lastObservedAt)}</span>
+                            </div>
+                            <p className="subtle">{finding.recommendation}</p>
+                            <div className="triage-actions">
+                              {finding.issueNumber ? (
+                                <button type="button" className="button tertiary" onClick={() => openIdeaDetail(String(finding.issueNumber))}>
+                                  Open Issue #{finding.issueNumber}
+                                </button>
+                              ) : null}
+                              {finding.triggerAutomatedUpdate ? <span className="chip">Auto-remediation enabled</span> : null}
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </article>
+
+              <article className="panel">
+                <div className="panel-head">
+                  <div>
+                    <p className="panel-label">Audit log</p>
+                    <h3>Operator and automated control actions</h3>
+                  </div>
+                  <span className="chip">{auditLogState.data?.summary ?? "Audit loading"}</span>
+                </div>
+                {auditLogState.error ? (
+                  <SectionStateCard tone="error" message={`Audit log is unavailable right now. ${auditLogState.error}`} />
+                ) : (
+                  <>
+                    <PaginationControls
+                      label="Audit log"
+                      totalCount={auditLogState.data?.entries.length ?? 0}
+                      page={auditLogSlice.page}
+                      pageSize={auditLogPagination.pageSize}
+                      totalPages={auditLogSlice.totalPages}
+                      startIndex={auditLogSlice.startIndex}
+                      endIndex={auditLogSlice.endIndex}
+                      onPageChange={auditLogPagination.setPage}
+                      onPageSizeChange={auditLogPagination.setPageSize}
+                    />
+                    <div className="activity-list">
+                      {auditLogSlice.items.length === 0 ? (
+                        <SectionStateCard message={auditLogState.loading ? "Loading audit log..." : "No audit entries are currently recorded."} />
+                      ) : (
+                        auditLogSlice.items.map((entry) => (
+                          <article key={entry.id} className="activity-card">
+                            <div className="activity-card-head">
+                              <strong>{entry.actor}</strong>
+                              <span className="subtle">{formatTimestamp(entry.recordedAt)}</span>
+                            </div>
+                            <p className="subtle">
+                              <span className={`pill ${entry.actor === "continuous-monitor" ? "queued" : "review"}`}>{formatStatus(entry.action)}</span>
+                            </p>
+                            <p className="subtle">{entry.details}</p>
+                            <div className="triage-actions">
+                              <span className="subtle">{entry.project}</span>
+                              {entry.issueNumber ? (
+                                <button type="button" className="button tertiary" onClick={() => openIdeaDetail(String(entry.issueNumber))}>
+                                  Open Issue #{entry.issueNumber}
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </article>
             </section>
 

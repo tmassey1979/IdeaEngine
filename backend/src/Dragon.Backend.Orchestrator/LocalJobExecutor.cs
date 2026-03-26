@@ -20,6 +20,7 @@ public sealed class LocalJobExecutor
     private readonly AgentRuntimeConfigurationResolver? configurationResolver;
     private readonly ModelExecutionRetryOptions modelRetryOptions;
     private readonly Action<TimeSpan> sleepAction;
+    private readonly bool allowCliFallbackForModelProvider;
 
     public LocalJobExecutor(
         LocalCommandRunner? commandRunner = null,
@@ -35,6 +36,7 @@ public sealed class LocalJobExecutor
         this.configurationResolver = configurationResolver;
         this.modelRetryOptions = modelRetryOptions ?? new ModelExecutionRetryOptions();
         this.sleepAction = sleepAction ?? Thread.Sleep;
+        this.allowCliFallbackForModelProvider = commandRunnerWithInput is not null;
     }
 
     public LocalJobExecutor(
@@ -106,8 +108,8 @@ public sealed class LocalJobExecutor
 
     private ExecutionOutcome ExecuteModelBacked(string rootDirectory, SelfBuildJob job)
     {
-        var provider = ResolveProvider(job.Agent);
-        if (provider is null)
+        var resolvedConfiguration = configurationResolver?.Resolve(job.Agent);
+        if (modelProvider is null && resolvedConfiguration is null)
         {
             if (job.Payload.Operations?.Count > 0)
             {
@@ -120,18 +122,26 @@ public sealed class LocalJobExecutor
                     []);
             }
 
-            return ExecutionOutcome.FromSummary($"No model provider configured for {job.Agent}; marked complete for bootstrap flow.");
+            return ExecutionOutcome.FromSummary($"No Codex CLI model configured for {job.Agent}; marked complete for bootstrap flow.");
         }
 
-        var request = AgentPromptFactory.Build(job, provider.Describe().DefaultModel);
+        var model = resolvedConfiguration?.Model ?? modelProvider?.Describe().DefaultModel ?? "gpt-5";
+        var request = AgentPromptFactory.Build(job, model);
         AgentModelResponse response;
-        try
+        if (modelProvider is not null)
         {
-            response = ExecuteModelRequestWithRetry(provider, request);
+            try
+            {
+                response = ExecuteModelRequestWithRetry(modelProvider, request);
+            }
+            catch (AgentModelProviderException exception) when (allowCliFallbackForModelProvider && ShouldUseCliFallback(exception))
+            {
+                response = ExecuteCodexCli(rootDirectory, request);
+            }
         }
-        catch (AgentModelProviderException exception) when (ShouldUseCliFallback(exception))
+        else
         {
-            response = ExecuteCodexCliFallback(rootDirectory, request, exception);
+            response = ExecuteCodexCli(rootDirectory, request);
         }
 
         var structuredResult = AgentStructuredResultParser.Parse(response.OutputText);
@@ -148,31 +158,6 @@ public sealed class LocalJobExecutor
         }
 
         return new ExecutionOutcome(summary, [], structuredResult?.FollowUps ?? []);
-    }
-
-    private IAgentModelProvider? ResolveProvider(string agentName)
-    {
-        if (modelProvider is not null)
-        {
-            return modelProvider;
-        }
-
-        var resolved = configurationResolver?.Resolve(agentName);
-        if (resolved is null)
-        {
-            return null;
-        }
-
-        if (!string.Equals(resolved.ProviderName, "openai-responses", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException($"Unsupported configured provider: {resolved.ProviderName}");
-        }
-
-        return new OpenAiResponsesProvider(new OpenAiResponsesOptions(
-            resolved.ApiKey,
-            resolved.Model,
-            resolved.Endpoint,
-            resolved.Source == "database" ? "database" : "OPENAI_API_KEY"));
     }
 
     private AgentModelResponse ExecuteModelRequestWithRetry(IAgentModelProvider provider, AgentModelRequest request)
@@ -196,7 +181,7 @@ public sealed class LocalJobExecutor
         throw lastException ?? new InvalidOperationException("Model execution failed without an exception.");
     }
 
-    private AgentModelResponse ExecuteCodexCliFallback(string rootDirectory, AgentModelRequest request, AgentModelProviderException originalException)
+    private AgentModelResponse ExecuteCodexCli(string rootDirectory, AgentModelRequest request)
     {
         var artifactsDirectory = Path.Combine(rootDirectory, ".dragon", "artifacts", "codex-cli");
         Directory.CreateDirectory(artifactsDirectory);
@@ -222,26 +207,14 @@ public sealed class LocalJobExecutor
                 "-"
             ]);
 
-        CommandResult result;
-        try
-        {
-            result = commandRunnerWithInput("codex", arguments, rootDirectory, BuildCodexFallbackPrompt(request));
-        }
-        catch (Exception fallbackException)
-        {
-            throw new InvalidOperationException(
-                $"Codex CLI fallback failed after provider rate limiting: {fallbackException.Message}",
-                originalException);
-        }
-
+        var result = commandRunnerWithInput(ResolveCommand("codex"), arguments, rootDirectory, BuildCodexPrompt(request));
         if (result.ExitCode != 0)
         {
             var details = BuildCommandFailureDetails(result);
             throw new InvalidOperationException(
                 string.IsNullOrWhiteSpace(details)
-                    ? "Codex CLI fallback failed after provider rate limiting."
-                    : $"Codex CLI fallback failed after provider rate limiting: {details}",
-                originalException);
+                    ? "Codex CLI execution failed."
+                    : $"Codex CLI execution failed: {details}");
         }
 
         var outputText = File.Exists(outputPath)
@@ -249,7 +222,7 @@ public sealed class LocalJobExecutor
             : result.StandardOutput.Trim();
         if (string.IsNullOrWhiteSpace(outputText))
         {
-            throw new InvalidOperationException("Codex CLI fallback completed without a final response.", originalException);
+            throw new InvalidOperationException("Codex CLI execution completed without a final response.");
         }
 
         return new AgentModelResponse("codex-cli", request.Model, Path.GetFileNameWithoutExtension(outputPath), outputText, "completed");
@@ -831,15 +804,13 @@ public sealed class LocalJobExecutor
     }
 
     private static bool ShouldUseCliFallback(AgentModelProviderException exception) =>
-        exception.StatusCode == HttpStatusCode.TooManyRequests &&
-        string.Equals(exception.Provider, "openai-responses", StringComparison.OrdinalIgnoreCase);
+        exception.StatusCode == HttpStatusCode.TooManyRequests;
 
-    private static string BuildCodexFallbackPrompt(AgentModelRequest request)
+    private static string BuildCodexPrompt(AgentModelRequest request)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("The OpenAI Responses API returned HTTP 429 for this agent request.");
-        builder.AppendLine("Continue the same task through the local Codex CLI in read-only mode.");
-        builder.AppendLine("Return only the final response content for the agent. Do not mention the fallback.");
+        builder.AppendLine("Execute this agent task through the local Codex CLI in read-only mode.");
+        builder.AppendLine("Return only the final response content for the agent.");
         builder.AppendLine();
         builder.AppendLine($"Agent: {request.Agent}");
         builder.AppendLine($"Purpose: {request.Purpose}");

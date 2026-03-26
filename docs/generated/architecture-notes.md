@@ -2213,3 +2213,21 @@ Clusters can grow as new nodes are added.
 Expansion workflow:
 ## Acceptance Criteria
 
+
+## [Story] ETHICS ANALYSIS AGENT: AGENT SPECIALIZATION ARCHITECTURE
+
+Planner category: Architecture Notes
+Source heading: n/a
+Source file: n/a
+
+Quarantined after 4 repeated failed test executions. Latest failure: test / test-141-1774380869803.
+
+
+## [Story] ETHICS ANALYSIS AGENT: AGENT SPECIALIZATION ARCHITECTURE
+
+Planner category: Architecture Notes
+Source heading: n/a
+Source file: n/a
+
+Quarantined after 5 repeated failed test executions. Latest failure: test / test-141-1774453689913.
+

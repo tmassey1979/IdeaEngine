@@ -1040,6 +1040,7 @@ services:
     private static string RenderDeploymentEnvTemplate() =>
         """
 OPENAI_API_KEY=
+CODEX_MODEL=gpt-5
 GITHUB_TOKEN=
 POSTGRES_PASSWORD=dragon
 RABBITMQ_DEFAULT_USER=dragon

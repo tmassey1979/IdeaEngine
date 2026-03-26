@@ -2327,3 +2327,135 @@ Each project receives a combined risk score.
 Score categories include:
 ## Acceptance Criteria
 
+
+## [Story] SECURITY AND COMPLIANCE VALIDATION SYSTEM: Compliance Reporting
+
+Planner category: Operations Notes
+Source heading: Compliance Reporting
+Source file: codex/sections/18-security-and-compliance-validation-system.md
+
+Parent epic: #18 [Epic] SECURITY AND COMPLIANCE VALIDATION SYSTEM
+Source section: `codex/sections/18-security-and-compliance-validation-system.md`
+## User Story
+As a product owner, I want the compliance reporting capability, so that each project receives a compliance report containing: Reports are stored in the knowledge system for future learning.
+## Description
+Each project receives a compliance report containing:
+Reports are stored in the knowledge system for future learning.
+## Acceptance Criteria
+
+
+## [Story] SECURITY AND COMPLIANCE VALIDATION SYSTEM: Integration With Knowledge System
+
+Planner category: Operations Notes
+Source heading: Integration With Knowledge System
+Source file: codex/sections/18-security-and-compliance-validation-system.md
+
+Parent epic: #18 [Epic] SECURITY AND COMPLIANCE VALIDATION SYSTEM
+Source section: `codex/sections/18-security-and-compliance-validation-system.md`
+## User Story
+As a product owner, I want the integration with knowledge system capability, so that all compliance findings are stored in the knowledge system.
+## Description
+All compliance findings are stored in the knowledge system.
+This allows the platform to learn patterns such as:
+## Acceptance Criteria
+
+
+## [Story] SECURITY AND COMPLIANCE VALIDATION SYSTEM: Raspberry Pi Deployment Considerations
+
+Planner category: Operations Notes
+Source heading: Raspberry Pi Deployment Considerations
+Source file: codex/sections/18-security-and-compliance-validation-system.md
+
+Parent epic: #18 [Epic] SECURITY AND COMPLIANCE VALIDATION SYSTEM
+Source section: `codex/sections/18-security-and-compliance-validation-system.md`
+## User Story
+As a product owner, I want the raspberry pi deployment considerations capability, so that because Dragon Idea Engine may operate on Raspberry Pi clusters, validation tasks may be distributed.
+## Description
+Because Dragon Idea Engine may operate on Raspberry Pi clusters, validation tasks may be distributed.
+Example distribution:
+## Acceptance Criteria
+
+
+## [Story] AUTONOMOUS IDEA DISCOVERY SYSTEM: Continuous Discovery Loop
+
+Planner category: Operations Notes
+Source heading: Continuous Discovery Loop
+Source file: codex/sections/19-autonomous-idea-discovery-system.md
+
+Parent epic: #19 [Epic] AUTONOMOUS IDEA DISCOVERY SYSTEM
+Source section: `codex/sections/19-autonomous-idea-discovery-system.md`
+## User Story
+As a platform architect, I want the continuous discovery loop capability, so that idea discovery runs continuously in the background.
+## Description
+Idea discovery runs continuously in the background.
+Example workflow:
+## Acceptance Criteria
+
+
+## [Story] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM: Agent Benchmark Testing
+
+Planner category: Operations Notes
+Source heading: Agent Benchmark Testing
+Source file: codex/sections/20-agent-self-improvement-and-evolution-system.md
+
+Parent epic: #20 [Epic] AGENT SELF IMPROVEMENT AND EVOLUTION SYSTEM
+Source section: `codex/sections/20-agent-self-improvement-and-evolution-system.md`
+## User Story
+As a platform operator, I want the agent benchmark testing capability, so that benchmark tasks are used to evaluate agent improvements.
+## Description
+Benchmark tasks are used to evaluate agent improvements.
+Example benchmark types:
+## Acceptance Criteria
+
+
+## [Story] HUMAN COLLABORATION AND OVERRIDE SYSTEM: Approval Workflows
+
+Planner category: Operations Notes
+Source heading: Approval Workflows
+Source file: codex/sections/21-human-collaboration-and-override-system.md
+
+Parent epic: #21 [Epic] HUMAN COLLABORATION AND OVERRIDE SYSTEM
+Source section: `codex/sections/21-human-collaboration-and-override-system.md`
+## User Story
+As a product owner, I want the approval workflows capability, so that certain decisions require explicit human approval.
+## Description
+Certain decisions require explicit human approval.
+Examples include:
+## Acceptance Criteria
+
+
+## [Story] Dragon Idea Engine Master Codex: Test Agent
+
+Planner category: Operations Notes
+Source heading: n/a
+Source file: n/a
+
+Quarantined after 5 repeated failed test executions. Latest failure: test / test-36-1774380996605.
+
+
+## [Story] PROJECT GENERATION PIPELINE: Stage 3 Technology Stack Selection
+
+Planner category: Operations Notes
+Source heading: n/a
+Source file: n/a
+
+Quarantined after 3 repeated failed test executions. Latest failure: test / test-228-1774381727864.
+
+
+## [Story] ASSET AND MEDIA GENERATION PIPELINE: 2D Illustration Agents
+
+Planner category: Operations Notes
+Source heading: n/a
+Source file: n/a
+
+Quarantined after 3 repeated failed test executions. Latest failure: test / test-256-1774382361526.
+
+
+## [Story] Dragon Idea Engine Master Codex: Test Agent
+
+Planner category: Operations Notes
+Source heading: n/a
+Source file: n/a
+
+Quarantined after 6 repeated failed test executions. Latest failure: test / test-36-1774453537666.
+

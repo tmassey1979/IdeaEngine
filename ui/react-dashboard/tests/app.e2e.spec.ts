@@ -22,6 +22,60 @@ const dashboardPayload = {
   leadWorkLabel: "#44 implement_issue",
 };
 
+const agentPerformancePayload = {
+  generatedAt: "2026-03-25T12:00:00Z",
+  summary: "12 tracked agent metric set(s)",
+  agents: Array.from({ length: 12 }, (_, index) => ({
+    agent: `agent-${index + 1}`,
+    totalExecutions: 12 - index,
+    successCount: 10 - Math.min(index, 5),
+    failureCount: index < 2 ? 1 : 0,
+    successRate: index < 2 ? 91 : 100,
+    errorFrequency: index < 2 ? 0.09 : 0,
+    averageDurationMilliseconds: 800 + index * 25,
+    averageQualityScore: 4.8 - index * 0.1,
+    averageRetryCount: index < 2 ? 0.5 : 0,
+    averageProcessorLoadPercent: 22,
+    averageMemoryUsedPercent: 38,
+    averageDiskUsedPercent: 41,
+    lastRecordedAt: "2026-03-25T11:45:00Z",
+    summary: `Summary for agent ${index + 1}`,
+  })),
+};
+
+const auditLogPayload = {
+  generatedAt: "2026-03-25T12:00:00Z",
+  summary: "12 audit event(s)",
+  entries: Array.from({ length: 12 }, (_, index) => ({
+    id: `audit-${index + 1}`,
+    actor: index === 0 ? "continuous-monitor" : "operator",
+    action: index === 0 ? "queue_fix" : "release_quarantine",
+    project: "DragonIdeaEngine",
+    issueNumber: index < 2 ? index + 1 : null,
+    details: `Audit event ${index + 1}`,
+    source: "ui",
+    recordedAt: "2026-03-25T11:45:00Z",
+  })),
+};
+
+const continuousMonitoringPayload = {
+  generatedAt: "2026-03-25T12:00:00Z",
+  summary: "12 monitoring finding(s)",
+  findings: Array.from({ length: 12 }, (_, index) => ({
+    id: `finding-${index + 1}`,
+    category: index === 0 ? "new_vulnerability_discovery" : "technology_deprecations",
+    severity: index === 0 ? "critical" : "warning",
+    status: "active",
+    project: "DragonIdeaEngine",
+    issueNumber: index < 2 ? index + 1 : null,
+    summary: `Finding ${index + 1}`,
+    recommendation: `Recommendation ${index + 1}`,
+    triggerAutomatedUpdate: index === 0,
+    recordedAt: "2026-03-25T11:30:00Z",
+    lastObservedAt: "2026-03-25T11:45:00Z",
+  })),
+};
+
 const ideasPayload = Array.from({ length: 12 }, (_, index) => ({
   id: String(index + 1),
   title: `Project ${index + 1}`,
@@ -115,6 +169,18 @@ async function routeApi(page: import("@playwright/test").Page) {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ideasPayload) });
   });
 
+  await page.route("**/api/agent-performance", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(agentPerformancePayload) });
+  });
+
+  await page.route("**/api/audit-log**", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(auditLogPayload) });
+  });
+
+  await page.route("**/api/continuous-monitoring**", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(continuousMonitoringPayload) });
+  });
+
   await page.route("**/api/ideas/2/fix", async (route) => {
     await route.fulfill({
       status: 200,
@@ -153,6 +219,22 @@ test("services card expands service health detail", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Service health detail/i })).toBeVisible();
   await expect(page.locator(".service-card").filter({ hasText: "orchestrator" })).toBeVisible();
   await expect(page.locator(".service-card").filter({ hasText: "queue" })).toBeVisible();
+});
+
+test("dashboard renders monitoring panels with paged data", async ({ page }) => {
+  await routeApi(page);
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: /Execution quality and throughput/i })).toBeVisible();
+  await expect(page.getByText("agent-10")).toBeVisible();
+  await expect(page.getByText("agent-11")).toHaveCount(0);
+  await expect(page.getByText("Finding 10")).toBeVisible();
+  await expect(page.getByText("Finding 11")).toHaveCount(0);
+  await expect(page.getByText("Audit event 10")).toBeVisible();
+  await expect(page.getByText("Audit event 11")).toHaveCount(0);
+
+  await page.getByLabel("Agent performance page size").selectOption("20");
+  await expect(page.getByText("agent-11")).toBeVisible();
 });
 
 test("loop health opens the intervention workspace and supports grouped fix queueing", async ({ page }) => {

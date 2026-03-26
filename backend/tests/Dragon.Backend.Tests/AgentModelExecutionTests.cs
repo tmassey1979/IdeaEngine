@@ -2110,7 +2110,7 @@ public sealed class AgentModelExecutionTests
 
         var result = executor.Execute(CreateTempRoot(), job);
 
-        Assert.Equal("success", result.Status);
+        Assert.True(string.Equals(result.Status, "success", StringComparison.Ordinal), result.Summary);
         Assert.Equal("Recovered after retry.", result.Summary);
         Assert.Equal([TimeSpan.FromSeconds(7)], observedSleeps);
         Assert.Equal(2, provider.AttemptCount);
@@ -2143,7 +2143,7 @@ public sealed class AgentModelExecutionTests
             null,
             (fileName, arguments, workingDirectory, standardInput) =>
             {
-                Assert.Equal("codex", fileName);
+                Assert.EndsWith("codex", fileName.Replace(".cmd", string.Empty, StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase);
                 observedArguments = arguments;
                 observedPrompt = standardInput;
                 var outputPath = ExtractOutputPath(arguments);
@@ -2154,7 +2154,7 @@ public sealed class AgentModelExecutionTests
 
         var result = executor.Execute(CreateTempRoot(), job);
 
-        Assert.Equal("success", result.Status);
+        Assert.True(string.Equals(result.Status, "success", StringComparison.Ordinal), result.Summary);
         Assert.Equal("Recovered through CLI fallback.", result.Summary);
         Assert.Equal(3, provider.AttemptCount);
         Assert.Contains("--sandbox read-only", observedArguments, StringComparison.Ordinal);
@@ -2265,7 +2265,7 @@ public sealed class AgentModelExecutionTests
 
         var result = executor.Execute(root, job);
 
-        Assert.Equal("success", result.Status);
+        Assert.True(string.Equals(result.Status, "success", StringComparison.Ordinal), result.Summary);
         Assert.Contains("Applied 1 planned documentation operation", result.Summary, StringComparison.Ordinal);
         Assert.Contains("docs/generated/repository-structure-notes.md", result.ChangedPaths!);
         Assert.True(File.Exists(Path.Combine(root, "docs", "generated", "repository-structure-notes.md")));
@@ -2289,7 +2289,7 @@ public sealed class AgentModelExecutionTests
 
         var result = executor.Execute(root, job);
 
-        Assert.Equal("success", result.Status);
+        Assert.True(string.Equals(result.Status, "success", StringComparison.Ordinal), result.Summary);
         Assert.Contains("Applied 2 planned repository-manager operation", result.Summary, StringComparison.Ordinal);
         Assert.Contains("templates/repo-templates/deploy/docker-compose.yml", result.ChangedPaths!);
         Assert.Contains("templates/repo-templates/deploy/.env.example", result.ChangedPaths!);
@@ -2337,7 +2337,7 @@ public sealed class AgentModelExecutionTests
         var result = executor.Execute(CreateTempRoot(), job);
 
         Assert.Equal("success", result.Status);
-        Assert.Contains("No model provider configured", result.Summary, StringComparison.Ordinal);
+        Assert.Contains("No Codex CLI model configured", result.Summary, StringComparison.Ordinal);
     }
 
     private static string CreateTempRoot()

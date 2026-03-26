@@ -16,9 +16,6 @@ public sealed record StoredAgentConfiguration(
     DateTimeOffset UpdatedAt);
 
 public sealed record ResolvedAgentConfiguration(
-    string ProviderName,
-    string ApiKey,
     string Model,
-    string Endpoint,
     string Source,
     string? AgentName);

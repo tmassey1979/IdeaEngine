@@ -25,6 +25,66 @@ export type DashboardResponse = {
   leadWorkLabel?: string | null;
 };
 
+export type AgentMetricResponse = {
+  agent: string;
+  totalExecutions: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  errorFrequency: number;
+  averageDurationMilliseconds: number;
+  averageQualityScore: number;
+  averageRetryCount: number;
+  averageProcessorLoadPercent?: number | null;
+  averageMemoryUsedPercent?: number | null;
+  averageDiskUsedPercent?: number | null;
+  lastRecordedAt?: string | null;
+  summary: string;
+};
+
+export type AgentPerformanceResponse = {
+  generatedAt: string;
+  summary: string;
+  agents: AgentMetricResponse[];
+};
+
+export type AuditLogEntryResponse = {
+  id: string;
+  actor: string;
+  action: string;
+  project: string;
+  issueNumber?: number | null;
+  details: string;
+  source?: string | null;
+  recordedAt: string;
+};
+
+export type AuditLogResponse = {
+  generatedAt: string;
+  summary: string;
+  entries: AuditLogEntryResponse[];
+};
+
+export type ContinuousMonitoringFindingResponse = {
+  id: string;
+  category: string;
+  severity: string;
+  status: string;
+  project: string;
+  issueNumber?: number | null;
+  summary: string;
+  recommendation: string;
+  triggerAutomatedUpdate: boolean;
+  recordedAt: string;
+  lastObservedAt: string;
+};
+
+export type ContinuousMonitoringResponse = {
+  generatedAt: string;
+  summary: string;
+  findings: ContinuousMonitoringFindingResponse[];
+};
+
 export type IdeaListItemResponse = {
   id: string;
   title: string;

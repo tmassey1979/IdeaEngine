@@ -11,9 +11,7 @@ public sealed class AgentRuntimeConfigurationResolverTests
             CreateTempRoot(),
             name => name switch
             {
-                "OPENAI_API_KEY" => "env-key",
-                "OPENAI_MODEL" => "gpt-5-mini",
-                "OPENAI_RESPONSES_ENDPOINT" => "https://example.invalid/responses",
+                "CODEX_MODEL" => "gpt-5-mini",
                 _ => null
             });
 
@@ -21,27 +19,18 @@ public sealed class AgentRuntimeConfigurationResolverTests
 
         Assert.NotNull(resolved);
         Assert.Equal("environment", resolved!.Source);
-        Assert.Equal("env-key", resolved.ApiKey);
         Assert.Equal("gpt-5-mini", resolved.Model);
-        Assert.Equal("https://example.invalid/responses", resolved.Endpoint);
         Assert.Equal("architect", resolved.AgentName);
     }
 
     [Fact]
-    public void Resolve_PrefersCliOverrides_OverDatabaseConfiguration()
+    public void Resolve_PrefersCliModelOverride_OverDatabaseConfiguration()
     {
         var encryptionService = new ConfigurationEncryptionService(ConfigurationEncryptionService.GenerateEncodedKey());
         var store = new InMemoryAgentConfigurationStore();
-        store.UpsertProvider(new StoredProviderConfiguration(
-            "openai-responses",
-            "responses",
-            "gpt-5",
-            "https://database.example/responses",
-            encryptionService.Encrypt("db-key"),
-            DateTimeOffset.UtcNow));
         store.UpsertAgent(new StoredAgentConfiguration(
             "architect",
-            "openai-responses",
+            null,
             "gpt-5",
             true,
             DateTimeOffset.UtcNow));
@@ -51,35 +40,23 @@ public sealed class AgentRuntimeConfigurationResolverTests
             store,
             encryptionService,
             new AgentRuntimeOverrides(
-                ProviderName: "openai-responses",
-                ApiKey: "cli-key",
-                Model: "gpt-5.4-mini",
-                Endpoint: "https://cli.example/responses"));
+                Model: "gpt-5.4-mini"));
 
         var resolved = resolver.Resolve("architect");
 
         Assert.NotNull(resolved);
         Assert.Equal("cli", resolved!.Source);
-        Assert.Equal("cli-key", resolved.ApiKey);
         Assert.Equal("gpt-5.4-mini", resolved.Model);
-        Assert.Equal("https://cli.example/responses", resolved.Endpoint);
     }
 
     [Fact]
-    public void Resolve_UsesEncryptedDatabaseConfiguration_WhenCliOverridesAreAbsent()
+    public void Resolve_UsesDatabaseAgentModel_WhenCliOverridesAreAbsent()
     {
         var encryptionService = new ConfigurationEncryptionService(ConfigurationEncryptionService.GenerateEncodedKey());
         var store = new InMemoryAgentConfigurationStore();
-        store.UpsertProvider(new StoredProviderConfiguration(
-            "openai-responses",
-            "responses",
-            "gpt-5",
-            "https://database.example/responses",
-            encryptionService.Encrypt("db-key"),
-            DateTimeOffset.UtcNow));
         store.UpsertAgent(new StoredAgentConfiguration(
             "architect",
-            "openai-responses",
+            null,
             "gpt-5.4",
             true,
             DateTimeOffset.UtcNow));
@@ -90,9 +67,7 @@ public sealed class AgentRuntimeConfigurationResolverTests
 
         Assert.NotNull(resolved);
         Assert.Equal("database", resolved!.Source);
-        Assert.Equal("db-key", resolved.ApiKey);
         Assert.Equal("gpt-5.4", resolved.Model);
-        Assert.Equal("https://database.example/responses", resolved.Endpoint);
     }
 
     private static string CreateTempRoot()

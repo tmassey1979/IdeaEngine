@@ -1,4 +1,12 @@
-import type { DashboardResponse, IdeaDetailResponse, IdeaFixResponse, IdeaListItemResponse } from "./types";
+import type {
+  AgentPerformanceResponse,
+  AuditLogResponse,
+  ContinuousMonitoringResponse,
+  DashboardResponse,
+  IdeaDetailResponse,
+  IdeaFixResponse,
+  IdeaListItemResponse,
+} from "./types";
 
 async function fetchJson<TData>(path: string): Promise<TData> {
   const response = await fetch(path, {
@@ -41,6 +49,18 @@ export function loadIdeas(): Promise<IdeaListItemResponse[]> {
 
 export function loadIdeaDetail(id: string): Promise<IdeaDetailResponse> {
   return fetchJson<IdeaDetailResponse>(`/api/ideas/${encodeURIComponent(id)}`);
+}
+
+export function loadAgentPerformance(): Promise<AgentPerformanceResponse> {
+  return fetchJson<AgentPerformanceResponse>("/api/agent-performance");
+}
+
+export function loadAuditLog(limit = 10): Promise<AuditLogResponse> {
+  return fetchJson<AuditLogResponse>(`/api/audit-log?limit=${encodeURIComponent(String(limit))}`);
+}
+
+export function loadContinuousMonitoring(limit = 10): Promise<ContinuousMonitoringResponse> {
+  return fetchJson<ContinuousMonitoringResponse>(`/api/continuous-monitoring?limit=${encodeURIComponent(String(limit))}`);
 }
 
 export function fixIdea(id: string, operatorInput?: string): Promise<IdeaFixResponse> {

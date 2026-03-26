@@ -9,12 +9,9 @@ var options = ParseOptions(args.Skip(1).ToArray());
 return command switch
 {
     "config-generate-key" => RunConfigGenerateKey(),
-    "provider-config-set" => RunProviderConfigSet(options),
-    "provider-config-list" => RunProviderConfigList(options),
     "agent-config-set" => RunAgentConfigSet(options),
     "agent-config-list" => RunAgentConfigList(options),
     "agent-config-resolve" => RunAgentConfigResolve(options),
-    "provider-describe" => RunProviderDescribe(options),
     "plan" => RunPlan(options),
     "plan-from-backlog" => RunPlanFromBacklog(options),
     "status" => RunStatus(options),
@@ -41,59 +38,6 @@ static int RunConfigGenerateKey()
     return 0;
 }
 
-static int RunProviderConfigSet(IReadOnlyDictionary<string, string> options)
-{
-    if (!options.TryGetValue("name", out var name) || string.IsNullOrWhiteSpace(name))
-    {
-        Console.Error.WriteLine("Missing required option: --name");
-        return 1;
-    }
-
-    if (!options.TryGetValue("api-key", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
-    {
-        Console.Error.WriteLine("Missing required option: --api-key");
-        return 1;
-    }
-
-    try
-    {
-        var resolver = CreateConfigurationResolver(options);
-        resolver.UpsertProvider(
-            name.Trim(),
-            GetString(options, "transport", "responses"),
-            GetString(options, "model", "gpt-5"),
-            GetString(options, "endpoint", "https://api.openai.com/v1/responses"),
-            apiKey.Trim());
-
-        PrintJson(new
-        {
-            stored = true,
-            provider = name.Trim()
-        });
-        return 0;
-    }
-    catch (InvalidOperationException exception)
-    {
-        Console.Error.WriteLine(exception.Message);
-        return 1;
-    }
-}
-
-static int RunProviderConfigList(IReadOnlyDictionary<string, string> options)
-{
-    try
-    {
-        var resolver = CreateConfigurationResolver(options);
-        PrintJson(resolver.ListStoredProviders());
-        return 0;
-    }
-    catch (InvalidOperationException exception)
-    {
-        Console.Error.WriteLine(exception.Message);
-        return 1;
-    }
-}
-
 static int RunAgentConfigSet(IReadOnlyDictionary<string, string> options)
 {
     if (!options.TryGetValue("agent", out var agentName) || string.IsNullOrWhiteSpace(agentName))
@@ -107,7 +51,7 @@ static int RunAgentConfigSet(IReadOnlyDictionary<string, string> options)
         var resolver = CreateConfigurationResolver(options);
         resolver.UpsertAgent(
             agentName.Trim(),
-            GetNullable(options, "provider"),
+            null,
             GetNullable(options, "model"),
             options.TryGetValue("enabled", out var enabledRaw)
                 ? !string.Equals(enabledRaw, "false", StringComparison.OrdinalIgnoreCase)
@@ -151,28 +95,6 @@ static int RunAgentConfigResolve(IReadOnlyDictionary<string, string> options)
         var resolved = resolver.Resolve(agentName);
         PrintJson(resolved);
         return resolved is null ? 1 : 0;
-    }
-    catch (InvalidOperationException exception)
-    {
-        Console.Error.WriteLine(exception.Message);
-        return 1;
-    }
-}
-
-static int RunProviderDescribe(IReadOnlyDictionary<string, string> options)
-{
-    var provider = GetString(options, "provider", "openai-responses");
-    if (!string.Equals(provider, "openai-responses", StringComparison.OrdinalIgnoreCase))
-    {
-        Console.Error.WriteLine($"Unsupported provider: {provider}");
-        return 1;
-    }
-
-    try
-    {
-        var configuredProvider = new OpenAiResponsesProvider(OpenAiResponsesOptions.FromEnvironment(Environment.GetEnvironmentVariable));
-        PrintJson(configuredProvider.Describe());
-        return 0;
     }
     catch (InvalidOperationException exception)
     {
@@ -839,12 +761,9 @@ static int ShowHelp()
 
         Commands:
           config-generate-key
-          provider-config-set --name <provider> --api-key <secret> [--transport responses] [--model gpt-5] [--endpoint <url>] [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
-          provider-config-list [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
-          agent-config-set --agent <agent-name> [--provider <provider>] [--model <model>] [--enabled true|false] [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
+          agent-config-set --agent <agent-name> [--model <model>] [--enabled true|false] [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
           agent-config-list [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
-          agent-config-resolve [--agent <agent-name>] [--provider <provider>] [--api-key <secret>] [--model <model>] [--endpoint <url>] [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
-          provider-describe [--provider openai-responses]
+          agent-config-resolve [--agent <agent-name>] [--model <model>] [--connection-string <postgres>] [--encryption-key <base64>] [--root <repo-root>]
           plan --title <story-title> [--number 22] [--heading <heading>] [--source-file <path>] [--body <text>]
           plan-from-backlog --title <story-title> [--number 22] [--body <text>] [--root <repo-root>]
           status [--root <repo-root>] [--out <path>]
@@ -924,10 +843,7 @@ static AgentRuntimeConfigurationResolver CreateConfigurationResolver(IReadOnlyDi
 {
     var root = Path.GetFullPath(GetString(options, "root", Directory.GetCurrentDirectory()));
     var runtimeOverrides = new AgentRuntimeOverrides(
-        ProviderName: GetNullable(options, "provider"),
-        ApiKey: GetNullable(options, "api-key"),
         Model: GetNullable(options, "model"),
-        Endpoint: GetNullable(options, "endpoint"),
         ConnectionString: GetNullable(options, "connection-string"),
         EncryptionKey: GetNullable(options, "encryption-key"));
 

@@ -257,6 +257,10 @@ textarea {
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.95fr);
 }
 
+.monitoring-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .metric-card,
 .sidebar-card,
 .detail-card,
@@ -371,6 +375,11 @@ textarea {
   border-radius: var(--radius-lg);
   padding: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+}
+
+.monitoring-card {
+  display: grid;
+  gap: 12px;
 }
 
 .intervention-summary {
@@ -722,6 +731,7 @@ textarea {
   .hero,
   .health-strip,
   .dashboard-grid,
+  .monitoring-grid,
   .wizard-grid,
   .detail-summary,
   .detail-body,

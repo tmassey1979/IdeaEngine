@@ -25,6 +25,60 @@ const dashboardPayload = {
   leadWorkLabel: "#44 implement_issue",
 };
 
+const agentPerformancePayload = {
+  generatedAt: "2026-03-25T12:00:00Z",
+  summary: "12 tracked agent metric set(s)",
+  agents: Array.from({ length: 12 }, (_, index) => ({
+    agent: `agent-${index + 1}`,
+    totalExecutions: 12 - index,
+    successCount: 10 - Math.min(index, 5),
+    failureCount: index < 2 ? 1 : 0,
+    successRate: index < 2 ? 91 : 100,
+    errorFrequency: index < 2 ? 0.09 : 0,
+    averageDurationMilliseconds: 800 + index * 25,
+    averageQualityScore: 4.8 - index * 0.1,
+    averageRetryCount: index < 2 ? 0.5 : 0,
+    averageProcessorLoadPercent: 22,
+    averageMemoryUsedPercent: 38,
+    averageDiskUsedPercent: 41,
+    lastRecordedAt: "2026-03-25T11:45:00Z",
+    summary: `Summary for agent ${index + 1}`,
+  })),
+};
+
+const auditLogPayload = {
+  generatedAt: "2026-03-25T12:00:00Z",
+  summary: "12 audit event(s)",
+  entries: Array.from({ length: 12 }, (_, index) => ({
+    id: `audit-${index + 1}`,
+    actor: index === 0 ? "continuous-monitor" : "operator",
+    action: index === 0 ? "queue_fix" : "release_quarantine",
+    project: "DragonIdeaEngine",
+    issueNumber: index < 2 ? index + 1 : null,
+    details: `Audit event ${index + 1}`,
+    source: "ui",
+    recordedAt: "2026-03-25T11:45:00Z",
+  })),
+};
+
+const continuousMonitoringPayload = {
+  generatedAt: "2026-03-25T12:00:00Z",
+  summary: "12 monitoring finding(s)",
+  findings: Array.from({ length: 12 }, (_, index) => ({
+    id: `finding-${index + 1}`,
+    category: index === 0 ? "new_vulnerability_discovery" : "technology_deprecations",
+    severity: index === 0 ? "critical" : "warning",
+    status: "active",
+    project: "DragonIdeaEngine",
+    issueNumber: index < 2 ? index + 1 : null,
+    summary: `Finding ${index + 1}`,
+    recommendation: `Recommendation ${index + 1}`,
+    triggerAutomatedUpdate: index === 0,
+    recordedAt: "2026-03-25T11:30:00Z",
+    lastObservedAt: "2026-03-25T11:45:00Z",
+  })),
+};
+
 const ideasPayload = Array.from({ length: 12 }, (_, index) => ({
   id: String(index + 1),
   title: `Project ${index + 1}`,
@@ -123,6 +177,18 @@ function installFetchStub() {
         return Promise.resolve(new Response(JSON.stringify(quarantinedDetailPayload), { status: 200 }));
       }
 
+      if (url.endsWith("/api/agent-performance")) {
+        return Promise.resolve(new Response(JSON.stringify(agentPerformancePayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/audit-log")) {
+        return Promise.resolve(new Response(JSON.stringify(auditLogPayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/continuous-monitoring")) {
+        return Promise.resolve(new Response(JSON.stringify(continuousMonitoringPayload), { status: 200 }));
+      }
+
       if (url.endsWith("/api/ideas/2/fix")) {
         return Promise.resolve(
           new Response(
@@ -196,6 +262,18 @@ describe("React dashboard", () => {
         return Promise.resolve(new Response(JSON.stringify(detailPayload), { status: 200 }));
       }
 
+      if (url.endsWith("/api/agent-performance")) {
+        return Promise.resolve(new Response(JSON.stringify(agentPerformancePayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/audit-log")) {
+        return Promise.resolve(new Response(JSON.stringify(auditLogPayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/continuous-monitoring")) {
+        return Promise.resolve(new Response(JSON.stringify(continuousMonitoringPayload), { status: 200 }));
+      }
+
       return Promise.resolve(new Response(null, { status: 404 }));
     });
 
@@ -252,6 +330,18 @@ describe("React dashboard", () => {
         return Promise.resolve(new Response(JSON.stringify(detailPayload), { status: 200 }));
       }
 
+      if (url.endsWith("/api/agent-performance")) {
+        return Promise.resolve(new Response(JSON.stringify(agentPerformancePayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/audit-log")) {
+        return Promise.resolve(new Response(JSON.stringify(auditLogPayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/continuous-monitoring")) {
+        return Promise.resolve(new Response(JSON.stringify(continuousMonitoringPayload), { status: 200 }));
+      }
+
       return Promise.resolve(new Response(null, { status: 404 }));
     });
 
@@ -278,6 +368,63 @@ describe("React dashboard", () => {
     expect(screen.getByText(/Dashboard auto-refresh failed\. Request failed \(503\)/i)).toBeInTheDocument();
     expect(screen.getByText("2/2 healthy")).toBeInTheDocument();
     expect(screen.queryByText(/Loading active projects/i)).not.toBeInTheDocument();
+  });
+
+  test("renders agent performance, monitoring, and audit panels with paged data", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Execution quality and throughput/i });
+    expect(screen.getByText("agent-10")).toBeInTheDocument();
+    expect(screen.queryByText("agent-11")).not.toBeInTheDocument();
+    expect(screen.getByText("Finding 10")).toBeInTheDocument();
+    expect(screen.queryByText("Finding 11")).not.toBeInTheDocument();
+    expect(screen.getByText("Audit event 10")).toBeInTheDocument();
+    expect(screen.queryByText("Audit event 11")).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Agent performance page size/i), "20");
+    await waitFor(() => {
+      expect(screen.getByText("agent-11")).toBeInTheDocument();
+    });
+  });
+
+  test("shows a panel-level error when continuous monitoring is unavailable", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url.endsWith("/api/dashboard")) {
+        return Promise.resolve(new Response(JSON.stringify(dashboardPayload), { status: 200 }));
+      }
+
+      if (url.endsWith("/api/ideas")) {
+        return Promise.resolve(new Response(JSON.stringify(ideasPayload), { status: 200 }));
+      }
+
+      if (url.endsWith("/api/ideas/1")) {
+        return Promise.resolve(new Response(JSON.stringify(detailPayload), { status: 200 }));
+      }
+
+      if (url.endsWith("/api/agent-performance")) {
+        return Promise.resolve(new Response(JSON.stringify(agentPerformancePayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/audit-log")) {
+        return Promise.resolve(new Response(JSON.stringify(auditLogPayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/continuous-monitoring")) {
+        return Promise.resolve(new Response(null, { status: 503 }));
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await screen.findByText(/Continuous monitoring is unavailable right now\. Request failed \(503\)/i);
+    expect(screen.getByRole("heading", { name: /Execution quality and throughput/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Operator and automated control actions/i })).toBeInTheDocument();
   });
 
   test("opens the intervention workspace from the loop health card", async () => {
@@ -386,6 +533,18 @@ describe("React dashboard", () => {
         return Promise.resolve(new Response(JSON.stringify(quarantinedDetailPayload), { status: 200 }));
       }
 
+      if (url.endsWith("/api/agent-performance")) {
+        return Promise.resolve(new Response(JSON.stringify(agentPerformancePayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/audit-log")) {
+        return Promise.resolve(new Response(JSON.stringify(auditLogPayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/continuous-monitoring")) {
+        return Promise.resolve(new Response(JSON.stringify(continuousMonitoringPayload), { status: 200 }));
+      }
+
       if (url.endsWith("/api/ideas/2/fix")) {
         return Promise.resolve(
           new Response(
@@ -480,6 +639,18 @@ describe("React dashboard", () => {
             { status: 200 },
           ),
         );
+      }
+
+      if (url.endsWith("/api/agent-performance")) {
+        return Promise.resolve(new Response(JSON.stringify(agentPerformancePayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/audit-log")) {
+        return Promise.resolve(new Response(JSON.stringify(auditLogPayload), { status: 200 }));
+      }
+
+      if (url.includes("/api/continuous-monitoring")) {
+        return Promise.resolve(new Response(JSON.stringify(continuousMonitoringPayload), { status: 200 }));
       }
 
       if (url.endsWith("/api/ideas/2/fix") || url.endsWith("/api/ideas/5/fix")) {
