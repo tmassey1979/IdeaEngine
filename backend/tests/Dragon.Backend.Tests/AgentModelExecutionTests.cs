@@ -2117,6 +2117,52 @@ public sealed class AgentModelExecutionTests
     }
 
     [Fact]
+    public void Execute_FallsBackToCodexCli_WhenOpenAiProviderReturns429()
+    {
+        var issue = new GithubIssue(
+            507,
+            "[Story] Dragon Idea Engine Master Codex: Architect Agent",
+            "OPEN",
+            ["story"]
+        );
+        var job = SelfBuildJobFactory.Create(issue, "architect", "IdeaEngine", "DragonIdeaEngine");
+        var provider = new FailingThenSuccessfulAgentModelProvider(
+            failuresBeforeSuccess: 3,
+            new AgentModelProviderException(
+                "openai-responses",
+                "OpenAI Responses request failed with HTTP 429 (Too Many Requests).",
+                true,
+                HttpStatusCode.TooManyRequests,
+                TimeSpan.FromSeconds(30)));
+        string? observedPrompt = null;
+        string? observedArguments = null;
+        var executor = new LocalJobExecutor(
+            (_, _, _) => new CommandResult(0, "ok", string.Empty),
+            provider,
+            new ModelExecutionRetryOptions(MaxAttempts: 3, BaseDelayMilliseconds: 0),
+            null,
+            (fileName, arguments, workingDirectory, standardInput) =>
+            {
+                Assert.Equal("codex", fileName);
+                observedArguments = arguments;
+                observedPrompt = standardInput;
+                var outputPath = ExtractOutputPath(arguments);
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                File.WriteAllText(outputPath, """{"summary":"Recovered through CLI fallback."}""");
+                return new CommandResult(0, string.Empty, string.Empty);
+            });
+
+        var result = executor.Execute(CreateTempRoot(), job);
+
+        Assert.Equal("success", result.Status);
+        Assert.Equal("Recovered through CLI fallback.", result.Summary);
+        Assert.Equal(3, provider.AttemptCount);
+        Assert.Contains("--sandbox read-only", observedArguments, StringComparison.Ordinal);
+        Assert.Contains("Agent: architect", observedPrompt, StringComparison.Ordinal);
+        Assert.Contains("Purpose: implement_issue", observedPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ParseStructuredResult_ReturnsNullForPlainText()
     {
         var parsed = AgentStructuredResultParser.Parse("plain text result");
@@ -2299,6 +2345,17 @@ public sealed class AgentModelExecutionTests
         var root = Path.Combine(Path.GetTempPath(), $"dragon-agent-model-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         return root;
+    }
+
+    private static string ExtractOutputPath(string arguments)
+    {
+        const string marker = "-o \"";
+        var markerIndex = arguments.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(markerIndex >= 0, "Expected codex output file argument.");
+        var startIndex = markerIndex + marker.Length;
+        var endIndex = arguments.IndexOf('"', startIndex);
+        Assert.True(endIndex > startIndex, "Expected closing quote for codex output file argument.");
+        return arguments[startIndex..endIndex];
     }
 
     private sealed class FakeAgentModelProvider : IAgentModelProvider

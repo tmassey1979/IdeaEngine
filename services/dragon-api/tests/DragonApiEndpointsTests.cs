@@ -266,6 +266,63 @@ public sealed class DragonApiEndpointsTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Fact]
+    public async Task OpenApiEndpoint_ReturnsDocument()
+    {
+        await using var factory = new DragonApiFactory(new StubBackendReadClient
+        {
+            Dashboard = new BackendDashboardReadModel(
+                "healthy",
+                "ok",
+                "watch",
+                "running",
+                0,
+                new Dictionary<string, int>(),
+                null,
+                null,
+                null,
+                null,
+                [],
+                "status-http")
+        });
+
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/openapi/v1.json");
+        var payload = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("/api/dashboard", payload, StringComparison.Ordinal);
+        Assert.Contains("\"openapi\"", payload, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SwaggerUiEndpoint_ReturnsHtml()
+    {
+        await using var factory = new DragonApiFactory(new StubBackendReadClient
+        {
+            Dashboard = new BackendDashboardReadModel(
+                "healthy",
+                "ok",
+                "watch",
+                "running",
+                0,
+                new Dictionary<string, int>(),
+                null,
+                null,
+                null,
+                null,
+                [],
+                "status-http")
+        });
+
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/swagger/index.html");
+        var payload = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Swagger UI", payload, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class DragonApiFactory(StubBackendReadClient backendReadClient) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)

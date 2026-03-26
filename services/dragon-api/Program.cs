@@ -4,6 +4,9 @@ using Dragon.Backend.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.Configure<DragonBackendOptions>(builder.Configuration.GetSection(DragonBackendOptions.SectionName));
 builder.Services.AddHttpClient<IBackendReadClient, BackendReadHttpClient>((serviceProvider, client) =>
 {
@@ -15,7 +18,17 @@ builder.Services.AddHttpClient<IBackendReadClient, BackendReadHttpClient>((servi
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Dragon API v1");
+    options.RoutePrefix = "swagger";
+});
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+    .WithName("Health")
+    .WithSummary("Return service health.");
 
 app.MapGet("/api/dashboard", async (IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -31,7 +44,9 @@ app.MapGet("/api/dashboard", async (IBackendReadClient backendReadClient, Cancel
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("GetDashboard")
+    .WithSummary("Get dashboard health and rollup data.");
 
 app.MapGet("/api/ideas", async (IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -47,7 +62,9 @@ app.MapGet("/api/ideas", async (IBackendReadClient backendReadClient, Cancellati
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("GetIdeas")
+    .WithSummary("Get the paged idea queue and project list source data.");
 
 app.MapGet("/api/ideas/{id}", async (string id, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -65,7 +82,9 @@ app.MapGet("/api/ideas/{id}", async (string id, IBackendReadClient backendReadCl
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("GetIdeaDetail")
+    .WithSummary("Get detail data for a single idea.");
 
 app.MapGet("/api/agent-performance", async (IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -81,7 +100,9 @@ app.MapGet("/api/agent-performance", async (IBackendReadClient backendReadClient
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("GetAgentPerformance")
+    .WithSummary("Get aggregated agent execution performance metrics.");
 
 app.MapGet("/api/audit-log", async (int? limit, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -97,7 +118,9 @@ app.MapGet("/api/audit-log", async (int? limit, IBackendReadClient backendReadCl
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("GetAuditLog")
+    .WithSummary("Get operator and automated control audit entries.");
 
 app.MapGet("/api/continuous-monitoring", async (int? limit, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -113,7 +136,9 @@ app.MapGet("/api/continuous-monitoring", async (int? limit, IBackendReadClient b
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("GetContinuousMonitoring")
+    .WithSummary("Get continuous monitoring findings and remediation state.");
 
 app.MapPost("/api/continuous-monitoring/findings", async (MonitoringFindingUpsertRequest request, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -139,7 +164,9 @@ app.MapPost("/api/continuous-monitoring/findings", async (MonitoringFindingUpser
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("RecordMonitoringFinding")
+    .WithSummary("Record or update a continuous monitoring finding.");
 
 app.MapPost("/api/ideas/{id}/fix", async (string id, IdeaFixRequest request, IBackendReadClient backendReadClient, CancellationToken cancellationToken) =>
 {
@@ -159,7 +186,9 @@ app.MapPost("/api/ideas/{id}/fix", async (string id, IdeaFixRequest request, IBa
             detail: exception.Message,
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-});
+})
+    .WithName("RequestIdeaFix")
+    .WithSummary("Queue a fix request for an idea.");
 
 app.Run();
 

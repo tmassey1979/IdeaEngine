@@ -1,11 +1,13 @@
 using Dragon.Backend.Contracts;
 using System.Diagnostics;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Dragon.Backend.Orchestrator;
 
 public delegate CommandResult LocalCommandRunner(string fileName, string arguments, string workingDirectory);
+public delegate CommandResult LocalCommandRunnerWithInput(string fileName, string arguments, string workingDirectory, string? standardInput);
 
 public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
 public sealed record ModelExecutionRetryOptions(int MaxAttempts = 3, int BaseDelayMilliseconds = 1000);
@@ -13,6 +15,7 @@ public sealed record ModelExecutionRetryOptions(int MaxAttempts = 3, int BaseDel
 public sealed class LocalJobExecutor
 {
     private readonly LocalCommandRunner commandRunner;
+    private readonly LocalCommandRunnerWithInput commandRunnerWithInput;
     private readonly IAgentModelProvider? modelProvider;
     private readonly AgentRuntimeConfigurationResolver? configurationResolver;
     private readonly ModelExecutionRetryOptions modelRetryOptions;
@@ -23,9 +26,11 @@ public sealed class LocalJobExecutor
         IAgentModelProvider? modelProvider = null,
         AgentRuntimeConfigurationResolver? configurationResolver = null,
         ModelExecutionRetryOptions? modelRetryOptions = null,
-        Action<TimeSpan>? sleepAction = null)
+        Action<TimeSpan>? sleepAction = null,
+        LocalCommandRunnerWithInput? commandRunnerWithInput = null)
     {
         this.commandRunner = commandRunner ?? RunCommand;
+        this.commandRunnerWithInput = commandRunnerWithInput ?? RunCommandWithInput;
         this.modelProvider = modelProvider;
         this.configurationResolver = configurationResolver;
         this.modelRetryOptions = modelRetryOptions ?? new ModelExecutionRetryOptions();
@@ -36,8 +41,9 @@ public sealed class LocalJobExecutor
         LocalCommandRunner? commandRunner,
         IAgentModelProvider? modelProvider,
         ModelExecutionRetryOptions? modelRetryOptions,
-        Action<TimeSpan>? sleepAction = null)
-        : this(commandRunner, modelProvider, null, modelRetryOptions, sleepAction)
+        Action<TimeSpan>? sleepAction = null,
+        LocalCommandRunnerWithInput? commandRunnerWithInput = null)
+        : this(commandRunner, modelProvider, null, modelRetryOptions, sleepAction, commandRunnerWithInput)
     {
     }
 
@@ -118,7 +124,16 @@ public sealed class LocalJobExecutor
         }
 
         var request = AgentPromptFactory.Build(job, provider.Describe().DefaultModel);
-        var response = ExecuteModelRequestWithRetry(provider, request);
+        AgentModelResponse response;
+        try
+        {
+            response = ExecuteModelRequestWithRetry(provider, request);
+        }
+        catch (AgentModelProviderException exception) when (ShouldUseCliFallback(exception))
+        {
+            response = ExecuteCodexCliFallback(rootDirectory, request, exception);
+        }
+
         var structuredResult = AgentStructuredResultParser.Parse(response.OutputText);
         var summary = !string.IsNullOrWhiteSpace(structuredResult?.Summary)
             ? structuredResult.Summary
@@ -179,6 +194,65 @@ public sealed class LocalJobExecutor
         }
 
         throw lastException ?? new InvalidOperationException("Model execution failed without an exception.");
+    }
+
+    private AgentModelResponse ExecuteCodexCliFallback(string rootDirectory, AgentModelRequest request, AgentModelProviderException originalException)
+    {
+        var artifactsDirectory = Path.Combine(rootDirectory, ".dragon", "artifacts", "codex-cli");
+        Directory.CreateDirectory(artifactsDirectory);
+
+        var outputPath = Path.Combine(
+            artifactsDirectory,
+            $"{request.Agent}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.txt");
+        var arguments = string.Join(
+            " ",
+            [
+                "-a",
+                "never",
+                "exec",
+                "--skip-git-repo-check",
+                "--sandbox",
+                "read-only",
+                "-C",
+                QuoteArgument(rootDirectory),
+                "-m",
+                QuoteArgument(request.Model),
+                "-o",
+                QuoteArgument(outputPath),
+                "-"
+            ]);
+
+        CommandResult result;
+        try
+        {
+            result = commandRunnerWithInput("codex", arguments, rootDirectory, BuildCodexFallbackPrompt(request));
+        }
+        catch (Exception fallbackException)
+        {
+            throw new InvalidOperationException(
+                $"Codex CLI fallback failed after provider rate limiting: {fallbackException.Message}",
+                originalException);
+        }
+
+        if (result.ExitCode != 0)
+        {
+            var details = BuildCommandFailureDetails(result);
+            throw new InvalidOperationException(
+                string.IsNullOrWhiteSpace(details)
+                    ? "Codex CLI fallback failed after provider rate limiting."
+                    : $"Codex CLI fallback failed after provider rate limiting: {details}",
+                originalException);
+        }
+
+        var outputText = File.Exists(outputPath)
+            ? File.ReadAllText(outputPath).Trim()
+            : result.StandardOutput.Trim();
+        if (string.IsNullOrWhiteSpace(outputText))
+        {
+            throw new InvalidOperationException("Codex CLI fallback completed without a final response.", originalException);
+        }
+
+        return new AgentModelResponse("codex-cli", request.Model, Path.GetFileNameWithoutExtension(outputPath), outputText, "completed");
     }
 
     private static ExecutionOutcome ExecuteDeveloper(string rootDirectory, SelfBuildJob job)
@@ -624,6 +698,34 @@ public sealed class LocalJobExecutor
         return new CommandResult(process.ExitCode, stdout, stderr);
     }
 
+    private static CommandResult RunCommandWithInput(string fileName, string arguments, string workingDirectory, string? standardInput)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            WorkingDirectory = workingDirectory,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Failed to start {fileName}.");
+        if (!string.IsNullOrWhiteSpace(standardInput))
+        {
+            process.StandardInput.Write(standardInput);
+        }
+
+        process.StandardInput.Close();
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        return new CommandResult(process.ExitCode, stdout, stderr);
+    }
+
     private void SleepBeforeModelRetry(Exception exception, int attempt)
     {
         var retryDelay = ResolveRetryDelay(exception, attempt);
@@ -726,6 +828,52 @@ public sealed class LocalJobExecutor
         }
 
         return "0s";
+    }
+
+    private static bool ShouldUseCliFallback(AgentModelProviderException exception) =>
+        exception.StatusCode == HttpStatusCode.TooManyRequests &&
+        string.Equals(exception.Provider, "openai-responses", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildCodexFallbackPrompt(AgentModelRequest request)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("The OpenAI Responses API returned HTTP 429 for this agent request.");
+        builder.AppendLine("Continue the same task through the local Codex CLI in read-only mode.");
+        builder.AppendLine("Return only the final response content for the agent. Do not mention the fallback.");
+        builder.AppendLine();
+        builder.AppendLine($"Agent: {request.Agent}");
+        builder.AppendLine($"Purpose: {request.Purpose}");
+        builder.AppendLine($"Model hint: {request.Model}");
+        builder.AppendLine($"Background mode: {request.Background}");
+        builder.AppendLine();
+
+        if (!string.IsNullOrWhiteSpace(request.Instructions))
+        {
+            builder.AppendLine("Instructions:");
+            builder.AppendLine(request.Instructions);
+            builder.AppendLine();
+        }
+
+        if (request.Metadata is { Count: > 0 })
+        {
+            builder.AppendLine("Metadata:");
+            foreach (var pair in request.Metadata.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                builder.AppendLine($"- {pair.Key}: {pair.Value}");
+            }
+
+            builder.AppendLine();
+        }
+
+        builder.AppendLine("Messages:");
+        foreach (var message in request.Messages)
+        {
+            builder.AppendLine($"[{message.Role}]");
+            builder.AppendLine(message.Content);
+            builder.AppendLine();
+        }
+
+        return builder.ToString().Trim();
     }
 
     private sealed record ExecutionOutcome(
